@@ -1,0 +1,26 @@
+{
+  "locked": {
+    "feature": "Le flux d'intelligence"
+  },
+  "heading": "Flux d'Intelligence",
+  "description": "Signaux en temps réel de Hacker News, Reddit, GitHub, Layoffs.fyi, et données de vulnérabilité CVE.",
+  "filters": {
+    "allVendors": "Tous les fournisseurs",
+    "sources": {
+      "all": "Tous",
+      "hn": "HN",
+      "reddit": "Reddit",
+      "github": "GitHub",
+      "layoffs": "Licenciements",
+      "cve": "CVE"
+    }
+  },
+  "empty": {
+    "noCveSignals": "Pas encore de signaux CVE. Les événements CVE apparaissent ici après la configuration des mappages croisés confirmés.",
+    "noMarketSignals": "Aucun signal collecté pour ce marché.",
+    "noVendorSignals": "Aucun signal collecté pour ce fournisseur."
+  },
+  "pagination": {
+    "showing": "Affichage de {{shown}} sur {{total}} signaux"
+  }
+}

@@ -1,0 +1,313 @@
+{
+  "shell": {
+    "lastUpdated": "Dernière mise à jour :"
+  },
+  "terms": {
+    "seo": {
+      "title": "Conditions d'utilisation — ITMAP.ai",
+      "description": "Conditions d'utilisation d'ITMAP.ai, couvrant les comptes, la connexion avec Google, le contenu généré par l'IA, le partage de données des fournisseurs et l'utilisation acceptable."
+    },
+    "shell": {
+      "heading": "ITMAP.ai — Conditions d'utilisation",
+      "backToRegistration": "Retour à l'inscription",
+      "agree": "J'accepte",
+      "disagree": "Je refuse"
+    },
+    "intro": {
+      "agreementBeforeSite": "Ces Conditions d'utilisation (\"Conditions\") sont un accord contraignant entre vous et ITMAP.ai (\"ITMAP\", \"nous\") régissant votre utilisation de",
+      "siteName": "itmap.ai",
+      "agreementAfterSite": "et des services, contenus et outils associés (le \"Service\"). En créant un compte — que ce soit en entrant votre adresse e-mail ou en cliquant sur",
+      "googleButton": "Continuer avec Google",
+      "agreementAfterGoogle": "— ou en utilisant le Service, vous acceptez ces Conditions et notre",
+      "privacyPolicyLink": "Politique de confidentialité",
+      "agreementEnd": ". Si vous n'êtes pas d'accord, n'utilisez pas le Service.",
+      "companyUse": "Si vous utilisez le Service au nom d'une entreprise, vous déclarez être autorisé à lier cette entreprise à ces Conditions, et \"vous\" inclut cette entreprise."
+    },
+    "service": {
+      "heading": "1. Le Service",
+      "descriptionBeforeFree": "ITMAP.ai fournit des renseignements sur le marché IT d'entreprise générés par l'IA, y compris des panoramas de fournisseurs, des comparaisons de produits, des scores de fournisseurs, des rapports de recherche, des actualités et des flux d'intelligence, des renseignements sur la sécurité, la génération de RFP, le chat IA et des outils associés. Le Service est actuellement fourni",
+      "freeOfCharge": "gratuitement",
+      "descriptionAfterFree": "aux utilisateurs finaux. Nous pouvons ajouter, modifier, restreindre ou interrompre toute fonctionnalité à tout moment."
+    },
+    "eligibility": {
+      "heading": "2. Admissibilité",
+      "description": "Le Service est destiné à un usage professionnel. Vous devez avoir au moins 18 ans et être capable de conclure un contrat contraignant. Vous ne pouvez pas utiliser le Service si la loi applicable vous l'interdit."
+    },
+    "accounts": {
+      "heading": "3. Comptes et connexion",
+      "passwordlessTitle": "Connexion sans mot de passe.",
+      "passwordlessText": "ITMAP n'utilise pas de mots de passe. Vous vous connectez soit avec un lien à usage unique envoyé à votre adresse e-mail, soit via Connexion avec Google. Vous êtes responsable de la sécurité de votre compte e-mail et de votre compte Google ; toute personne ayant accès à ceux-ci peut accéder à votre compte ITMAP.",
+      "emailVerificationTitle": "Vérification de l'e-mail.",
+      "emailVerificationText": "Lorsque vous vous inscrivez avec une adresse e-mail, nous envoyons un lien de vérification. Vous pouvez utiliser le Service pour un nombre limité de sessions avant de vérifier ; après cela, la vérification est requise pour continuer.",
+      "signInEmailTitle": "E-mail de connexion.",
+      "signInEmailText": "L'adresse e-mail avec laquelle vous vous inscrivez (ou l'adresse du compte Google avec lequel vous vous connectez) est votre identité de compte et ne peut pas être modifiée depuis le Service. Contactez-nous si vous devez déplacer votre compte vers une autre adresse.",
+      "companyProfileTitle": "Profil d'entreprise.",
+      "companyProfileText": "Les comptes enregistrés avec un fournisseur d'e-mail personnel (par exemple Gmail, Yahoo ou Outlook) peuvent accéder à la plupart du Service immédiatement. Les rapports de recherche, les actualités et le flux d'intelligence sont débloqués, gratuitement, une fois que vous avez complété un court profil d'entreprise et vérifié une adresse e-mail professionnelle en cliquant sur le lien que nous envoyons. Une adresse e-mail professionnelle peut être vérifiée sur un seul compte. Votre e-mail de connexion ne change pas.",
+      "accurateInformationTitle": "Informations exactes.",
+      "accurateInformationText": "Vous acceptez de fournir des informations exactes et à jour, y compris votre nom, le nom de votre entreprise, votre poste et votre e-mail professionnel, et de les maintenir à jour.",
+      "onePersonTitle": "Une personne par compte.",
+      "onePersonText": "Les comptes sont personnels et ne peuvent pas être partagés. Vous êtes responsable de toute activité sur votre compte."
+    },
+    "google": {
+      "heading": "4. Connexion avec Google",
+      "intro": "Si vous choisissez de vous inscrire ou de vous connecter avec votre compte Google :",
+      "items": {
+        "authoriseBeforeLink": "Vous autorisez Google à partager avec ITMAP votre adresse e-mail de compte Google, son statut de vérification, votre nom, votre photo de profil et un identifiant de compte unique, comme décrit dans notre",
+        "authoriseAfterLink": ". Nous ne demandons pas d'autres données Google et ne pouvons pas accéder à votre Gmail, Contacts, Drive ou autres services Google.",
+        "useInformation": "Nous utilisons ces informations uniquement pour créer et sécuriser votre compte ITMAP, vous connecter, pré-remplir votre profil et le lier à tout compte ITMAP existant ayant la même adresse e-mail vérifiée.",
+        "apiPolicyBeforeLink": "L'utilisation par ITMAP des informations reçues des API Google respecte la",
+        "apiPolicyAfterLink": ", y compris ses exigences d'utilisation limitée.",
+        "googleTerms": "Votre utilisation de Google est régie par les propres conditions et politique de confidentialité de Google. ITMAP n'est pas responsable des services de Google, et Google n'est pas partie à ces Conditions.",
+        "revokeBeforeLink": "Vous pouvez révoquer l'accès d'ITMAP à tout moment sur",
+        "revokeAfterLink": ". La révocation de l'accès ne supprime pas votre compte ITMAP ; vous pouvez continuer à vous connecter avec le lien e-mail ou nous demander de supprimer le compte.",
+        "unverifiedEmail": "Si Google signale votre adresse e-mail comme non vérifiée, nous ne créerons ni ne lierons de compte avec elle."
+      },
+      "privacyPolicyLink": "Politique de confidentialité",
+      "apiPolicyLink": "Politique de données utilisateur des services API Google",
+      "permissionsLink": "myaccount.google.com/permissions"
+    },
+    "ai": {
+      "heading": "5. Contenu généré par l'IA — sans garantie",
+      "contentBeforeEmphasis": "Le contenu sur ITMAP.ai — y compris les scores de fournisseurs, les placements dans les panoramas, les comparaisons, les prévisions, les résumés de rapports, la classification des actualités, les renseignements sur la sécurité et les réponses du chat IA — est",
+      "generated": "généré et mis à jour par des systèmes IA automatisés",
+      "contentBeforeDisclaimer": "en utilisant des informations disponibles publiquement et du matériel soumis par les fournisseurs. Il est fourni",
+      "disclaimer": "\"en l'état\", à des fins d'information uniquement",
+      "contentAfterDisclaimer": ", et peut contenir des erreurs, des omissions ou des informations obsolètes.",
+      "items": {
+        "notAdviceBefore": "Le contenu d'ITMAP.ai n'est",
+        "notAdvice": "pas un conseil professionnel, financier, juridique, de sécurité ou d'achat",
+        "verify": "Vous êtes seul responsable de la vérification indépendante des informations avant de prendre toute décision d'achat, d'investissement, de sécurité ou d'affaires.",
+        "placements": "Les placements et scores des fournisseurs ne sont pas des recommandations et ne sont pas influencés par un paiement des fournisseurs.",
+        "warranties": "Nous ne garantissons pas l'exactitude, l'exhaustivité, l'adéquation à un usage particulier, la non-contrefaçon ou la qualité marchande."
+      }
+    },
+    "data": {
+      "heading": "6. Données que nous collectons et comment nous les utilisons",
+      "descriptionBeforeLink": "Nous collectons des données de compte (nom, nom de l'entreprise, poste, e-mail de connexion et e-mail professionnel), des informations reçues de Google lorsque vous utilisez Connexion avec Google, des données d'activité (marchés, rapports et fournisseurs que vous consultez, recherches, invites de chat IA, RFP et comparaisons) et des données de trafic et de dispositif (identifiants aléatoires de visiteurs et de sessions de première partie, chemins de page, page de référence, paramètres de campagne, agent utilisateur du navigateur, adresse IP et localisation approximative en dérivant). La collecte commence lorsqu'une page se charge, y compris pour les visiteurs anonymes. Nous utilisons ces données pour exploiter, sécuriser, analyser et améliorer le Service, pour envoyer des e-mails transactionnels, pour appliquer des règles d'accès, pour la mesure de la publicité et pour les objectifs de la Section 7. Les détails complets, les périodes de conservation et vos droits sont dans notre",
+      "privacyPolicyLink": "Politique de confidentialité",
+      "descriptionAfterLink": ", qui fait partie de ces Conditions."
+    },
+    "sharing": {
+      "heading": "7. Partage de vos données avec les fournisseurs — veuillez lire",
+      "consent": "En acceptant ces Conditions, vous consentez à ce qu'ITMAP.ai partage votre nom, nom de l'entreprise, poste et adresse e-mail professionnelle avec les fournisseurs technologiques dont vous consultez les marchés ou produits sur la plateforme.",
+      "descriptionAfterConsent": "Les fournisseurs peuvent vous contacter concernant leurs produits et services. Nous ne vendons pas votre historique de navigation, mais les fournisseurs peuvent être informés de votre intérêt général pour une catégorie de marché.",
+      "withdrawBeforeLink": "Vous pouvez retirer ce consentement à tout moment en envoyant un e-mail à",
+      "emailLink": "privacy@itmap.ai",
+      "withdrawAfterLink": ". Le retrait n'affecte pas les données déjà partagées. Les informations reçues de Google ne sont jamais partagées avec les fournisseurs au-delà du nom et de l'adresse e-mail qui font également partie des données de votre compte ITMAP."
+    },
+    "acceptableUse": {
+      "heading": "8. Utilisation acceptable",
+      "intro": "Vous acceptez de ne pas :",
+      "items": {
+        "scrape": "extraire, explorer, télécharger en masse, revendre, sous-licencier ou redistribuer le contenu ou les données d'ITMAP, ou les utiliser pour entraîner des modèles d'apprentissage automatique, sans notre autorisation écrite ;",
+        "reverseEngineer": "désassembler, sonder ou interférer avec le Service, sa sécurité ou ses contrôles d'accès, ou contourner les barrières de fonctionnalités telles que la vérification par e-mail ou par e-mail professionnel ;",
+        "impersonate": "s'inscrire avec une adresse e-mail que vous ne contrôlez pas, usurper l'identité de toute personne ou entreprise, ou créer des comptes au nom d'autres sans autorité ;",
+        "submit": "soumettre des informations de fournisseur fausses, trompeuses ou contrefaites, des avis ou des réponses de vérification de faits ;",
+        "unlawful": "utiliser le Service à des fins illégales ou en violation des lois sur le contrôle des exportations ou des sanctions."
+      }
+    },
+    "vendorAccounts": {
+      "heading": "9. Comptes fournisseurs",
+      "description": "Si vous accédez au Service en tant que représentant d'un fournisseur, vous garantissez que vous êtes autorisé par ce fournisseur, que les informations que vous soumettez sont exactes et non contrefaites, et vous accordez à ITMAP une licence mondiale, sans redevance, pour utiliser, afficher et analyser ces informations dans le Service. L'accès des fournisseurs aux informations des acheteurs est limité à ce que ces Conditions et la Politique de confidentialité permettent."
+    },
+    "intellectualProperty": {
+      "heading": "10. Propriété intellectuelle",
+      "description": "Le Service, son contenu, ses scores, modèles, rapports et marques sont la propriété d'ITMAP.ai ou de ses concédants. Nous vous accordons une licence limitée, révocable, non exclusive et non transférable pour utiliser le Service et utiliser le contenu auquel vous accédez légitimement pour vos besoins professionnels internes. Le contenu que vous créez (par exemple les RFP) reste le vôtre ; vous nous accordez une licence pour l'héberger et le traiter afin de fournir le Service."
+    },
+    "thirdParty": {
+      "heading": "11. Services tiers",
+      "description": "Le Service repose sur des tiers, y compris Google (connexion), les fournisseurs de livraison d'e-mails, l'hébergement cloud et les fournisseurs de modèles IA, et peut contenir des liens vers des sites externes. Nous ne sommes pas responsables des services ou contenus tiers, et votre utilisation de ceux-ci est soumise à leurs propres conditions."
+    },
+    "warranties": {
+      "heading": "12. Exclusion de garanties",
+      "description": "Le Service est fourni \"en l'état\" et \"selon disponibilité\". Dans la mesure maximale permise par la loi, nous déclinons toutes les garanties, expresses ou implicites, y compris le fonctionnement ininterrompu ou sans erreur et l'exactitude de tout contenu."
+    },
+    "liability": {
+      "heading": "13. Limitation de responsabilité",
+      "descriptionBeforeLimit": "Dans la mesure maximale permise par la loi, ITMAP.ai et ses affiliés, dirigeants, employés et partenaires ne seront pas responsables des dommages indirects, accessoires, consécutifs, spéciaux ou punitifs, ni de toute perte de profits, de revenus, de données ou d'opportunités commerciales, résultant de votre utilisation (ou incapacité à utiliser) du Service ou de la confiance accordée à son contenu. Notre responsabilité totale agrégée pour toute réclamation ne dépassera pas",
+      "limit": "100 USD"
+    },
+    "indemnification": {
+      "heading": "14. Indemnisation",
+      "description": "Vous acceptez d'indemniser et de dégager de toute responsabilité ITMAP.ai contre les réclamations, pertes et dépenses (y compris les frais juridiques raisonnables) résultant de votre mauvaise utilisation du Service, du contenu que vous soumettez ou de votre violation de ces Conditions."
+    },
+    "termination": {
+      "heading": "15. Suspension et résiliation",
+      "descriptionBeforeLink": "Nous pouvons suspendre ou résilier votre compte à tout moment pour violation de ces Conditions ou pour protéger le Service. Vous pouvez arrêter d'utiliser le Service à tout moment et demander la suppression de votre compte en envoyant un e-mail à",
+      "emailLink": "privacy@itmap.ai",
+      "descriptionAfterLink": ". Les sections 5, 7 (en ce qui concerne les données déjà partagées), 10 et 12–17 survivent à la résiliation."
+    },
+    "changes": {
+      "heading": "16. Modifications de ces Conditions",
+      "description": "Nous pouvons mettre à jour ces Conditions de temps à autre. Les modifications importantes seront notifiées par e-mail ou par un avis dans l'application avant leur entrée en vigueur. La poursuite de l'utilisation après les modifications constitue une acceptation."
+    },
+    "governingLaw": {
+      "heading": "17. Droit applicable et litiges",
+      "beforeJurisdiction": "Ces Conditions sont régies par les lois des",
+      "jurisdiction": "Émirats Arabes Unis",
+      "afterJurisdiction": ", et les litiges seront résolus exclusivement par les tribunaux de cette juridiction, sans préjudice des droits des consommateurs que vous pourriez avoir en vertu des lois de votre pays de résidence."
+    },
+    "contact": {
+      "heading": "18. Contact",
+      "legalQuestions": "Questions juridiques :",
+      "legalEmail": "legal@itmap.ai",
+      "privacyRequests": ". Demandes de confidentialité :",
+      "privacyEmail": "privacy@itmap.ai"
+    }
+  },
+  "privacy": {
+    "seo": {
+      "title": "Politique de confidentialité — ITMAP.ai",
+      "description": "Comment ITMAP.ai collecte, utilise, partage et protège vos informations, y compris les données reçues lorsque vous vous connectez avec Google."
+    },
+    "shell": {
+      "heading": "Politique de confidentialité",
+      "backToItmap": "Retour à ITMAP"
+    },
+    "intro": {
+      "beforeSite": "Cette Politique de confidentialité explique comment ITMAP.ai (\"ITMAP\", \"nous\") collecte, utilise, partage et protège les informations lorsque vous visitez",
+      "siteName": "itmap.ai",
+      "afterSite": ", créez un compte, vous connectez avec Google ou utilisez autrement nos services (ensemble, le \"Service\"). Elle s'applique à chaque visiteur, y compris les personnes qui naviguent sans compte. En utilisant le Service, vous acceptez cette Politique et nos",
+      "termsLink": "Conditions d'utilisation"
+    },
+    "whoWeAre": {
+      "heading": "1. Qui nous sommes",
+      "descriptionBeforeEmail": "ITMAP.ai est une plateforme indépendante de renseignements sur le marché IT d'entreprise alimentée par l'IA pour les acheteurs et fournisseurs de technologie. ITMAP est le responsable du traitement des données personnelles décrites dans cette Politique. Vous pouvez nous joindre à",
+      "email": "privacy@itmap.ai"
+    },
+    "information": {
+      "heading": "2. Informations que nous collectons",
+      "providedHeading": "2.1 Informations que vous nous fournissez",
+      "provided": {
+        "accountTitle": "Données de compte :",
+        "accountText": "votre adresse e-mail de connexion, prénom et nom de famille et, si vous le fournissez, le nom de votre entreprise, votre poste et votre adresse e-mail professionnelle.",
+        "companyVerificationTitle": "Vérification du profil d'entreprise :",
+        "companyVerificationText": "si vous vous inscrivez avec un fournisseur d'e-mail personnel (par exemple Gmail, Yahoo ou Outlook) et choisissez de débloquer les rapports de recherche, les actualités et le flux d'intelligence, nous demandons une adresse e-mail professionnelle et envoyons un lien de vérification unique à celle-ci. Nous stockons si cette adresse a été vérifiée.",
+        "contentTitle": "Contenu que vous créez :",
+        "contentText": "projets RFP et réponses, comparaisons enregistrées, questions tapées dans le chat IA, messages de formulaire de contact et commentaires.",
+        "vendorTitle": "Données de fournisseur :",
+        "vendorText": "si vous agissez au nom d'un fournisseur de technologie, les coordonnées professionnelles et les informations sur les produits que vous soumettez pour examen."
+      },
+      "googleHeading": "2.2 Informations que nous recevons lorsque vous vous connectez avec Google",
+      "googleIntroBeforeScopes": "Vous pouvez créer un compte ou vous connecter en utilisant votre compte Google (\"Connexion avec Google\"). Lorsque vous le faites, Google demande votre consentement puis partage les éléments suivants avec nous via le service OAuth 2.0 de Google en utilisant le",
+      "googleItems": {
+        "email": "votre adresse e-mail de compte Google et si Google l'a vérifiée ;",
+        "name": "votre nom (prénom et nom de famille) tel que défini dans votre compte Google ;",
+        "picture": "l'URL de votre photo de profil Google ;",
+        "identifier": "un identifiant unique de compte Google qui nous permet de reconnaître le même compte lors de connexions ultérieures."
+      },
+      "googleUse": "Nous utilisons ces informations uniquement pour créer votre compte ITMAP, vous connecter, pré-remplir votre profil et, lorsqu'un compte ITMAP avec la même adresse e-mail vérifiée existe déjà, lier les deux afin que vous conserviez un seul compte. Nous considérons une adresse e-mail vérifiée par Google comme une adresse e-mail de connexion ITMAP vérifiée.",
+      "googleNoAccessEmphasis": "Nous ne",
+      "googleNoAccess": "demandons pas l'accès à vos messages Gmail, Contacts Google, Calendrier, Drive ou à toute autre donnée Google, et nous ne publions ni ne modifions rien dans votre compte Google. Nous ne recevons ni ne stockons votre mot de passe Google. Les jetons de courte durée que Google émet lors de la connexion sont utilisés une seule fois pour lire les champs de profil ci-dessus et ne sont pas conservés.",
+      "googlePolicyBeforeLink": "L'utilisation par ITMAP des informations reçues des API Google respecte la",
+      "googlePolicyLink": "Politique de données utilisateur des services API Google",
+      "googlePolicyAfterLink": ", y compris les exigences d'utilisation limitée. Nous ne vendons pas les données utilisateur Google, ne les utilisons pas pour la publicité, et n'autorisons pas les humains à les lire sauf avec votre consentement, pour des raisons de sécurité, pour se conformer à la loi, ou dans le cadre d'opérations internes agrégées et anonymisées.",
+      "googleRevokeBeforeLink": "Vous pouvez consulter et retirer l'accès d'ITMAP à votre compte Google à tout moment sur",
+      "permissionsLink": "myaccount.google.com/permissions",
+      "googleRevokeAfterLink": ". Le retrait de l'accès ne supprime pas votre compte ITMAP ; vous pouvez toujours vous connecter avec le lien e-mail, ou nous demander de supprimer le compte (voir Section 8).",
+      "automaticHeading": "2.3 Informations collectées automatiquement",
+      "automatic": {
+        "activityTitle": "Données d'activité :",
+        "activityText": "pages, marchés, fournisseurs et rapports que vous consultez, filtres et recherches que vous utilisez, invites de chat IA, RFP que vous construisez, temps passé et interactions.",
+        "trafficTitle": "Données de trafic et de dispositif :",
+        "trafficText": "identifiants aléatoires de visiteurs et de sessions de première partie, chemin de page, page de référence, paramètres de campagne (UTM), agent utilisateur du navigateur, adresse IP et le pays, la région et la ville approximatifs dérivés de celle-ci.",
+        "signInHistoryTitle": "Historique de connexion :",
+        "signInHistoryText": "quand vous vous êtes connecté, quelle méthode vous avez utilisée (lien e-mail ou Google) et le nombre de sessions utilisées avant que votre e-mail ne soit vérifié."
+      },
+      "noFingerprinting": "Nous n'utilisons pas l'empreinte digitale du navigateur, ne demandons pas la localisation GPS, et ne faisons pas confiance à une adresse IP ou localisation fournie par le navigateur."
+    },
+    "cookies": {
+      "heading": "3. Cookies et technologies similaires",
+      "sessionTitle": "Cookie de session",
+      "sessionText": "(HTTP-only, sécurisé) : vous garde connecté. Supprimé lorsque vous vous déconnectez ou que la session expire.",
+      "visitorTitle": "Cookie de visiteur",
+      "visitorText": "(HTTP-only) : un identifiant aléatoire qui reconnaît le même navigateur au fil du temps afin que les statistiques de trafic ne soient pas comptées en double, et pour que les visites antérieures d'un navigateur puissent être associées à votre compte une fois que vous vous connectez.",
+      "trafficSessionTitle": "Cookie de session de trafic",
+      "trafficSessionText": "(HTTP-only) : expire après 30 minutes d'inactivité ; regroupe les vues de page en une seule visite.",
+      "browserStorageTitle": "Stockage du navigateur :",
+      "browserStorageText": "nous utilisons le stockage local et de session pour les préférences telles que les avis rejetés, le minuteur d'aperçu gratuit pour les visiteurs anonymes, et votre acceptation des Conditions. Ces valeurs ne quittent jamais votre navigateur sauf comme décrit dans la Section 5.",
+      "advertisingTitle": "Mesure de la publicité :",
+      "advertisingText": "les pages incluent le pixel de conversion Reddit, qui définit ses propres cookies et rapporte les visites de pages et les inscriptions à Reddit afin que nous puissions mesurer l'efficacité de notre publicité. Voir Section 5.",
+      "blocking": "Vous pouvez bloquer ou supprimer les cookies dans les paramètres de votre navigateur. Bloquer le cookie de session vous empêchera de rester connecté."
+    },
+    "use": {
+      "heading": "4. Comment nous utilisons les informations",
+      "items": {
+        "account": "Créer et administrer votre compte, vous authentifier (par lien e-mail ou Google) et sécuriser votre compte.",
+        "emails": "Envoyer des e-mails transactionnels : liens de connexion et de vérification d'e-mail, liens de vérification d'e-mail professionnel et avis de service. Nous n'envoyons pas de newsletters marketing sans un opt-in séparé.",
+        "service": "Fournir le Service : panoramas de marché, scores de fournisseurs, comparaisons, rapports, actualités, flux d'intelligence, renseignements sur la sécurité, outils RFP et chat IA.",
+        "access": "Appliquer les règles d'accès, par exemple débloquer les rapports de recherche, les actualités et le flux d'intelligence une fois qu'un e-mail professionnel a été vérifié.",
+        "measure": "Mesurer le trafic, la demande géographique et l'intérêt du marché ; dépanner, sécuriser et améliorer le Service.",
+        "vendors": "Fournir aux fournisseurs les informations sur l'intérêt du marché et les prospects décrits dans la Section 5 et dans les Conditions.",
+        "legal": "Se conformer aux obligations légales et faire respecter nos Conditions."
+      },
+      "legalBasis": "Lorsque le RGPD ou des lois similaires s'appliquent, nous nous appuyons sur : l'exécution d'un contrat (fournir le Service pour lequel vous vous êtes inscrit), nos intérêts légitimes (sécurité, analyses, amélioration du produit, marketing B2B), votre consentement (connexion Google, partage avec les fournisseurs, mesure de la publicité) et le respect de la loi."
+    },
+    "sharing": {
+      "heading": "5. Comment nous partageons les informations",
+      "vendorTitle": "Fournisseurs de technologie.",
+      "vendorText": "Comme indiqué dans les Conditions, lorsque vous interagissez avec le marché ou les produits d'un fournisseur sur ITMAP, nous pouvons partager votre nom, nom de l'entreprise, poste et adresse e-mail professionnelle avec ce fournisseur, qui peut vous contacter. Vous pouvez retirer ce consentement à tout moment en nous envoyant un e-mail.",
+      "googleTitle": "Google LLC.",
+      "googleBeforeLink": "Lorsque vous choisissez Connexion avec Google, Google traite la connexion conformément à la",
+      "googleLink": "Politique de confidentialité de Google",
+      "googleAfterLink": ". Nous n'envoyons pas votre activité ITMAP à Google.",
+      "providersTitle": "Fournisseurs de services",
+      "providersText": "agissant selon nos instructions : hébergement cloud et base de données (Replit), livraison d'e-mails transactionnels (Resend), recherche IP-à-localisation (ipwho.is reçoit uniquement l'adresse IP), fournisseurs de modèles IA qui traitent le texte de vos invites de chat IA et nos pipelines de contenu, et surveillance des erreurs et des performances.",
+      "redditTitle": "Reddit, Inc.",
+      "redditText": "pour la mesure de la publicité : les visites de pages et les inscriptions de comptes sont rapportées via le pixel Reddit et, pour les inscriptions, un événement de conversion côté serveur contenant une adresse e-mail hachée, une adresse IP, un agent utilisateur et un identifiant d'événement aléatoire. Nous ne partageons pas votre nom, entreprise ou activité sur le site avec Reddit.",
+      "legalTitle": "Légal et sécurité :",
+      "legalText": "lorsque requis par la loi, la réglementation, le processus légal ou pour protéger les droits, la propriété ou la sécurité d'ITMAP, de nos utilisateurs ou d'autres.",
+      "transfersTitle": "Transferts d'entreprise :",
+      "transfersText": "dans le cadre d'une fusion, acquisition, financement ou vente d'actifs, sous réserve de cette Politique.",
+      "noSale": "Nous ne vendons pas de données personnelles et nous ne partageons pas les données utilisateur Google avec des tiers sauf si nécessaire pour fournir la fonctionnalité de connexion elle-même."
+    },
+    "retention": {
+      "heading": "6. Conservation des données",
+      "account": "Les données de compte et de profil sont conservées tant que votre compte existe, puis supprimées ou anonymisées dans les 90 jours suivant une demande de suppression, sauf si nous devons conserver des enregistrements par la loi.",
+      "tokens": "Les jetons de vérification pour les liens de connexion et d'e-mail professionnel sont à usage unique et sont effacés dès qu'ils sont utilisés ou remplacés.",
+      "traffic": "Les enregistrements de trafic, y compris les adresses IP, sont conservés indéfiniment pour l'analyse des tendances sauf si la suppression est requise par la loi applicable ou si vous en faites la demande.",
+      "content": "Le contenu que vous créez (RFP, comparaisons, historique de chat) est conservé jusqu'à ce que vous le supprimiez ou que votre compte soit supprimé."
+    },
+    "security": {
+      "heading": "7. Sécurité",
+      "description": "Tout le trafic vers ITMAP est crypté avec TLS. La connexion est sans mot de passe : nous comptons sur des liens envoyés par e-mail à usage unique et sur l'authentification de Google plutôt que de stocker des mots de passe utilisateur. Les jetons de vérification sont aléatoires, à usage unique et stockés de manière à ne pas pouvoir être lus depuis une interface utilisateur. Les renseignements détaillés sur le trafic et l'administration des comptes sont réservés aux administrateurs ITMAP autorisés. Aucune méthode de transmission ou de stockage n'est complètement sécurisée ; veuillez nous contacter immédiatement si vous pensez que votre compte a été compromis."
+    },
+    "rights": {
+      "heading": "8. Vos droits et choix",
+      "accessTitle": "Accès, correction et portabilité :",
+      "accessText": "vous pouvez consulter et modifier votre nom et votre profil d'entreprise sur votre page de profil et demander une copie de vos données par e-mail.",
+      "deletionTitle": "Suppression :",
+      "deletionBeforeEmail": "envoyez un e-mail à",
+      "email": "privacy@itmap.ai",
+      "deletionAfterEmail": " depuis l'adresse de votre compte pour supprimer votre compte et les données personnelles associées.",
+      "googleTitle": "Connexion Google :",
+      "googleBeforeLink": "révoquez l'accès d'ITMAP à",
+      "permissionsLink": "myaccount.google.com/permissions",
+      "googleAfterLink": ". Vous pouvez également nous demander de dissocier Google de votre compte afin que seule la connexion par lien e-mail reste.",
+      "vendorTitle": "Partage avec les fournisseurs :",
+      "vendorText": "retirez votre consentement au partage avec les fournisseurs à tout moment par e-mail ; le retrait n'affecte pas les données déjà partagées.",
+      "objectionTitle": "Opposition et restriction :",
+      "objectionText": "là où la loi locale le prévoit, vous pouvez vous opposer à ou restreindre certains traitements, et vous pouvez déposer une plainte auprès de votre autorité de protection des données.",
+      "response": "Nous répondons aux demandes vérifiées dans les 30 jours. Les droits disponibles varient selon la juridiction."
+    },
+    "transfers": {
+      "heading": "9. Transferts internationaux",
+      "description": "ITMAP est exploité depuis les Émirats Arabes Unis et nos fournisseurs de services traitent les données aux États-Unis et dans d'autres pays. Lorsque requis, nous nous appuyons sur des garanties contractuelles telles que les clauses contractuelles types pour ces transferts."
+    },
+    "children": {
+      "heading": "10. Enfants",
+      "description": "Le Service est destiné aux utilisateurs professionnels et n'est pas dirigé vers des personnes de moins de 18 ans. Nous ne collectons pas sciemment de données personnelles d'enfants ; si vous pensez qu'un enfant nous a fourni des données, contactez-nous et nous les supprimerons."
+    },
+    "changes": {
+      "heading": "11. Modifications de cette Politique",
+      "description": "Nous pouvons mettre à jour cette Politique de temps à autre. La date de \"Dernière mise à jour\" en haut indique la version actuelle. Les modifications importantes seront annoncées par e-mail ou par un avis dans l'application avant leur entrée en vigueur."
+    },
+    "contact": {
+      "heading": "12. Contactez-nous",
+      "privacyLabel": "Questions et demandes de confidentialité :",
+      "privacyEmail": "privacy@itmap.ai",
+      "generalLabel": ". Demandes générales :",
+      "contactLink": "itmap.ai/contact"
+    }
+  }
+}

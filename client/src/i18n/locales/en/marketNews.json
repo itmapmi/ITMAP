@@ -1,0 +1,71 @@
+{
+  "locked": {
+    "feature": "Market news"
+  },
+  "heading": "Market News & Updates",
+  "description": "Latest news and announcements from market vendors, with AI-powered analysis",
+  "ranges": {
+    "allTime": "All time",
+    "past30Days": "Past 30 days",
+    "past90Days": "Past 90 days",
+    "past180Days": "Past 180 days",
+    "past12Months": "Past 12 months"
+  },
+  "filters": {
+    "allVendors": "All Vendors",
+    "allImpact": "All Impact",
+    "highImpact": "High Impact",
+    "mediumImpact": "Medium Impact",
+    "lowImpact": "Low Impact",
+    "allCategories": "All Categories"
+  },
+  "categories": {
+    "productAnnouncement": "Product Announcement",
+    "ma": "M&A",
+    "financialResults": "Financial Results",
+    "partnership": "Partnership",
+    "customerSuccess": "Customer Success",
+    "leadershipChanges": "Leadership Changes",
+    "general": "General"
+  },
+  "impact": {
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  },
+  "export": {
+    "openButton": "Export PDF",
+    "title": "Export News to PDF",
+    "description": "Choose vendors, an announcement category, and a time range. Leave vendors unchecked to include all vendors in this market.",
+    "timeRange": "Time range",
+    "category": "Category",
+    "vendors": "Vendors",
+    "clear_one": "Clear ({{count}})",
+    "clear_other": "Clear ({{count}})",
+    "noVendorsAvailable": "No vendors available.",
+    "allVendorsIncluded": "All vendors will be included.",
+    "selectionSelected_one": "{{count}} vendor selected.",
+    "selectionSelected_other": "{{count}} vendors selected.",
+    "cancel": "Cancel",
+    "generating": "Generating…",
+    "downloadPdf": "Download PDF"
+  },
+  "toast": {
+    "exportFailedFallback": "Failed to export news",
+    "exportReady": "Export ready",
+    "exportDownloaded": "Your news PDF has been downloaded.",
+    "exportFailed": "Export failed",
+    "exportCouldNotGenerate": "Could not generate the PDF."
+  },
+  "loading": "Loading news...",
+  "empty": {
+    "title": "No news articles found",
+    "description": "Add newsroom URLs to vendors in the admin panel to start tracking news"
+  },
+  "article": {
+    "hideAnalysis": "Hide Analysis",
+    "readAnalysis": "Read Analysis",
+    "editorialAnalysis": "Editorial Analysis",
+    "competitiveContext": "Competitive Context"
+  }
+}

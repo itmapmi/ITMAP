@@ -1,0 +1,71 @@
+{
+  "locked": {
+    "feature": "시장 뉴스"
+  },
+  "heading": "시장 뉴스 및 업데이트",
+  "description": "시장 벤더의 최신 뉴스 및 발표, AI 기반 분석 포함",
+  "ranges": {
+    "allTime": "전체 기간",
+    "past30Days": "지난 30일",
+    "past90Days": "지난 90일",
+    "past180Days": "지난 180일",
+    "past12Months": "지난 12개월"
+  },
+  "filters": {
+    "allVendors": "모든 벤더",
+    "allImpact": "모든 영향",
+    "highImpact": "높은 영향",
+    "mediumImpact": "중간 영향",
+    "lowImpact": "낮은 영향",
+    "allCategories": "모든 카테고리"
+  },
+  "categories": {
+    "productAnnouncement": "제품 발표",
+    "ma": "인수합병",
+    "financialResults": "재무 결과",
+    "partnership": "파트너십",
+    "customerSuccess": "고객 성공",
+    "leadershipChanges": "리더십 변경",
+    "general": "일반"
+  },
+  "impact": {
+    "high": "높음",
+    "medium": "중간",
+    "low": "낮음"
+  },
+  "export": {
+    "openButton": "PDF 내보내기",
+    "title": "뉴스를 PDF로 내보내기",
+    "description": "벤더, 발표 카테고리 및 기간을 선택하세요. 벤더를 선택하지 않으면 이 시장의 모든 벤더가 포함됩니다.",
+    "timeRange": "기간",
+    "category": "카테고리",
+    "vendors": "벤더",
+    "clear_one": "지우기 ({{count}})",
+    "clear_other": "지우기 ({{count}})",
+    "noVendorsAvailable": "사용 가능한 벤더가 없습니다.",
+    "allVendorsIncluded": "모든 벤더가 포함됩니다.",
+    "selectionSelected_one": "{{count}}개의 벤더가 선택되었습니다.",
+    "selectionSelected_other": "{{count}}개의 벤더가 선택되었습니다.",
+    "cancel": "취소",
+    "generating": "생성 중...",
+    "downloadPdf": "PDF 다운로드"
+  },
+  "toast": {
+    "exportFailedFallback": "뉴스 내보내기에 실패했습니다",
+    "exportReady": "내보내기 준비 완료",
+    "exportDownloaded": "뉴스 PDF가 다운로드되었습니다.",
+    "exportFailed": "내보내기 실패",
+    "exportCouldNotGenerate": "PDF를 생성할 수 없습니다."
+  },
+  "loading": "뉴스 로딩 중...",
+  "empty": {
+    "title": "뉴스 기사를 찾을 수 없습니다",
+    "description": "관리자 패널에서 벤더에 뉴스룸 URL을 추가하여 뉴스 추적을 시작하세요"
+  },
+  "article": {
+    "hideAnalysis": "분석 숨기기",
+    "readAnalysis": "분석 읽기",
+    "editorialAnalysis": "편집 분석",
+    "competitiveContext": "경쟁 상황"
+  }
+}

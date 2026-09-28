@@ -1,0 +1,142 @@
+{
+  "heading": {
+    "productEvaluation": "製品評価",
+    "vendorCount": "{{selected}} / {{total}} ベンダー",
+    "capabilitiesOnly": "製品機能のみ（エコシステムサポートを除く）"
+  },
+  "loading": {
+    "description": "ベンダー製品評価レベルを示すハーベイボール指標",
+    "capabilitiesDescription": "ベンダー製品機能を示すハーベイボール指標（エコシステム機能を除く）"
+  },
+  "selection": {
+    "description": "ベンダーを選択して製品機能と能力を比較",
+    "chooseVendors": "評価するベンダーを選択",
+    "chooseVendorsDescription": "1つ以上のベンダーを選択して製品機能を詳細に比較",
+    "noVendorsSelected": "ベンダーが選択されていません",
+    "vendorsSelected_one": "{{count}} ベンダーが選択されました",
+    "vendorsSelected_other": "{{count}} ベンダーが選択されました",
+    "noVendorsAvailable": "この市場には利用可能なベンダーがありません。",
+    "chooseVendorsToCompare": "比較するベンダーを選択",
+    "selectAtLeastOne": "比較マトリックスを表示するには、少なくとも1つのベンダーを選択してください"
+  },
+  "buttons": {
+    "updating": "更新中...",
+    "updateVendorEvaluation": "ベンダー評価を更新",
+    "clearAll": "すべてクリア",
+    "selectAll": "すべて選択",
+    "compareProducts": "比較 {{count}}/2",
+    "viewProductEvaluation": "製品評価を表示 ({{count}})",
+    "pdf": "PDF",
+    "pdfReport": "PDFレポート",
+    "change": "変更",
+    "changeSelection": "選択を変更",
+    "expandAll": "すべて展開",
+    "collapseAll": "すべて折りたたむ",
+    "hideFilters": "フィルターを隠す",
+    "filterVendors": "ベンダーをフィルタ",
+    "viewNotes": "メモを表示",
+    "closeNotes": "メモを閉じる"
+  },
+  "mobile": {
+    "eyebrow": "製品評価",
+    "title": "製品サポートを比較",
+    "description": "保存された2つの製品サポート記録を機能ごとに比較。",
+    "productsToCompare": "比較する製品",
+    "chooseExactlyTwo": "正確に2つを選択",
+    "twoProductsSelected": "2つの製品が選択されました。両方の列が下に表示されます。",
+    "moreProducts_one": "比較を表示するには、あと{{count}}製品を選択してください。",
+    "moreProducts_other": "比較を表示するには、あと{{count}}製品を選択してください。",
+    "noProducts": "この市場には利用可能な製品がありません。",
+    "featureSupportCommentary": "機能サポートとコメント",
+    "comparisonUnavailable": "比較不可",
+    "chooseExactlyTwoAbove": "上から正確に2つの製品を選択してください。",
+    "noCapabilityFeatures": "この市場には利用可能な製品機能がありません。",
+    "storedRows_one": "{{count}} 行が保存されました",
+    "storedRows_other": "{{count}} 行が保存されました"
+  },
+  "supportLevels": {
+    "none": "サポートなし",
+    "limited": "限定的",
+    "partial": "部分的",
+    "good": "良好",
+    "full": "完全サポート",
+    "unknown": "不明",
+    "legendNone": "なし",
+    "legendLimited": "限定的",
+    "legendPartial": "部分的",
+    "legendGood": "良好",
+    "legendFull": "完全",
+    "unavailable": "利用不可",
+    "scoreUnavailable": "サポートスコアは利用不可",
+    "levelOfFour": "4段階中{{level}}のサポート",
+    "tooltipWithNotes": "{{support}} - メモを表示するにはクリック"
+  },
+  "matrix": {
+    "feature": "機能",
+    "features": "機能",
+    "evaluationCriteria": "評価基準",
+    "featureCount_one": "{{count}} 機能",
+    "featureCount_other": "{{count}} 機能",
+    "noCapabilityFeatures": "この市場には利用可能な製品機能がありません。",
+    "noVendorsSelected": "ベンダーが選択されていません",
+    "chooseVendorsToCompare": "上記のフィルターからベンダーを選択して機能サポート能力を比較"
+  },
+  "scores": {
+    "totalScore": "総合スコア",
+    "maximumPoints": "最大: {{maxScore}} ポイント",
+    "ofMaximum": "{{maxScore}} 中",
+    "productCapabilitiesScore": "製品機能スコア",
+    "criterionDescription": "上記のカバレッジから導出された0–10のルーブリックによるベンダー評価基準",
+    "outOfTen": "10点中",
+    "coverage": "{{coverage}} カバレッジ",
+    "productScore": "製品スコア",
+    "notDerivedYet": "まだ導出されていません"
+  },
+  "notes": {
+    "evaluationNotes": "評価メモ",
+    "vendor": "ベンダー",
+    "product": "製品",
+    "support": "サポート",
+    "storedCommentary": "保存されたコメント",
+    "featureSupportDetails": "機能サポートの詳細",
+    "feature": "機能",
+    "supportLevel": "サポートレベル: {{level}}/4",
+    "notes": "メモ"
+  },
+  "fallbacks": {
+    "productNameUnavailable": "製品名は利用不可",
+    "productUnavailable": "製品は利用不可",
+    "featureDescriptionUnavailable": "機能説明は利用不可。",
+    "noSupportRecord": "このベンダー、製品、および機能に対するサポート記録はありません。",
+    "noStoredCommentary": "このサポート記録に対する保存されたコメントはありません。",
+    "noEvaluationCriteria": "評価基準が指定されていません",
+    "noAdditionalNotes": "この評価に対する追加メモはありません。"
+  },
+  "reports": {
+    "title": "製品評価レポートを生成",
+    "description": "製品評価PDFレポートに含めるベンダーを選択"
+  },
+  "toasts": {
+    "scoresUpdated": {
+      "title": "スコアが正常に更新されました",
+      "description_one": "{{count}} ベンダーの製品機能スコアを更新しました",
+      "description_other": "{{count}} ベンダーの製品機能スコアを更新しました"
+    },
+    "updateFailed": {
+      "title": "更新に失敗しました",
+      "description": "ベンダー評価スコアの更新に失敗しました"
+    },
+    "reportSuccess": {
+      "title": "成功",
+      "description": "製品評価レポートが正常に生成されました"
+    },
+    "reportFailed": {
+      "title": "エラー",
+      "description": "レポートの生成に失敗しました"
+    },
+    "chooseTwoProducts": {
+      "title": "正確に2つの製品を選択",
+      "description": "別の製品を選択する前に1つの製品を選択解除してください。"
+    }
+  }
+}

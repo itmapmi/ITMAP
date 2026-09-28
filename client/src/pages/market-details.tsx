@@ -42,23 +42,26 @@ import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
+import { useTranslation } from "react-i18next";
+import { formatDate } from "@/lib/i18n-format";
 
 function useCreateRfpForMarket(pathPrefix: string) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation("marketDetails");
   return useMutation({
     mutationFn: async (vars: { marketId: string; marketName: string }) => {
-      const title = `${vars.marketName.replace(/^ITMAP for /i, "")} RFP — ${new Date().toLocaleDateString()}`;
+      const title = `${vars.marketName.replace(/^ITMAP for /i, "")} RFP — ${formatDate(new Date()) ?? ""}`;
       return await apiRequestJson("/api/me/rfps", "POST", { marketId: vars.marketId, title }) as { id: string };
     },
     onSuccess: (created) => navigate(`${pathPrefix}/me/rfps/${created.id}`),
     onError: (e: unknown) => {
       if (isMissingLlmKeyError(e)) {
-        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        toast({ title: t("toasts.openAiKeyRequired"), description: t("toasts.addOpenAiKey"), variant: "destructive" });
         navigate("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Could not start RFP", description: getErrorMessage(e), variant: "destructive" });
+      toast({ title: t("toasts.couldNotStartRfp"), description: getErrorMessage(e), variant: "destructive" });
     },
   });
 }
@@ -71,16 +74,17 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Chip labels are deliberately short so ~3 chips fit a 390px phone with the
 // 4th clearly cut off at the edge (the visual cue that the strip scrolls).
 // Full section names remain as each section's own heading.
-const MOBILE_SECTION_TABS: Array<[value: string, number: string, label: string, fullLabel: string]> = [
-  ["vendor-evaluation", "01", "Vendor Eval", "Vendor Evaluation"],
-  ["support-matrix", "02", "Compare", "Compare Products"],
-  ["ecosystem-support", "03", "Interop", "Interop"],
-  ["vendor-intelligence", "04", "Intelligence", "Vendor Intelligence"],
-  ["research-reports", "05", "Reports", "Research Reports"],
+const MOBILE_SECTION_TABS: Array<[value: string, number: string]> = [
+  ["vendor-evaluation", "01"],
+  ["support-matrix", "02"],
+  ["ecosystem-support", "03"],
+  ["vendor-intelligence", "04"],
+  ["research-reports", "05"],
 ];
 const MOBILE_MARKET_SECTIONS = MOBILE_SECTION_TABS.map(([value]) => value);
 
 export default function MarketDetails() {
+  const { t } = useTranslation("marketDetails");
   // Registered at both /markets/:marketId (and its legacy /market/:marketId
   // alias) and their /mobile/... mirrors — see shared/mobile-paths.ts and
   // App.tsx. mobileMode reflects which URL is actually active, so behavior
@@ -203,11 +207,11 @@ export default function MarketDetails() {
   // Per-page SEO: update canonical / title / og tags once the market name is known.
   const cleanMarketTitle = market?.name.replace(/^ITMAP for /i, "") ?? "";
   useSeo(market ? {
-    title: `${cleanMarketTitle} — Vendor Intelligence | ITMAP.ai`,
+    title: t("seo.title", { marketName: cleanMarketTitle }),
     description: (market as any).shortDescription || market.description ||
-      `Independent vendor rankings, feature evaluations, and market analysis for ${cleanMarketTitle}. Compare vendors on ITMAP.ai.`,
+      t("seo.description", { marketName: cleanMarketTitle }),
     path: `/markets/${marketId}`,
-  } : { title: "ITMAP.ai — Enterprise IT Vendor Intelligence", path: `/markets/${marketId ?? ""}` });
+  } : { title: t("seo.defaultTitle"), path: `/markets/${marketId ?? ""}` });
 
   // Track market view + dwell time once the market resolves.
   useEffect(() => {
@@ -258,15 +262,15 @@ export default function MarketDetails() {
       );
       await queryClient.invalidateQueries({ queryKey: ["/api/markets", resolvedId, "label-positions"] });
       toast({
-        title: "Saved",
-        description: `Updated ${Object.keys(pendingLabelPositions).length} label position(s).`,
+        title: t("toasts.saved"),
+        description: t("toasts.labelPositionsUpdated", { count: Object.keys(pendingLabelPositions).length }),
       });
       setPendingLabelPositions({});
       setEditingLabels(false);
     } catch (err: any) {
       toast({
-        title: "Save failed",
-        description: err?.message ?? "Could not save label positions.",
+        title: t("toasts.saveFailed"),
+        description: err?.message ?? t("toasts.couldNotSaveLabelPositions"),
         variant: "destructive",
       });
     } finally {
@@ -299,13 +303,13 @@ export default function MarketDetails() {
       mobileMode ? "rounded-none p-6 font-[Montserrat]" : "rounded-lg p-8"
     )}>
       <Sparkles className={cn("text-blue-500 mx-auto mb-3", mobileMode ? "h-6 w-6" : "h-8 w-8")} />
-      <p className={cn("font-semibold text-gray-900 mb-1", mobileMode && "text-sm")}>{phase} phase not added yet</p>
+      <p className={cn("font-semibold text-gray-900 mb-1", mobileMode && "text-sm")}>{t("owner.phaseNotAdded", { phase: t(`owner.phases.${phase.toLowerCase()}`) })}</p>
       <p className={cn("text-gray-600 mb-4", mobileMode ? "text-xs leading-relaxed" : "text-sm")}>
-        This market was published without the {phase.toLowerCase()} phase. Add it in the Market Builder to populate this section.
+        {t("owner.phaseDescription", { phase: t(`owner.phases.${phase.toLowerCase()}`) })}
       </p>
       <Link href={wizardLink}>
         <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-          Add {phase} phase
+          {t("owner.addPhase", { phase: t(`owner.phases.${phase.toLowerCase()}`) })}
         </Button>
       </Link>
     </div>
@@ -339,16 +343,16 @@ export default function MarketDetails() {
       document.body.removeChild(a);
 
       toast({
-        title: "Success",
-        description: "Full market report generated successfully",
+        title: t("toasts.success"),
+        description: t("toasts.fullReportGenerated"),
       });
 
       setShowVendorModal(false);
     } catch (error) {
       console.error("Error generating full report:", error);
       toast({
-        title: "Error",
-        description: "Failed to generate full report",
+        title: t("toasts.error"),
+        description: t("toasts.fullReportFailed"),
         variant: "destructive",
       });
     } finally {
@@ -384,16 +388,16 @@ export default function MarketDetails() {
       document.body.removeChild(a);
 
       toast({
-        title: "Success",
-        description: "Summary report generated successfully",
+        title: t("toasts.success"),
+        description: t("toasts.summaryReportGenerated"),
       });
 
       setShowSummaryModal(false);
     } catch (error) {
       console.error("Error generating summary report:", error);
       toast({
-        title: "Error",
-        description: "Failed to generate summary report",
+        title: t("toasts.error"),
+        description: t("toasts.summaryReportFailed"),
         variant: "destructive",
       });
     } finally {
@@ -405,12 +409,12 @@ export default function MarketDetails() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Error Loading Market</h1>
-          <p className="text-gray-600">Unable to fetch market details. Please try again later.</p>
+          <h1 className="text-2xl font-bold text-red-600 mb-2">{t("states.errorLoadingMarket")}</h1>
+          <p className="text-gray-600">{t("states.unableToFetchMarket")}</p>
           <Link href="/markets">
             <Button className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Markets
+              {t("buttons.backToMarkets")}
             </Button>
           </Link>
         </div>
@@ -438,9 +442,11 @@ export default function MarketDetails() {
             className="sticky top-14 z-30 -mx-4 mb-6 border-b border-slate-200 bg-white/95 backdrop-blur font-[Montserrat]"
             data-testid="mobile-market-section-strip"
           >
-            <div className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Market sections">
-              {MOBILE_SECTION_TABS.map(([value, number, label, fullLabel]) => {
+            <div className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label={t("tabs.marketSections")}>
+              {MOBILE_SECTION_TABS.map(([value, number]) => {
                 const active = activeTab === value;
+                const label = t(`tabs.mobile.${value}.label`);
+                const fullLabel = t(`tabs.mobile.${value}.fullLabel`);
                 return (
                   <button
                     key={value}
@@ -497,16 +503,16 @@ export default function MarketDetails() {
           <Tabs defaultValue="vendor-evaluation" className="w-full">
             <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
               <TabsTrigger value="vendor-evaluation" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
+                {t(isMobile ? "tabs.vendorEvaluation.mobile" : "tabs.vendorEvaluation.desktop")}
               </TabsTrigger>
               <TabsTrigger value="support-matrix" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {isMobile ? 'Compare' : 'Compare Products'}
+                {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
               </TabsTrigger>
               <TabsTrigger value="ecosystem-support" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {isMobile ? 'Support' : 'Support Matrix'}
+                {t(isMobile ? "tabs.supportMatrix.mobile" : "tabs.supportMatrix.desktop")}
               </TabsTrigger>
               <TabsTrigger value="research-methodology" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {isMobile ? 'Method' : 'Methodology'}
+                {t(isMobile ? "tabs.methodology.mobile" : "tabs.methodology.desktop")}
               </TabsTrigger>
             </TabsList>
 
@@ -540,12 +546,12 @@ export default function MarketDetails() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Market Not Found</h1>
-          <p className="text-gray-600">The requested market could not be found.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t("states.marketNotFound")}</h1>
+          <p className="text-gray-600">{t("states.requestedMarketNotFound")}</p>
           <Link href="/markets">
             <Button className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Markets
+              {t("buttons.backToMarkets")}
             </Button>
           </Link>
         </div>
@@ -560,7 +566,7 @@ export default function MarketDetails() {
         <div className="mb-6">
           <Link href="/markets">
             <button className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> All Markets
+              <ArrowLeft className="h-3.5 w-3.5" /> {t("buttons.allMarkets")}
             </button>
           </Link>
         </div>
@@ -592,11 +598,11 @@ export default function MarketDetails() {
             className="bg-white rounded-xl shadow-sm p-6 mb-6"
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-1">
-              Vendors tracked in this market
+              {t("preview.vendorsTracked")}
               <span className="ml-2 text-sm font-normal text-slate-400">({vendors.length})</span>
             </h2>
             <p className="text-sm text-slate-500 mb-4">
-              Sign in for vendor scores, feature matrices, quadrant positioning, and research reports.
+              {t("preview.signInDescription")}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {vendors.map((v) => (
@@ -622,19 +628,19 @@ export default function MarketDetails() {
           <div className="w-12 h-12 bg-slate-700 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="h-5 w-5 text-slate-300" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">Full access is free</h3>
+          <h3 className="text-xl font-bold text-white mb-2">{t("preview.fullAccessFree")}</h3>
           <p className="text-slate-400 mb-6 max-w-sm mx-auto leading-relaxed text-sm">
-            Create a free account to unlock vendor scores, feature evaluation matrices, quadrant charts, news analysis, and downloadable PDF reports.
+            {t("preview.createAccountDescription")}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/register">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-8 w-full sm:w-auto">
-                Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
+                {t("buttons.getFreeAccess")} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
             <Link href="/login">
               <Button variant="outline" className="border-white/20 text-slate-300 hover:text-white hover:border-white/40 bg-transparent w-full sm:w-auto">
-                Sign In
+                {t("buttons.signIn")}
               </Button>
             </Link>
           </div>
@@ -662,14 +668,14 @@ export default function MarketDetails() {
               <div className="mt-3 border border-slate-200 bg-slate-50 p-3 font-[Montserrat]">
                 <div className="flex items-start justify-between gap-3">
                   <p className={`text-sm leading-relaxed text-slate-600 ${mobileDefinitionOpen ? "" : "line-clamp-2"}`}>
-                    {market.description || "No stored market definition is available."}
+                    {market.description || t("states.noStoredDefinition")}
                   </p>
-                  <button type="button" className="grid h-11 w-11 shrink-0 place-items-center text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label="Toggle full market definition">
+                  <button type="button" className="grid h-11 w-11 shrink-0 place-items-center text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label={t("buttons.toggleFullDefinition")}>
                     <ChevronDown className={`h-4 w-4 transition-transform ${mobileDefinitionOpen ? "rotate-180" : ""}`} />
                   </button>
                 </div>
                 <button type="button" className="mt-1 font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)}>
-                  {mobileDefinitionOpen ? "Hide definition" : "Read full definition"}
+                  {mobileDefinitionOpen ? t("buttons.hideDefinition") : t("buttons.readFullDefinition")}
                 </button>
               </div>
             ) : (
@@ -685,7 +691,7 @@ export default function MarketDetails() {
             <Link href="/markets">
               <Button variant="outline" size={isMobile ? "sm" : "default"}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                {isMobile ? 'Back' : 'Back to Markets'}
+                {t(isMobile ? "buttons.back" : "buttons.backToMarkets")}
               </Button>
             </Link>
           </motion.div>
@@ -696,10 +702,10 @@ export default function MarketDetails() {
           // (shared/company-email.ts) rather than a missing admin grant — the
           // tooltip and click target differ (Profile page vs. contact sales).
           const intelligenceItems: { value: string; label: string; locked?: boolean; companyLock?: boolean }[] = [
-            { value: "news", label: "News", locked: !hasFeature("news") || isCompanyProfileLocked("news"), companyLock: isCompanyProfileLocked("news") },
-            ...(isAuthenticated || teaserActive ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") || isCompanyProfileLocked("intelligence_feed"), companyLock: isCompanyProfileLocked("intelligence_feed") }] : []),
-            { value: "new-players", label: "New Players" },
-            ...(canManageVendors ? [{ value: "vendors", label: "Vendor Newsroom URLs" }] : []),
+            { value: "news", label: t("tabs.news"), locked: !hasFeature("news") || isCompanyProfileLocked("news"), companyLock: isCompanyProfileLocked("news") },
+            ...(isAuthenticated || teaserActive ? [{ value: "intelligence-feed", label: t("tabs.intelligenceFeed"), locked: !hasFeature("intelligence_feed") || isCompanyProfileLocked("intelligence_feed"), companyLock: isCompanyProfileLocked("intelligence_feed") }] : []),
+            { value: "new-players", label: t("tabs.newPlayers") },
+            ...(canManageVendors ? [{ value: "vendors", label: t("tabs.vendorNewsroomUrls") }] : []),
           ];
           // Research Reports stays locked for anonymous visitors even during the
           // free-access teaser (per explicit product decision) — reports data is
@@ -735,11 +741,13 @@ export default function MarketDetails() {
                     onScroll={measureMobileStrip}
                     className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     role="tablist"
-                    aria-label="Market sections"
+                    aria-label={t("tabs.marketSections")}
                   >
-                    {MOBILE_SECTION_TABS.map(([value, number, label, fullLabel]) => {
+                    {MOBILE_SECTION_TABS.map(([value, number]) => {
                       const reportsLocked = value === "research-reports" && researchReportsLocked;
                       const active = activeTab === value;
+                      const label = t(`tabs.mobile.${value}.label`);
+                      const fullLabel = t(`tabs.mobile.${value}.fullLabel`);
                       return (
                         <button
                           key={value}
@@ -785,13 +793,13 @@ export default function MarketDetails() {
               ) : (
               <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
                 <TabsTrigger value="vendor-evaluation" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-vendor-evaluation">
-                  {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
+                  {t(isMobile ? "tabs.vendorEvaluation.mobile" : "tabs.vendorEvaluation.desktop")}
                 </TabsTrigger>
                 <TabsTrigger value="support-matrix" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-support-matrix">
-                  {isMobile ? 'Compare' : 'Compare Products'}
+                  {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
                 </TabsTrigger>
                 <TabsTrigger value="ecosystem-support" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-ecosystem-support">
-                  {isMobile ? 'Support' : 'Support Matrix'}
+                  {t(isMobile ? "tabs.supportMatrix.mobile" : "tabs.supportMatrix.desktop")}
                 </TabsTrigger>
 
                 <DropdownMenu>
@@ -799,7 +807,7 @@ export default function MarketDetails() {
                     className={groupTriggerClass(isInGroup(intelligenceItems))}
                     data-testid="tab-group-intelligence"
                   >
-                    {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : `Intelligence: ${activeChildLabel(intelligenceItems)}`) : 'Intelligence'}
+                    {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : t("tabs.intelligenceWithActive", { active: activeChildLabel(intelligenceItems) })) : t("tabs.intelligence")}
                     <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
@@ -850,7 +858,7 @@ export default function MarketDetails() {
                       )}
                       data-testid="tab-research-reports-locked"
                     >
-                      Reports
+                      {t("tabs.reports")}
                       <Lock className="h-3 w-3" />
                     </button>
                   ) : companyReportsLock ? (
@@ -864,7 +872,7 @@ export default function MarketDetails() {
                         )}
                         data-testid="tab-research-reports-locked"
                       >
-                        Reports
+                        {t("tabs.reports")}
                         <Lock className="h-3 w-3" />
                       </button>
                     </CompanyProfileLockTooltip>
@@ -877,14 +885,14 @@ export default function MarketDetails() {
                         )}
                         data-testid="tab-research-reports-locked"
                       >
-                        Reports
+                        {t("tabs.reports")}
                         <Lock className="h-3 w-3" />
                       </span>
                     </LockedFeatureTooltip>
                   )
                 ) : (
                   <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
-                    Reports
+                    {t("tabs.reports")}
                   </TabsTrigger>
                 )}
                 {/* Methodology is fully hidden on the mobile experience — it's
@@ -893,7 +901,7 @@ export default function MarketDetails() {
                     browser) keeps it, hence gating on mobileMode not isMobile. */}
                 {!mobileMode && (
                   <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
-                    {isMobile ? 'Method' : 'Methodology'}
+                    {t(isMobile ? "tabs.methodology.mobile" : "tabs.methodology.desktop")}
                   </TabsTrigger>
                 )}
                 {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
@@ -911,7 +919,7 @@ export default function MarketDetails() {
                       }}
                     >
                       <FileDown className="h-3.5 w-3.5" />
-                      {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}
+                      {createRfpMutation.isPending ? t("buttons.starting") : (isMobile ? t("buttons.rfp") : t("buttons.generateRfp"))}
                     </button>
                   ) : (
                     <LockedFeatureTooltip>
@@ -923,7 +931,7 @@ export default function MarketDetails() {
                         data-testid="tab-generate-rfp-locked"
                       >
                         <Lock className="h-3 w-3" />
-                        {isMobile ? 'RFP' : 'Generate RFP'}
+                        {isMobile ? t("buttons.rfp") : t("buttons.generateRfp")}
                       </span>
                     </LockedFeatureTooltip>
                   )
@@ -938,15 +946,15 @@ export default function MarketDetails() {
                   {editingLabels ? (
                     <span className="inline-flex items-center gap-1.5 text-blue-700">
                       <Move className="h-3.5 w-3.5" />
-                      Drag any vendor name to reposition it.
+                      {t("labels.dragVendorToReposition")}
                       {Object.keys(pendingLabelPositions).length > 0 && (
                         <span className="ml-1 font-medium">
-                          {Object.keys(pendingLabelPositions).length} unsaved change(s)
+                          {t("labels.unsavedChanges", { count: Object.keys(pendingLabelPositions).length })}
                         </span>
                       )}
                     </span>
                   ) : (
-                    <span>Labels look cluttered? Adjust them.</span>
+                    <span>{t("labels.adjustClutteredLabels")}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -959,7 +967,7 @@ export default function MarketDetails() {
                         disabled={savingLabels}
                         data-testid="button-cancel-label-edit"
                       >
-                        <X className="h-3.5 w-3.5 mr-1" /> Cancel
+                        <X className="h-3.5 w-3.5 mr-1" /> {t("buttons.cancel")}
                       </Button>
                       <Button
                         size="sm"
@@ -968,7 +976,7 @@ export default function MarketDetails() {
                         data-testid="button-save-label-positions"
                       >
                         <Save className="h-3.5 w-3.5 mr-1" />
-                        {savingLabels ? "Saving…" : "Save Positions"}
+                        {savingLabels ? t("buttons.saving") : t("buttons.savePositions")}
                       </Button>
                     </>
                   ) : (
@@ -978,7 +986,7 @@ export default function MarketDetails() {
                       onClick={() => setEditingLabels(true)}
                       data-testid="button-edit-labels"
                     >
-                      <Move className="h-3.5 w-3.5 mr-1" /> Edit Label Positions
+                      <Move className="h-3.5 w-3.5 mr-1" /> {t("buttons.editLabelPositions")}
                     </Button>
                   )}
                 </div>
@@ -1029,14 +1037,14 @@ export default function MarketDetails() {
             <TabsContent value="vendors" className="mt-6">
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Vendor Newsroom URLs</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t("vendorNewsroom.heading")}</h3>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    Add a press / newsroom page for each vendor — the daily ingestion at 7:00 AM UTC will pull their news automatically.
+                    {t("vendorNewsroom.description")}
                   </p>
                 </div>
                 <Link href={`/me/markets/${resolvedId ?? marketId}/vendors`}>
                   <Button variant="outline" size="sm" className="gap-1.5">
-                    Open dedicated page <ExternalLink className="h-3.5 w-3.5" />
+                    {t("vendorNewsroom.openDedicatedPage")} <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
               </div>
@@ -1072,11 +1080,11 @@ export default function MarketDetails() {
             ? "bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 h-14 gap-2 pl-4 pr-5 font-[Montserrat] text-sm font-bold"
             : "bottom-6 right-6 h-14 w-14"
         )}
-        aria-label="Open AI Chat"
+        aria-label={t("buttons.openAiChat")}
         data-testid="button-open-ai-chat"
       >
         <MessageSquare className="h-6 w-6" />
-        {mobileMode && <span>AI Chat</span>}
+        {mobileMode && <span>{t("tabs.aiChat")}</span>}
       </button>
 
       <Sheet open={chatOpen} onOpenChange={setChatOpen}>
@@ -1085,7 +1093,7 @@ export default function MarketDetails() {
             <SheetHeader className="flex h-14 shrink-0 flex-row items-center space-y-0 border-b border-slate-200 bg-slate-950 px-4 text-left">
               <SheetTitle className="flex items-center gap-2 text-sm font-bold text-white">
                 <MessageSquare className="h-4 w-4 text-cyan-400" />
-                AI Chat
+                {t("tabs.aiChat")}
               </SheetTitle>
             </SheetHeader>
             <div className="min-h-0 flex-1 bg-white">
@@ -1097,7 +1105,7 @@ export default function MarketDetails() {
             <SheetHeader className="px-4 py-3 border-b">
               <SheetTitle className="flex items-center gap-2 text-base">
                 <MessageSquare className="h-4 w-4 text-cyan-600" />
-                AI Chat — {market.name}
+                {t("tabs.aiChat")} — {market.name}
               </SheetTitle>
             </SheetHeader>
             <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
@@ -1112,8 +1120,8 @@ export default function MarketDetails() {
         onOpenChange={setShowVendorModal}
         vendors={vendors}
         onGenerate={handleGenerateFullReport}
-        title="Generate Full Market Report"
-        description="Select vendors to include in the full market report (all sections combined)"
+        title={t("reports.generateFullTitle")}
+        description={t("reports.generateFullDescription")}
         isGenerating={isGenerating}
       />
 
@@ -1122,8 +1130,8 @@ export default function MarketDetails() {
         onOpenChange={setShowSummaryModal}
         vendors={vendors}
         onGenerate={handleGenerateSummary}
-        title="Download Summary Report"
-        description="Select vendors for a short AI-generated summary (~2-3 pages per vendor). This may take a moment while the AI condenses each section."
+        title={t("reports.downloadSummaryTitle")}
+        description={t("reports.downloadSummaryDescription")}
         isGenerating={isGeneratingSummary}
       />
     </div>

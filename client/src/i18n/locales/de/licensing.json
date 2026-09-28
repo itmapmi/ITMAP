@@ -1,0 +1,64 @@
+{
+  "seo": {
+    "title": "Lizenzierung & Nachdrucke — ITMAP",
+    "description": "Lizenzieren Sie ITMAP-Anbieterbewertungen, Marktberichte und Prognosen für den internen Gebrauch, Marketing, Vertriebsunterstützung oder Analysten-Nachdruckrechte."
+  },
+  "hero": {
+    "eyebrow": "Lizenzierung & Nachdrucke",
+    "titleLine1": "Drittverwendung von",
+    "titleLine2": "ITMAP-Forschung",
+    "subtitle": "Unsere Forschung und Grafiken sind geschütztes geistiges Eigentum. Hier erfahren Sie, was eine Lizenz erfordert und wie Sie eine erhalten."
+  },
+  "requirements": {
+    "requiredTitle": "Was erfordert eine Lizenz?",
+    "requiredDescription": "Folgendes erfordert immer eine ITMAP-Nachdrucklizenz, wenn es von Anbietern oder zu Werbe-/Marketingzwecken verwendet wird:",
+    "requiredItems": [
+      "Diagramme, Grafiken, Matrizen, Marktübersichten oder andere von ITMAP erstellte Grafiken",
+      "Forschungsinhalte: Berichtsauszüge, wichtige Erkenntnisse, Bewertungen, Zitate, Zusammenfassungen oder narrative Texte",
+      "Datenpunkte oder Erkenntnisse, die einzigartig für ITMAP sind (auch wenn umformuliert), wenn sie zur Unterstützung von Produkten oder Dienstleistungen verwendet werden",
+      "Übersetzungen jeglicher ITMAP-Inhalte",
+      "Thumbnails oder Screenshots unserer Grafiken",
+      "Verwendung von ITMAP-Logos, Produktmarken oder Abzeichen"
+    ],
+    "notRequiredTitle": "Was erfordert keine Lizenz?",
+    "notRequiredItems": [
+      "Verlinkung zu öffentlichen ITMAP-Seiten unter Verwendung von Artikel- oder Berichtstiteln",
+      "Kurze, rein redaktionelle Zitate in neutralen journalistischen Kontexten (Anbieter müssen dennoch eine Lizenz erwerben)"
+    ]
+  },
+  "process": {
+    "title": "Wie der Lizenzierungsprozess funktioniert",
+    "emailUs": "Schreiben Sie uns eine E-Mail",
+    "steps": {
+      "submitRequest": {
+        "title": "Anfrage einreichen",
+        "description": "Senden Sie eine E-Mail an support@itmap.ai mit den Assets, die Sie verwenden möchten, dem vollständigen Kontext (Seiten, URLs, Kanäle, Sprachen) und der beabsichtigten Reichweite des Publikums."
+      },
+      "scopeAndQuote": {
+        "title": "Wir definieren den Umfang und erstellen ein Angebot",
+        "description": "Die Gebühren hängen von der Art des Assets, der geografischen Verteilung, den Kanälen, der Dauer und der Exklusivität ab. Wir antworten innerhalb von 2 Werktagen."
+      },
+      "agreementInvoice": {
+        "title": "Vereinbarung & Rechnung",
+        "description": "Wir stellen eine kurze Nachdrucklizenzvereinbarung aus. Nach Ausführung und Bezahlung erhalten Sie genehmigte Dateien und den Attributionshinweis."
+      },
+      "implementAttribute": {
+        "title": "Implementieren & attribuieren",
+        "description": "Veröffentlichen Sie mit unseren bereitgestellten Assets, der Attributionszeile und dem optionalen Licensed Reprint-Abzeichen."
+      },
+      "complianceReview": {
+        "title": "Compliance-Prüfung",
+        "description": "Für hochsichtbare Platzierungen können wir eine Vorabprüfung durchführen, um Marken- und Forschungsintegrität vor dem Livegang sicherzustellen."
+      },
+      "renewOrRetire": {
+        "title": "Erneuern oder einstellen",
+        "description": "Lizenzen laufen am Ende der vereinbarten Laufzeit ab. Sie können die Inhalte erneuern oder entfernen."
+      }
+    }
+  },
+  "contact": {
+    "title": "Fragen zur Lizenzierung?",
+    "description": "Unser Team antwortet in der Regel innerhalb von 2 Werktagen.",
+    "button": "Kontaktieren Sie support@itmap.ai"
+  }
+}

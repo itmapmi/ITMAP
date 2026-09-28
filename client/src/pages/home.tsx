@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeaserGate } from "@/hooks/use-registration-teaser";
@@ -32,8 +33,6 @@ const fadeUp = {
 // ─── Bento config types ──────────────────────────────────────────────────────
 
 interface VendorBentoCfg {
-  label: string;
-  description: string;
   icon: JSX.Element;
   href: string;
   featureKey: LockableFeatureKey;
@@ -65,40 +64,30 @@ const FEATURED_MARKETS = [
 // Shown on the vendor dashboard with a lock overlay when not granted.
 const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
   {
-    label: "Lead Generator",
-    description: "Capture and qualify inbound buyer interest mapped to your vendor profile.",
     icon: <Target className="h-5 w-5" />,
     href: "/lead-gen/me",
     featureKey: "lead_gen",
     accent: "cyan",
   },
   {
-    label: "RFP Responder",
-    description: "AI-assisted RFP response generation using your product knowledge base.",
     icon: <MessageSquare className="h-5 w-5" />,
     href: "/rfp-responder",
     featureKey: "rfp",
     accent: "violet",
   },
   {
-    label: "Market Builder",
-    description: "Build custom vendor evaluations weighted to your specific criteria.",
     icon: <Globe2 className="h-5 w-5" />,
     href: "/me/market-builder",
     featureKey: "market_builder",
     accent: "cyan",
   },
   {
-    label: "Forecast Builder",
-    description: "AI-native market sizing, multi-scenario projections and sensitivity tables.",
     icon: <TrendingUp className="h-5 w-5" />,
     href: "/forecast-builder",
     featureKey: "forecast_builder",
     accent: "violet",
   },
   {
-    label: "Fact Review",
-    description: "Review and approve AI-generated facts about your products across markets.",
     icon: <CheckCircle2 className="h-5 w-5" />,
     href: "/lead-gen/me/fact-review",
     featureKey: "fact_review",
@@ -111,24 +100,18 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     lockedOverride: () => false,
   },
   {
-    label: "Battle Cards",
-    description: "Competitive battle cards for every market where you compete — ready to use in sales.",
     icon: <Shield className="h-5 w-5" />,
     href: "/battle-cards",
     featureKey: "battle_cards",
     accent: "cyan",
   },
   {
-    label: "Security Intelligence",
-    description: "CVE vulnerabilities, CISA KEV alerts and EPSS exploit scores tracked across IT vendors.",
     icon: <Shield className="h-5 w-5" />,
     href: "/security",
     featureKey: "cve_intelligence",
     accent: "violet",
   },
   {
-    label: "Market Trends",
-    description: "Visitor and engagement share across markets, countries and competing vendors — as percentages.",
     icon: <BarChart3 className="h-5 w-5" />,
     href: "/market-trends/me",
     featureKey: "market_trends",
@@ -150,14 +133,14 @@ const VENDOR_SHOWCASE = [
 ];
 
 const STATIC_STATS = [
-  { value: "100%", label: "Independent Research" },
-  { value: "AI-first", label: "Analysis Engine" },
+  { value: "100%" },
+  { value: "AI-first" },
 ];
 
 const HOW_IT_WORKS = [
-  { icon: <Database className="h-6 w-6" />, step: "01", title: "Data Ingestion", desc: "Our AI continuously ingests public vendor data, news, product releases, financials and analyst commentary across the enterprise IT landscape." },
-  { icon: <Brain className="h-6 w-6" />, step: "02", title: "AI-Powered Analysis", desc: "Large language models process and score vendors across 40+ capability dimensions — execution, product depth, ecosystem and financial viability." },
-  { icon: <BarChart3 className="h-6 w-6" />, step: "03", title: "Actionable Intelligence", desc: "Get interactive vendor maps, feature matrices, impact-scored news, and AI-generated research reports — updated continuously, without bias." },
+  { icon: <Database className="h-6 w-6" />, step: "01" },
+  { icon: <Brain className="h-6 w-6" />, step: "02" },
+  { icon: <BarChart3 className="h-6 w-6" />, step: "03" },
 ];
 
 function MarketName(name: string) {
@@ -167,6 +150,7 @@ function MarketName(name: string) {
 // ─── Market Card ─────────────────────────────────────────────────────────────
 
 function MarketCard({ market, href, accentViolet = false }: { market: Market; href: string; accentViolet?: boolean }) {
+  const { t } = useTranslation("home");
   return (
     <Link href={href}>
       <div className={`group relative bg-slate-900 border border-white/5 rounded-2xl p-6 cursor-pointer transition-all duration-300 overflow-hidden ${
@@ -190,15 +174,15 @@ function MarketCard({ market, href, accentViolet = false }: { market: Market; hr
             {(market as any).isInReview ? (
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                <span className="text-xs font-medium text-amber-400">In Review</span>
+                 <span className="text-xs font-medium text-amber-400">{t("marketCard.inReview")}</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-xs text-slate-500">Live Data</span>
+                 <span className="text-xs text-slate-500">{t("marketCard.liveData")}</span>
               </div>
             )}
-            <span className="text-xs text-slate-500 group-hover:text-cyan-400 transition-colors flex items-center gap-1">Explore <ChevronRight className="h-3 w-3" /></span>
+             <span className="text-xs text-slate-500 group-hover:text-cyan-400 transition-colors flex items-center gap-1">{t("marketCard.explore")} <ChevronRight className="h-3 w-3" /></span>
           </div>
         </div>
       </div>
@@ -247,18 +231,19 @@ function SectionLabel({ accent, children }: { accent: "cyan" | "violet"; childre
 // ─── BUYER DASHBOARD ─────────────────────────────────────────────────────────
 
 function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Market[]; isLoading: boolean }) {
+  const { t } = useTranslation("home");
   return (
     <div className="min-h-screen overflow-hidden bg-[#1e2130]">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-11 lg:px-8">
         <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mb-8 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          Welcome back{user?.firstName ? `, ${user.firstName}` : ""}.
+          {t("buyerDashboard.welcomeBack", { name: user?.firstName ? `, ${user.firstName}` : "" })}
         </motion.h1>
 
         <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.08 }} className="mb-12">
           <div className="mb-5 flex items-end justify-between">
             <div>
-              <SectionLabel accent="cyan">Decision tools</SectionLabel>
-              <h2 className="text-xl font-bold text-white sm:text-2xl">Your research workflow</h2>
+              <SectionLabel accent="cyan">{t("buyerDashboard.decisionTools")}</SectionLabel>
+              <h2 className="text-xl font-bold text-white sm:text-2xl">{t("buyerDashboard.researchWorkflow")}</h2>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12">
@@ -266,18 +251,18 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
               <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-400/10 blur-2xl transition-transform duration-500 group-hover:scale-125" />
               <div className="relative flex h-full min-h-[155px] flex-col">
                 <div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-300"><BarChart3 className="h-5 w-5" /></div><ArrowRight className="h-5 w-5 text-cyan-300 transition-transform duration-200 group-hover:translate-x-1" /></div>
-                <div className="mt-auto"><p className="text-lg font-semibold text-white">Markets</p><p className="mt-1 max-w-sm text-sm leading-relaxed text-slate-400">Evaluate vendors through live market research, product context and signals.</p></div>
+                <div className="mt-auto"><p className="text-lg font-semibold text-white">{t("buyerDashboard.markets")}</p><p className="mt-1 max-w-sm text-sm leading-relaxed text-slate-400">{t("buyerDashboard.evaluateVendors")}</p></div>
               </div>
             </Link>
             <Link href="/me/rfps" className="group rounded-2xl border border-white/10 bg-slate-900 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-400/35 lg:col-span-4">
-              <div className="flex h-full min-h-[155px] flex-col"><div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300"><ClipboardList className="h-5 w-5" /></div><ArrowRight className="h-4 w-4 text-slate-500 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-violet-300" /></div><div className="mt-auto"><p className="font-semibold text-white">RFP Builder</p><p className="mt-1 text-sm leading-relaxed text-slate-400">Create, manage and send vendor requests.</p></div></div>
+              <div className="flex h-full min-h-[155px] flex-col"><div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300"><ClipboardList className="h-5 w-5" /></div><ArrowRight className="h-4 w-4 text-slate-500 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-violet-300" /></div><div className="mt-auto"><p className="font-semibold text-white">{t("buyerDashboard.rfpBuilder")}</p><p className="mt-1 text-sm leading-relaxed text-slate-400">{t("buyerDashboard.createVendorRequests")}</p></div></div>
             </Link>
             <div className="grid gap-3 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-1">
               <Link href="/security" className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 transition-all duration-300 hover:border-violet-400/35">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300"><Shield className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-white">Security Intelligence</p><p className="truncate text-xs text-slate-500">Vulnerabilities and alerts</p></div><ChevronRight className="ml-auto h-4 w-4 text-slate-600 group-hover:text-violet-300" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300"><Shield className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-white">{t("buyerDashboard.securityIntelligence")}</p><p className="truncate text-xs text-slate-500">{t("buyerDashboard.vulnerabilitiesAlerts")}</p></div><ChevronRight className="ml-auto h-4 w-4 text-slate-600 group-hover:text-violet-300" />
               </Link>
               <Link href="/platform" className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 transition-all duration-300 hover:border-emerald-400/35">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300"><BookOpen className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-white">Methodology</p><p className="truncate text-xs text-slate-500">How ITMAP evaluates</p></div><ChevronRight className="ml-auto h-4 w-4 text-slate-600 group-hover:text-emerald-300" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300"><BookOpen className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-white">{t("buyerDashboard.methodology")}</p><p className="truncate text-xs text-slate-500">{t("buyerDashboard.howItmapEvaluates")}</p></div><ChevronRight className="ml-auto h-4 w-4 text-slate-600 group-hover:text-emerald-300" />
               </Link>
             </div>
           </div>
@@ -286,11 +271,11 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
         <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.16 }}>
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
-              <SectionLabel accent="cyan">Research coverage</SectionLabel>
-              <h2 className="text-2xl font-bold text-white">Live markets</h2>
-              <p className="mt-1 text-sm text-slate-500">Current market intelligence ready for review.</p>
+              <SectionLabel accent="cyan">{t("buyerDashboard.researchCoverage")}</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">{t("buyerDashboard.liveMarkets")}</h2>
+              <p className="mt-1 text-sm text-slate-500">{t("buyerDashboard.currentMarketIntelligence")}</p>
             </div>
-            <Link href="/markets" className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-cyan-400/30 hover:text-white sm:inline-flex">View all <ArrowRight className="h-3.5 w-3.5" /></Link>
+            <Link href="/markets" className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-cyan-400/30 hover:text-white sm:inline-flex">{t("buyerDashboard.viewAll")} <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
           <MarketGrid markets={markets} isLoading={isLoading} />
         </motion.section>
@@ -312,9 +297,12 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
   vendorScopeLoading?: boolean;
   isAdminLinked: boolean;
 }) {
+  const { t } = useTranslation("home");
   // isLinked is false until the scope query resolves — treat "still loading"
   // differently from "resolved but no vendor found" so we never blank the page.
-  const fallbackLabel = user?.firstName ? `${user.firstName}'s Vendor Hub` : "Vendor Hub";
+  const fallbackLabel = user?.firstName
+    ? t("vendorDashboard.fallbackHubWithName", { name: user.firstName })
+    : t("vendorDashboard.vendorHub");
   const { isLinked, label: companyLabel } = vendorScopePresentation(vendorScope, fallbackLabel);
   // True only when admin has linked this user to a vendor that appears in ≥1 market
   const hasMarkets = isAdminLinked && !!(myMarkets && myMarkets.length > 0);
@@ -331,19 +319,18 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             <div className="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
               <Building2 className="h-6 w-6 text-amber-400" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Account not linked to a vendor</h2>
+            <h2 className="text-xl font-bold text-white mb-2">{t("vendorDashboard.notLinked.heading")}</h2>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
-              Your account is provisioned as a vendor seat but hasn't been linked to a vendor record yet.
-              This is done by a <span className="text-white font-medium">itmap.ai administrator</span> — please contact your account manager to complete the setup.
+              {t("vendorDashboard.notLinked.messageBefore")} <span className="text-white font-medium">{t("vendorDashboard.notLinked.administrator")}</span>{t("vendorDashboard.notLinked.messageAfter")}
             </p>
             <div className="bg-slate-800 rounded-xl p-4 text-left mb-6">
-              <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Your account</p>
+              <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">{t("vendorDashboard.notLinked.accountLabel")}</p>
               <p className="text-sm text-white">{user?.firstName} {user?.lastName}</p>
               <p className="text-sm text-slate-400">{user?.email}</p>
             </div>
             <a href="mailto:sales@itmap.ai"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-all">
-              Contact sales@itmap.ai
+              {t("vendorDashboard.notLinked.contactSales")}
             </a>
           </motion.div>
         </div>
@@ -366,12 +353,12 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
                   {user?.firstName} {user?.lastName}
                 </span>
                 <span className="text-[10px] font-semibold tracking-widest uppercase bg-violet-500/15 text-violet-300 border border-violet-400/20 px-2 py-0.5 rounded-full">
-                  {isAdminLinked && isLinked ? "Vendor seat" : "IT Vendor"}
+                  {isAdminLinked && isLinked ? t("vendorDashboard.vendorSeat") : t("vendorDashboard.itVendor")}
                 </span>
               </div>
               <p className="text-slate-400 text-sm">
                 {user?.email}
-                {isAdminLinked && isLinked && <> · linked as <span className="text-violet-300 font-medium">{companyLabel}</span></>}
+                 {isAdminLinked && isLinked && <> · {t("vendorDashboard.linkedAs")} <span className="text-violet-300 font-medium">{companyLabel}</span></>}
               </p>
             </div>
           </div>
@@ -379,25 +366,25 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             {isAdminLinked && vendorScopeLoading
               ? <div className="h-8 w-64 bg-slate-700 rounded animate-pulse inline-block" />
               : isAdminLinked && isLinked
-              ? <><span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> Intelligence Hub</>
-              : <>Your <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">Vendor Hub</span></>
+               ? <><span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> {t("vendorDashboard.intelligenceHub")}</>
+               : <>{t("vendorDashboard.your")} <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{t("vendorDashboard.vendorHub")}</span></>
             }
           </h1>
-          <p className="text-slate-400 mt-1">Market data, competitive signals and vendor tools — locked features require a plan upgrade.</p>
+          <p className="text-slate-400 mt-1">{t("vendorDashboard.headerDescription")}</p>
         </motion.div>
 
         {/* Platform Tools — shown first; Markets widget scrolls down to market sections */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mb-14">
           <div className="mb-6">
-            <SectionLabel accent="violet">Platform Tools</SectionLabel>
-            <h2 className="text-2xl font-bold text-white">Vendor Tools</h2>
-            <p className="text-slate-500 text-sm mt-1">Powerful tools for lead generation, competitive response and market intelligence — plan upgrade required.</p>
+            <SectionLabel accent="violet">{t("vendorDashboard.platformTools")}</SectionLabel>
+            <h2 className="text-2xl font-bold text-white">{t("vendorDashboard.vendorTools")}</h2>
+            <p className="text-slate-500 text-sm mt-1">{t("vendorDashboard.toolsDescription")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Markets — always free, scrolls to markets section */}
             <BentoCard
-              label="Markets"
-              description="Browse all markets and explore vendor evaluations, product comparisons and ecosystem data."
+              label={t("vendorDashboard.markets")}
+              description={t("vendorDashboard.marketsDescription")}
               icon={<BarChart2 className="h-5 w-5" />}
               accent="cyan"
               locked={false}
@@ -407,9 +394,9 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
               .filter((card) => card.visibleWhen ? card.visibleWhen(isAdminLinked, hasMarkets) : true)
               .map((card) => (
                 <BentoCard
-                  key={card.label}
-                  label={card.label}
-                  description={card.description}
+                  key={card.featureKey}
+                  label={t(`vendorTools.${card.featureKey}.label`)}
+                  description={t(`vendorTools.${card.featureKey}.description`)}
                   icon={card.icon}
                   href={card.href}
                   locked={card.lockedOverride ? card.lockedOverride(isAdminLinked) : !hasFeature(card.featureKey)}
@@ -425,15 +412,15 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="mb-14">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <SectionLabel accent="violet">Your Markets</SectionLabel>
-                  <h2 className="text-2xl font-bold text-white">My Markets</h2>
+                  <SectionLabel accent="violet">{t("vendorDashboard.yourMarkets")}</SectionLabel>
+                  <h2 className="text-2xl font-bold text-white">{t("vendorDashboard.myMarkets")}</h2>
                   {myMarkets && myMarkets.length > 0 && (
-                    <p className="text-slate-500 text-sm mt-0.5">{myMarkets.length} market{myMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
+                    <p className="text-slate-500 text-sm mt-0.5">{t("vendorDashboard.marketsWhereCompanyAppears", { count: myMarkets.length, company: companyLabel })}</p>
                   )}
                 </div>
                 <Link href="/markets">
                   <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                    All markets <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    {t("vendorDashboard.allMarkets")} <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                   </Button>
                 </Link>
               </div>
@@ -445,13 +432,13 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.3 : 0.2 }} className="mb-14">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <SectionLabel accent="cyan">Markets</SectionLabel>
-                <h2 className="text-2xl font-bold text-white">All Markets</h2>
-                <p className="text-slate-500 text-sm mt-0.5">Vendor Evaluation, Product Evaluation, Ecosystem Evaluation, News and AI Chat — fully accessible.</p>
+                <SectionLabel accent="cyan">{t("vendorDashboard.markets")}</SectionLabel>
+                <h2 className="text-2xl font-bold text-white">{t("vendorDashboard.allMarketsHeading")}</h2>
+                <p className="text-slate-500 text-sm mt-0.5">{t("vendorDashboard.allMarketsDescription")}</p>
               </div>
               <Link href="/markets">
                 <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                  Explore <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  {t("vendorDashboard.explore")} <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                 </Button>
               </Link>
             </div>
@@ -463,9 +450,9 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
         {hasFeature("market_builder") && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-2">
             <div className="mb-6">
-              <SectionLabel accent="cyan">Reports</SectionLabel>
-              <h2 className="text-2xl font-bold text-white">My Reports</h2>
-              <p className="text-slate-500 text-sm mt-1">Markets you've built through Market Builder.</p>
+              <SectionLabel accent="cyan">{t("vendorDashboard.reports")}</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">{t("vendorDashboard.myReports")}</h2>
+              <p className="text-slate-500 text-sm mt-1">{t("vendorDashboard.myReportsDescription")}</p>
             </div>
             <Link href="/me/market-builder">
               <div className="inline-flex items-center gap-3 bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-xl px-5 py-4 transition-all group cursor-pointer">
@@ -473,8 +460,8 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
                   <FileText className="h-4 w-4 text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">Open Market Builder</p>
-                  <p className="text-xs text-slate-500">View and manage your custom market reports</p>
+                  <p className="text-sm font-medium text-white">{t("vendorDashboard.openMarketBuilder")}</p>
+                  <p className="text-xs text-slate-500">{t("vendorDashboard.manageCustomReports")}</p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-cyan-400 transition-colors ml-2" />
               </div>
@@ -489,15 +476,17 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
 // ─── PUBLIC LANDING ──────────────────────────────────────────────────────────
 
 function PublicStats() {
+  const { t } = useTranslation("home");
   const { data: stats } = useQuery<{ marketsCount: number; vendorsCount: number }>({
     queryKey: ["/api/markets/stats"],
     staleTime: 5 * 60_000,
   });
 
   const statItems = [
-    { value: stats ? `${stats.marketsCount}+` : "—", label: "IT Markets Covered" },
-    { value: stats ? `${stats.vendorsCount}+` : "—", label: "Vendors Evaluated" },
-    ...STATIC_STATS,
+    { value: stats ? `${stats.marketsCount}+` : "—", label: t("stats.marketsCovered") },
+    { value: stats ? `${stats.vendorsCount}+` : "—", label: t("stats.vendorsEvaluated") },
+    { value: STATIC_STATS[0].value, label: t("stats.independentResearch") },
+    { value: STATIC_STATS[1].value, label: t("stats.analysisEngine") },
   ];
 
   return (
@@ -516,15 +505,16 @@ function PublicStats() {
 // builder sit behind sign-in, so anonymous visitors land on the login page
 // for those two; the four market-centric tiles open the markets list.
 const HERO_FEATURES = [
-  { label: "Access to all markets", href: "/markets", icon: <Globe2 className="h-5 w-5" /> },
-  { label: "Real-time vendor maps", href: "/markets", icon: <BarChart3 className="h-5 w-5" /> },
-  { label: "In-depth product comparisons", href: "/markets", icon: <Layers className="h-5 w-5" /> },
-  { label: "Vendor Intelligence", href: "/markets", icon: <TrendingUp className="h-5 w-5" /> },
-  { label: "Security Intelligence", href: "/security", icon: <Shield className="h-5 w-5" /> },
-  { label: "RFP builder", href: "/me/rfps", icon: <ClipboardList className="h-5 w-5" /> },
+  { key: "allMarkets", testId: "access-to-all-markets", href: "/markets", icon: <Globe2 className="h-5 w-5" /> },
+  { key: "vendorMaps", testId: "real-time-vendor-maps", href: "/markets", icon: <BarChart3 className="h-5 w-5" /> },
+  { key: "productComparisons", testId: "in-depth-product-comparisons", href: "/markets", icon: <Layers className="h-5 w-5" /> },
+  { key: "vendorIntelligence", testId: "vendor-intelligence", href: "/markets", icon: <TrendingUp className="h-5 w-5" /> },
+  { key: "securityIntelligence", testId: "security-intelligence", href: "/security", icon: <Shield className="h-5 w-5" /> },
+  { key: "rfpBuilder", testId: "rfp-builder", href: "/me/rfps", icon: <ClipboardList className="h-5 w-5" /> },
 ];
 
 function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
+  const { t } = useTranslation("home");
   const { teaserActive } = useTeaserGate();
   // Landing pages only — there is no buyer/vendor split at sign-up any more.
   const handlePersonaSelect = (page: "buyer" | "vendor") => {
@@ -546,38 +536,38 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex justify-center mb-8">
             <span className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-slate-300">
               <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-              AI-Powered · Independent · Real-Time
+              {t("landing.hero.eyebrow")}
             </span>
           </motion.div>
 
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.25, 0, 1] }} className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.1] mb-4 text-center">
-            See Every Vendor.{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">Know Every Move.</span>
+            {t("landing.hero.titleLine1")}{" "}
+            <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("landing.hero.titleLine2")}</span>
           </motion.h1>
 
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25 }} className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-8 text-center">
-            Independent, AI-powered enterprise IT intelligence for technology buyers. No bias. No guesswork.
+            {t("landing.hero.subtitle")}
           </motion.p>
 
           {/* Free emphasis */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex justify-center mb-10">
             <span className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-4 py-1.5 text-sm font-semibold">
-              <Sparkles className="h-3.5 w-3.5" /> 100% free, forever — no paid plan, no credit card
+              <Sparkles className="h-3.5 w-3.5" /> {t("landing.hero.freeMessage")}
             </span>
           </motion.div>
 
           {/* What buyers get */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.35 }} className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
             {HERO_FEATURES.map((f) => (
-              <Link key={f.label} href={f.href}>
+              <Link key={f.key} href={f.href}>
                 <div
                   className="group relative h-full bg-slate-900 border border-white/8 hover:border-cyan-500/40 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:shadow-[0_0_40px_rgba(14,165,233,0.1)]"
-                  data-testid={`hero-feature-${f.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
+                  data-testid={`hero-feature-${f.testId}`}
                 >
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 border border-white/10 flex items-center justify-center mb-3 text-cyan-400 group-hover:text-violet-300 transition-colors">
                     {f.icon}
                   </div>
-                  <p className="text-sm font-semibold text-white leading-snug">{f.label}</p>
+                  <p className="text-sm font-semibold text-white leading-snug">{t(`landing.hero.features.${f.key}`)}</p>
                 </div>
               </Link>
             ))}
@@ -586,7 +576,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
           {/* CTA */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="flex justify-center mb-16">
             <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-[0_0_40px_rgba(14,165,233,0.25)]">
-              Get free access <ArrowRight className="h-4 w-4" />
+              {t("landing.hero.getFreeAccess")} <ArrowRight className="h-4 w-4" />
             </button>
           </motion.div>
 
@@ -619,14 +609,14 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
       {/* Markets preview */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <motion.div {...fadeUp} className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4"><div className="h-px w-8 bg-cyan-400" />LIVE MARKETS<div className="h-px w-8 bg-cyan-400" /></div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Coverage that <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">matters</span></h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">Deep-dive evaluations across the enterprise infrastructure stack, updated continuously with AI-scored intelligence.</p>
+          <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4"><div className="h-px w-8 bg-cyan-400" />{t("landing.markets.eyebrow")}<div className="h-px w-8 bg-cyan-400" /></div>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">{t("landing.markets.titleLine1")} <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("landing.markets.titleLine2")}</span></h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">{t("landing.markets.description")}</p>
         </motion.div>
         <MarketGrid markets={FEATURED_MARKETS} isLoading={false} linkToLogin={!teaserActive} />
         <motion.div {...fadeUp} className="text-center mt-10">
           <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-5 py-2.5 text-sm transition-all">
-            Create free buyer account <ArrowRight className="h-4 w-4" />
+            {t("landing.markets.createBuyerAccount")} <ArrowRight className="h-4 w-4" />
           </button>
         </motion.div>
       </section>
@@ -635,9 +625,9 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
       <section className="py-24 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4"><div className="h-px w-8 bg-violet-400" />HOW IT WORKS<div className="h-px w-8 bg-violet-400" /></div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Intelligence without <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">the wait</span></h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">From raw data to actionable insight — fully automated, continuously refreshed.</p>
+            <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4"><div className="h-px w-8 bg-violet-400" />{t("landing.howItWorks.eyebrow")}<div className="h-px w-8 bg-violet-400" /></div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">{t("landing.howItWorks.titleLine1")} <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("landing.howItWorks.titleLine2")}</span></h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">{t("landing.howItWorks.description")}</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
             <div className="absolute top-16 left-1/3 right-1/3 h-px bg-gradient-to-r from-cyan-500/30 to-violet-500/30 hidden md:block" />
@@ -646,8 +636,8 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
                 <div className="text-7xl font-black text-white/3 absolute top-4 right-6 select-none">{step.step}</div>
                 <div className="relative">
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-violet-600/20 border border-white/10 rounded-xl flex items-center justify-center text-cyan-400 mb-6">{step.icon}</div>
-                  <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
-                  <p className="text-slate-400 leading-relaxed">{step.desc}</p>
+                   <h3 className="text-xl font-bold text-white mb-3">{t(`landing.howItWorks.steps.${i}.title`)}</h3>
+                   <p className="text-slate-400 leading-relaxed">{t(`landing.howItWorks.steps.${i}.description`)}</p>
                 </div>
               </motion.div>
             ))}
@@ -659,9 +649,9 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
       <section className="py-24 border-t border-white/5 bg-slate-900/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4"><div className="h-px w-8 bg-violet-400" />LIVE INTELLIGENCE</div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">News that <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">moves markets</span></h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">Every vendor news event is analysed for its impact on market positioning. Know who it benefits — and who it doesn't.</p>
+            <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4"><div className="h-px w-8 bg-violet-400" />{t("landing.news.eyebrow")}</div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">{t("landing.news.titleLine1")} <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("landing.news.titleLine2")}</span></h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">{t("landing.news.description")}</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
@@ -672,7 +662,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12, duration: 0.5 }} className="bg-slate-900 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-medium text-slate-500 bg-slate-800 px-2.5 py-1 rounded-full">{item.category}</span>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${item.impact === "positive" ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"}`}>{item.delta} impact</span>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${item.impact === "positive" ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"}`}>{item.delta} {t("landing.news.impact")}</span>
                 </div>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500/20 to-violet-500/20 border border-white/10 flex items-center justify-center text-xs font-bold text-cyan-400">{item.vendor[0]}</div>
@@ -681,7 +671,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
                 <p className="text-sm text-slate-300 leading-snug mb-4">{item.headline}</p>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
                   <TrendingUp className="h-3 w-3" />
-                  <span>AI Impact Score</span>
+                   <span>{t("landing.news.impactScore")}</span>
                   <span className="ml-auto">{item.time}</span>
                 </div>
               </motion.div>
@@ -689,7 +679,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
           </div>
           <motion.div {...fadeUp} className="text-center mt-10">
             <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-6 py-3 rounded-lg font-semibold text-sm transition-all">
-              Get free buyer access <ArrowRight className="h-4 w-4" />
+              {t("landing.news.getBuyerAccess")} <ArrowRight className="h-4 w-4" />
             </button>
           </motion.div>
         </div>
@@ -702,14 +692,14 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(14,165,233,0.15)_0%,transparent_60%)]" />
             <div className="relative">
               <Zap className="h-10 w-10 text-cyan-400 mx-auto mb-6" />
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Ready to see clearly?</h2>
-              <p className="text-slate-400 text-lg max-w-xl mx-auto mb-10">Join enterprise IT teams that trust ITMAP for unbiased, AI-powered vendor intelligence.</p>
+              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">{t("landing.bottomCta.heading")}</h2>
+              <p className="text-slate-400 text-lg max-w-xl mx-auto mb-10">{t("landing.bottomCta.description")}</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-[0_0_40px_rgba(14,165,233,0.25)]">
-                  <Users className="h-4 w-4" /> Get Free Buyer Access
+                  <Users className="h-4 w-4" /> {t("landing.bottomCta.buyerAccess")}
                 </button>
                 <button onClick={() => handlePersonaSelect("vendor")} className="inline-flex items-center justify-center gap-2 border border-white/15 text-white hover:bg-white/5 hover:border-white/25 px-8 py-4 rounded-xl font-semibold text-base transition-all">
-                  <Building2 className="h-4 w-4" /> Contact Sales for Vendor Access
+                  <Building2 className="h-4 w-4" /> {t("landing.bottomCta.vendorAccess")}
                 </button>
               </div>
             </div>
@@ -720,19 +710,19 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
       {/* Footer */}
       <footer className="border-t border-white/5 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-slate-500 text-sm">© {new Date().getFullYear()} ITMAP. All rights reserved.</div>
+          <div className="text-slate-500 text-sm">© {new Date().getFullYear()} ITMAP. {t("landing.footer.rightsReserved")}</div>
           <div className="flex items-center gap-6 text-sm text-slate-500">
-            <Link href="/platform"><span className="hover:text-white transition-colors cursor-pointer">Platform</span></Link>
-            <Link href="/about"><span className="hover:text-white transition-colors cursor-pointer">About</span></Link>
-            <Link href="/licensing"><span className="hover:text-white transition-colors cursor-pointer">Licensing</span></Link>
-            <Link href="/contact"><span className="hover:text-white transition-colors cursor-pointer">Contact</span></Link>
-             <Link href="/privacy-policy"><span className="hover:text-white transition-colors cursor-pointer">Privacy</span></Link>
-            <Link href="/termsofservice"><span className="hover:text-white transition-colors cursor-pointer">Terms</span></Link>
+            <Link href="/platform"><span className="hover:text-white transition-colors cursor-pointer">{t("landing.footer.platform")}</span></Link>
+            <Link href="/about"><span className="hover:text-white transition-colors cursor-pointer">{t("landing.footer.about")}</span></Link>
+            <Link href="/licensing"><span className="hover:text-white transition-colors cursor-pointer">{t("landing.footer.licensing")}</span></Link>
+            <Link href="/contact"><span className="hover:text-white transition-colors cursor-pointer">{t("landing.footer.contact")}</span></Link>
+             <Link href="/privacy-policy"><span className="hover:text-white transition-colors cursor-pointer">{t("landing.footer.privacy")}</span></Link>
+            <Link href="/termsofservice"><span className="hover:text-white transition-colors cursor-pointer">{t("landing.footer.terms")}</span></Link>
              <a
                href="https://www.linkedin.com/company/itmap-ai"
                target="_blank"
                rel="noreferrer"
-               aria-label="Follow ITMAP on LinkedIn"
+               aria-label={t("landing.footer.linkedinAriaLabel")}
                className="text-slate-500 hover:text-white transition-colors"
              >
                <Linkedin className="h-5 w-5" aria-hidden="true" />
@@ -747,9 +737,10 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
 // ─── ROOT ────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const { t } = useTranslation("home");
   useSeo({
-    title: "ITMAP — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
-    description: "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers.",
+    title: t("seo.title"),
+    description: t("seo.description"),
     path: "/",
   });
 

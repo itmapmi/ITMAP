@@ -1,0 +1,71 @@
+{
+  "locked": {
+    "feature": "Marktnachrichten"
+  },
+  "heading": "Marktnachrichten & Updates",
+  "description": "Neueste Nachrichten und Ankündigungen von Marktanbietern, mit KI-gestützter Analyse",
+  "ranges": {
+    "allTime": "Gesamte Zeit",
+    "past30Days": "Letzte 30 Tage",
+    "past90Days": "Letzte 90 Tage",
+    "past180Days": "Letzte 180 Tage",
+    "past12Months": "Letzte 12 Monate"
+  },
+  "filters": {
+    "allVendors": "Alle Anbieter",
+    "allImpact": "Alle Auswirkungen",
+    "highImpact": "Hohe Auswirkung",
+    "mediumImpact": "Mittlere Auswirkung",
+    "lowImpact": "Geringe Auswirkung",
+    "allCategories": "Alle Kategorien"
+  },
+  "categories": {
+    "productAnnouncement": "Produktankündigung",
+    "ma": "M&A",
+    "financialResults": "Finanzergebnisse",
+    "partnership": "Partnerschaft",
+    "customerSuccess": "Kundenerfolg",
+    "leadershipChanges": "Führungswechsel",
+    "general": "Allgemein"
+  },
+  "impact": {
+    "high": "hoch",
+    "medium": "mittel",
+    "low": "gering"
+  },
+  "export": {
+    "openButton": "PDF exportieren",
+    "title": "Nachrichten als PDF exportieren",
+    "description": "Wählen Sie Anbieter, eine Ankündigungskategorie und einen Zeitraum. Lassen Sie Anbieter ungeprüft, um alle Anbieter in diesem Markt einzuschließen.",
+    "timeRange": "Zeitraum",
+    "category": "Kategorie",
+    "vendors": "Anbieter",
+    "clear_one": "Löschen ({{count}})",
+    "clear_other": "Löschen ({{count}})",
+    "noVendorsAvailable": "Keine Anbieter verfügbar.",
+    "allVendorsIncluded": "Alle Anbieter werden eingeschlossen.",
+    "selectionSelected_one": "{{count}} Anbieter ausgewählt.",
+    "selectionSelected_other": "{{count}} Anbieter ausgewählt.",
+    "cancel": "Abbrechen",
+    "generating": "Wird generiert…",
+    "downloadPdf": "PDF herunterladen"
+  },
+  "toast": {
+    "exportFailedFallback": "Export der Nachrichten fehlgeschlagen",
+    "exportReady": "Export bereit",
+    "exportDownloaded": "Ihr Nachrichten-PDF wurde heruntergeladen.",
+    "exportFailed": "Export fehlgeschlagen",
+    "exportCouldNotGenerate": "Das PDF konnte nicht generiert werden."
+  },
+  "loading": "Nachrichten werden geladen...",
+  "empty": {
+    "title": "Keine Nachrichtenartikel gefunden",
+    "description": "Fügen Sie im Admin-Panel Newsroom-URLs zu Anbietern hinzu, um Nachrichten zu verfolgen"
+  },
+  "article": {
+    "hideAnalysis": "Analyse ausblenden",
+    "readAnalysis": "Analyse lesen",
+    "editorialAnalysis": "Redaktionelle Analyse",
+    "competitiveContext": "Wettbewerbsumfeld"
+  }
+}

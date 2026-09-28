@@ -1,0 +1,141 @@
+{
+  "seo": {
+    "title": "ITMAP | AIネイティブのベンダー選定",
+    "description": "ITMAPプラットフォームを探る: ベンダースコアリング、機能評価、市場予測、ニュースインテリジェンス、会話型AI — すべてが一つのエンタープライズグレードのワークスペースに集約されています。"
+  },
+  "hero": {
+    "eyebrow": "プラットフォーム",
+    "titleLine1": "バイヤーのために構築された",
+    "titleLine2": "インテリジェンスインフラストラクチャ",
+    "subtitle": "ベンダーマップからカスタム評価フレームワークまで、6つの深く統合された機能 — すべてはエンタープライズバイヤーに技術の真実を提供するという原則に基づいています。",
+    "exploreMarket": "市場を探る",
+    "freeAccess": "無料アクセスを取得"
+  },
+  "methodology": {
+    "eyebrow": "方法論",
+    "title": "信頼できるリサーチを生み出す方法",
+    "description": "私たちの方法論は、データの取り込みからスコアリング、公開に至るまで、あらゆる段階でバイアスを排除するよう設計されています。パイプライン内のすべての決定は文書化され、監査可能です。",
+    "steps": {
+      "continuousDataIngestion": {
+        "title": "継続的なデータ取り込み",
+        "description": "私たちのパイプラインは、ベンダーのウェブサイト、プレスリリース、GitHubリポジトリ、SEC提出書類、求人情報、特許データベース、ニュースフィードなど、数千の公開ソースを監視しています。"
+      },
+      "llmPoweredScoring": {
+        "title": "LLM駆動のスコアリング",
+        "description": "大規模言語モデルが、40以上の次元スコアリングルーブリックに基づいて各データポイントを評価します。スコアは重み付けされ、検証され、ベンダーの位置に集約されます。"
+      },
+      "structuredOutput": {
+        "title": "構造化された出力",
+        "description": "結果は、スコア、機能サポートフラグ、ニュースインパクトイベント、ナラティブインサイトをカバーする正規化されたデータモデルに構造化され、ユーザーがクエリ可能です。"
+      },
+      "expertReviewLayer": {
+        "title": "専門家によるレビュー層",
+        "description": "IT実務者のチームがモデルの出力を精査し、正確性を確認し、ドメイン修正を適用し、リサーチが現実の運用状況を反映していることを保証します。"
+      }
+    }
+  },
+  "comparison": {
+    "eyebrow": "従来のアナリストとの比較",
+    "title": "通常のアナリストに代わる選択肢",
+    "criteria": "基準",
+    "traditionalAnalysts": "従来のアナリスト",
+    "rows": {
+      "vendorInfluence": {
+        "criterion": "ベンダーの影響",
+        "traditional": "有料配置とスポンサーシップ",
+        "itmap": "ゼロ — 決してなし"
+      },
+      "updateFrequency": {
+        "criterion": "更新頻度",
+        "traditional": "四半期または年次",
+        "itmap": "継続的（日次）"
+      },
+      "sourceTransparency": {
+        "criterion": "ソースの透明性",
+        "traditional": "不透明な方法論",
+        "itmap": "完全なソース開示"
+      },
+      "researchDepth": {
+        "criterion": "リサーチの深さ",
+        "traditional": "広範なカバレッジ、浅いデータ",
+        "itmap": "詳細なスコアリングとドリルダウン"
+      },
+      "accessCost": {
+        "criterion": "アクセスコスト",
+        "traditional": "年間6桁",
+        "itmap": "手頃な価格の階層アクセス"
+      },
+      "customisation": {
+        "criterion": "カスタマイズ",
+        "traditional": "なし",
+        "itmap": "カスタム市場ビルダー"
+      },
+      "newsImpactTracking": {
+        "criterion": "ニュースインパクト追跡",
+        "traditional": "手動、頻度低",
+        "itmap": "AIスコアリング、リアルタイム"
+      }
+    }
+  },
+  "buyerTools": {
+    "eyebrow": "バイヤー向けに含まれる",
+    "title": "テクノロジーバイヤーに必要なすべてのツール",
+    "description": "これらのすべての機能は、テクノロジーバイヤーとエンドユーザーに解放されています — 階層なし、ペイウォールなし、ベンダーの影響なし。",
+    "tools": {
+      "vendorEvaluationMaps": {
+        "title": "ベンダー評価マップ",
+        "description": "実行力と製品力に基づいてベンダーを配置するインタラクティブなクアドラントビジュアライゼーション。"
+      },
+      "featureSupportMatrix": {
+        "title": "機能サポートマトリックス",
+        "description": "数百の製品機能と次元を横並びで比較。"
+      },
+      "newsIntelligenceFeed": {
+        "title": "ニュース＆インテリジェンスフィード",
+        "description": "AIスコアリングされたニュース、資金調達、製品発表、市場シグナルとその影響評価。"
+      },
+      "researchReports": {
+        "title": "リサーチレポート",
+        "description": "市場とベンダーの詳細なレポート、継続的に更新され、PDFとしてエクスポート可能。"
+      },
+      "marketBuilder": {
+        "title": "マーケットビルダー",
+        "description": "カスタム基準と重みを定義して、ニーズに合わせたランキングを生成。"
+      },
+      "datasheets": {
+        "title": "データシート",
+        "description": "ベンダーのデータシート、仕様、機能主張を一箇所で比較。"
+      },
+      "rfpBuilder": {
+        "title": "RFPビルダー",
+        "description": "市場データ、スコアリング基準、ベンダー要件からRFPを生成。"
+      },
+      "forecastBuilder": {
+        "title": "予測ビルダー",
+        "description": "市場の動向をモデル化し、時間の経過に伴うベンダーの位置を予測。"
+      },
+      "battleCards": {
+        "title": "バトルカード",
+        "description": "競争力のあるポジショニングカードで、内部意思決定のためにベンダーを比較。"
+      },
+      "cveIntelligence": {
+        "title": "CVEインテリジェンス",
+        "description": "評価されたベンダーのセキュリティ脆弱性追跡とリスクシグナル。"
+      },
+      "factReview": {
+        "title": "ファクトレビュー",
+        "description": "ITMAPチームと協力してリサーチの事実をフラグ付けし、検証。"
+      },
+      "aiChat": {
+        "title": "AIチャット",
+        "description": "市場やベンダーに関する質問に答える会話型アシスタント。"
+      }
+    }
+  },
+  "cta": {
+    "title": "自分で体験してください",
+    "description": "すべての市場、ベンダーマップ、機能マトリックスへの無料アクセス。クレジットカードは不要です。",
+    "freeAccess": "無料アクセスを取得",
+    "browseMarkets": "市場を閲覧"
+  }
+}

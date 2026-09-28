@@ -1,0 +1,134 @@
+{
+  "chart": {
+    "axes": {
+      "execution": "Produktstrategie und Ausführung →",
+      "executionCompact": "Ausführung →",
+      "executionHeading": "Produktstrategie und Ausführung",
+      "viability": "Anbieterviabilität →",
+      "viabilityCompact": "Viabilität →",
+      "viabilityHeading": "Anbieterviabilität"
+    },
+    "poweredBy": "Bereitgestellt von itmap.ai",
+    "vendorPositioning": "Anbieterpositionierung",
+    "fixedScoreDomain": "Fester Bewertungsbereich · 0–100",
+    "whatIfTooltip": "Punkte sind mit Ihren Schieberegler-Gewichten positioniert. Setzen Sie die Schieberegler zurück, um das veröffentlichte Diagramm zu sehen.",
+    "whatIfWeights": "Was-wäre-wenn-Gewichte",
+    "exportTooltip": "Diagramm als PDF exportieren",
+    "exporting": "Exportieren…",
+    "exportPdf": "PDF exportieren",
+    "mobileZoomHint": "Zum Zoomen zusammenziehen oder Steuerungen verwenden · zum Verschieben ziehen",
+    "zoomOut": "Verkleinern",
+    "zoomIn": "Vergrößern",
+    "resetChartToFit": "Diagramm zurücksetzen, um es anzupassen",
+    "fit": "Anpassen",
+    "mobileExecutionAxis": "Ausführung / Produktstrategie"
+  },
+  "quadrants": {
+    "custodians": "Verwalter",
+    "contenders": "Herausforderer",
+    "leaders": "Marktführer",
+    "emergingCompact": "Aufstrebend",
+    "emergingPlayers": "Aufstrebende Akteure",
+    "emerging_players": "Aufstrebende Akteure",
+    "specialists": "Spezialisten",
+    "catalysts": "Katalysatoren"
+  },
+  "evidence": {
+    "label": "Beweise",
+    "latestNews": "Neueste Nachrichtenereignisse",
+    "empty": "Keine aktuellen Nachrichtenereignisse für diesen Anbieter.",
+    "viewVendorDetails": "Vollständige Anbieterdetails anzeigen →"
+  },
+  "timeline": {
+    "now": "Jetzt",
+    "current": "Aktuell",
+    "historicalView": "Historische Ansicht",
+    "weeksAgoShort": "Vor {{weeks}} W",
+    "weekAgo": "Vor {{weeks}} Woche",
+    "weeksAgo": "Vor {{weeks}} Wochen",
+    "ariaLabel": "Historische Ansicht der letzten sechs Monate"
+  },
+  "criteriaWeights": {
+    "title": "Kriteriengewichte",
+    "mobileTitle": "Kriteriengewichte",
+    "whatIfDescription": "Ihre Was-wäre-wenn-Ansicht wird angezeigt. Das veröffentlichte Diagramm verwendet die gespeicherten Gewichte dieses Marktes.",
+    "description": "Bewegen Sie einen Schieberegler, um Ihre eigene Was-wäre-wenn-Ansicht zu erstellen. Das veröffentlichte Diagramm verwendet die gespeicherten Gewichte dieses Marktes.",
+    "reset": "Auf veröffentlicht zurücksetzen",
+    "hide": "Ausblenden",
+    "show": "Anzeigen",
+    "axisPersistedWeight": "{{category}} Achse · gespeichertes Gewicht"
+  },
+  "vendorDetails": {
+    "tabs": {
+      "overview": "Übersicht",
+      "scores": "Bewertungen",
+      "notes": "Notizen"
+    },
+    "financialPerformance": "Finanzielle Leistung",
+    "revenue": "Umsatz:",
+    "notAvailable": "N/V",
+    "website": "Webseite:",
+    "quadrantPosition": "Quadrantenposition",
+    "executionComposite": "Ausführungszusammensetzung:",
+    "viabilityComposite": "Viabilitätszusammensetzung:",
+    "box": "Box:",
+    "chartPosition": "Diagrammposition:",
+    "whatIfPosition": "Berechnet mit Ihren Was-wäre-wenn-Schieberegler-Gewichten, nicht den veröffentlichten Gewichten.",
+    "individualCriteriaScores": "Einzelne Kriterienbewertungen",
+    "productCapabilitiesAutoCalculated": "Produktfähigkeiten (Automatisch berechnet)",
+    "criteriaNotes": "Kriteriennotizen",
+    "productCapabilitiesScore": "Produktfähigkeiten - Automatisch berechnet (Bewertung: {{score}}/10)",
+    "productCapabilitiesNotesPlaceholder": "Fügen Sie Ihre Notizen zu den Produktfähigkeiten dieses Anbieters hinzu...",
+    "criterionScore": "{{criterion}} (Bewertung: {{score}}/10)",
+    "criterionNotesPlaceholder": "Fügen Sie Ihre Notizen zu {{criterion}} hinzu...",
+    "saving": "Speichern...",
+    "saveNotes": "Notizen speichern"
+  },
+  "compare": {
+    "title": "Anbieter vergleichen",
+    "criteria": "Kriterien",
+    "notes": "Notizen",
+    "viewNotes": "Notizen anzeigen",
+    "hideNotes": "Notizen ausblenden",
+    "viewDetailedReport": "Detaillierten Bericht anzeigen",
+    "selectAtLeastTwo": "Wählen Sie mindestens 2 Anbieter aus, um deren Bewertungen zu vergleichen",
+    "productNameUnavailable": "Produktname nicht verfügbar",
+    "noStoredCommentary": "Für diese Bewertung ist kein gespeicherter Kommentar verfügbar.",
+    "mobileTitle": "Produkte vergleichen",
+    "mobileScoresTitle": "Bewertungen & Kommentare",
+    "mobileSelectedCount": "{{count}} ausgewählt · max. 3",
+    "mobileSelectPrompt": "Wählen Sie bis zu drei Produkte aus, um deren Bewertungen und Kommentare unten zu sehen.",
+    "mobileMaxSelected": "Maximal drei Produkte ausgewählt. Deaktivieren Sie eines, um es auszutauschen.",
+    "mobileSelectHint": "Wählen Sie bis zu drei Produkte aus. Jedes ausgewählte Produkt wird unten aufgeführt.",
+    "mobileViewNotes": "Notizen anzeigen",
+    "vendor": "Anbieter",
+    "score": "Bewertung",
+    "product": "Produkt"
+  },
+  "reportModal": {
+    "title": "Anbieterauswertungsbericht erstellen",
+    "description": "Wählen Sie Anbieter aus, die im Anbieterauswertungs-PDF-Bericht enthalten sein sollen"
+  },
+  "toasts": {
+    "notesSaved": {
+      "title": "Notizen gespeichert",
+      "description": "Ihre Notizen wurden erfolgreich gespeichert."
+    },
+    "saveNotesError": {
+      "title": "Fehler",
+      "description": "Fehler beim Speichern der Notizen. Bitte versuchen Sie es erneut."
+    },
+    "reportGenerated": {
+      "title": "Erfolg",
+      "description": "Anbieterauswertungsbericht erfolgreich erstellt"
+    },
+    "reportError": {
+      "title": "Fehler",
+      "description": "Fehler beim Erstellen des Berichts"
+    },
+    "exportError": {
+      "title": "Export fehlgeschlagen",
+      "description": "Das PDF konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
+    }
+  }
+}

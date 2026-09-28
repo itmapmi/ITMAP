@@ -1,0 +1,67 @@
+{
+  "seo": {
+    "title": "기술 구매자 — ITMAP | 영원히 무료 IT 벤더 인텔리전스",
+    "description": "기술 구매자를 위한 무료 IT 벤더 인텔리전스. 벤더 평가, 제품 비교, RFP 작성, 보안 모니터링 — 항상 무료, 유료 플랜 없음, 신용카드 필요 없음."
+  },
+  "hero": {
+    "eyebrow": "기술 구매자를 위한",
+    "titleLine1": "엔터프라이즈 IT 인텔리전스,",
+    "titleLine2": "완전히 무료",
+    "description": "독립적인 벤더 순위, 기능 비교, 보안 모니터링 및 RFP 도구 — 구매자에게 모두 무료. 스폰서십 없음, 유료 장벽 없음, 요금 청구 계획 없음. 영원히.",
+    "createAccount": "무료 계정 생성",
+    "exploreMarkets": "실시간 시장 탐색",
+    "stats": {
+      "scoringDimensions": "평가 차원",
+      "independentResearch": "독립 연구",
+      "freeForever": "영원히 무료",
+      "noCreditCard": "신용카드 불필요 · 유료 플랜 없음"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "기능",
+    "title": "벤더 평가에 필요한 모든 것",
+    "description": "시장 지도, 제품 비교, 보안 모니터링 및 RFP 작성 — 하나의 플랫폼에서 모두 포함, 항상 무료.",
+    "items": {
+      "vendorEvaluation": {
+        "title": "ITMAP 벤더 평가",
+        "description": "상호작용 실행 대 제품 지도가 시장 내 모든 벤더를 위치시킵니다. 점수 근거를 자세히 살펴보고, 역사적 변화를 비교하며, 리더와 도전자를 한눈에 식별하세요."
+      },
+      "productEvaluation": {
+        "title": "제품 평가",
+        "description": "수백 가지 기능에 대한 나란히 기능 지원 매트릭스. 어떤 벤더가 중요한 기능을 제공하는지, 어디에 격차가 있는지 확인하세요."
+      },
+      "ecosystemEvaluation": {
+        "title": "생태계 평가",
+        "description": "파트너 네트워크, 통합 및 제휴를 매핑하여 제품 체크리스트를 넘어선 전체 경쟁 환경을 이해하세요."
+      },
+      "conversationPlatform": {
+        "title": "대화 플랫폼",
+        "description": "어떤 시장이나 벤더에 대해 자연어 질문을 하세요. 우리의 AI 분석가는 점수, 뉴스, 기능 및 보고서를 출처가 명확한 답변으로 종합합니다."
+      },
+      "securityIntelligence": {
+        "title": "보안 인텔리전스",
+        "description": "스택 내 벤더에 대한 CVE, CISA KEV 경고 및 EPSS 익스플로잇 점수를 모니터링하세요. 공급자의 보안 상태가 변경될 때 조기 경고를 받으세요."
+      },
+      "createRfps": {
+        "title": "RFP 작성",
+        "description": "어떤 시장의 기능 세트에서 벤더 비중립적인 RFP를 생성한 후, 하나의 워크플로우에서 구조화된 평가 및 단기 목록을 실행하세요."
+      }
+    }
+  },
+  "freePromise": {
+    "eyebrow": "구매자에게 무료 — 예외 없음",
+    "title": "유료 장벽 없음. 업셀 없음. 작은 글씨 없음.",
+    "description": "ITMAP은 엔터프라이즈 IT 선택을 투명하게 만들기 위한 우리의 사명 때문에 기술 구매자에게 무료입니다. 우리는 벤더 인텔리전스, 평가 또는 RFP 도구에 대한 접근을 위해 구매자에게 요금을 청구하지 않을 것입니다."
+  },
+  "registration": {
+    "eyebrow": "시작하기",
+    "title": "오늘 무료로 평가 시작",
+    "description": "등록은 무료이며 접근도 무료입니다 — 오늘과 항상. 어떤 이메일 주소로든 구매자 계정을 생성하고 모든 기능을 잠금 해제하세요.",
+    "benefits": {
+      "noCreditCard": "신용카드 필요 없음",
+      "noSponsorships": "벤더 스폰서십 또는 유료 배치 없음",
+      "allFeatures": "모든 구매자 기능이 무료로 포함됨",
+      "anyEmail": "개인 또는 회사 이메일 — 모두 사용 가능"
+    }
+  }
+}

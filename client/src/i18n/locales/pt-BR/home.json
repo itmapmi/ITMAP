@@ -1,0 +1,174 @@
+{
+  "seo": {
+    "title": "ITMAP — Inteligência de Fornecedores de TI Empresarial | Veja Todos os Fornecedores. Conheça Cada Movimento.",
+    "description": "Inteligência de fornecedores de TI empresarial nativa em IA — classificações independentes de fornecedores, avaliações de recursos, previsões de mercado impulsionadas por IA, análise de impacto de notícias e relatórios de pesquisa para compradores de tecnologia."
+  },
+  "marketCard": {
+    "inReview": "Em Revisão",
+    "liveData": "Dados ao Vivo",
+    "explore": "Explorar"
+  },
+  "buyerDashboard": {
+    "welcomeBack": "Bem-vindo de volta{{name}}.",
+    "decisionTools": "Ferramentas de decisão",
+    "researchWorkflow": "Seu fluxo de trabalho de pesquisa",
+    "markets": "Mercados",
+    "evaluateVendors": "Avalie fornecedores por meio de pesquisa de mercado ao vivo, contexto de produto e sinais.",
+    "rfpBuilder": "Construtor de RFP",
+    "createVendorRequests": "Crie, gerencie e envie solicitações de fornecedores.",
+    "securityIntelligence": "Inteligência de Segurança",
+    "vulnerabilitiesAlerts": "Vulnerabilidades e alertas",
+    "methodology": "Metodologia",
+    "howItmapEvaluates": "Como a ITMAP avalia",
+    "researchCoverage": "Cobertura de pesquisa",
+    "liveMarkets": "Mercados ao vivo",
+    "currentMarketIntelligence": "Inteligência de mercado atual pronta para revisão.",
+    "viewAll": "Ver todos"
+  },
+  "vendorDashboard": {
+    "notLinked": {
+      "heading": "Conta não vinculada a um fornecedor",
+      "messageBefore": "Sua conta está provisionada como um assento de fornecedor, mas ainda não foi vinculada a um registro de fornecedor. Isso é feito por um",
+      "administrator": "administrador itmap.ai",
+      "messageAfter": " — por favor, entre em contato com seu gerente de conta para completar a configuração.",
+      "accountLabel": "Sua conta",
+      "contactSales": "Contate sales@itmap.ai"
+    },
+    "vendorSeat": "Assento de Fornecedor",
+    "itVendor": "Fornecedor de TI",
+    "linkedAs": "vinculado como",
+    "intelligenceHub": "Hub de Inteligência",
+    "your": "Seu",
+    "vendorHub": "Hub do Fornecedor",
+    "fallbackHubWithName": "Hub do Fornecedor de {{name}}",
+    "headerDescription": "Dados de mercado, sinais competitivos e ferramentas de fornecedores — recursos bloqueados requerem atualização de plano.",
+    "platformTools": "Ferramentas da Plataforma",
+    "vendorTools": "Ferramentas do Fornecedor",
+    "toolsDescription": "Ferramentas poderosas para geração de leads, resposta competitiva e inteligência de mercado — atualização de plano necessária.",
+    "markets": "Mercados",
+    "marketsDescription": "Navegue por todos os mercados e explore avaliações de fornecedores, comparações de produtos e dados de ecossistema.",
+    "yourMarkets": "Seus Mercados",
+    "myMarkets": "Meus Mercados",
+    "marketsWhereCompanyAppears_one": "{{count}} mercado onde {{company}} aparece",
+    "marketsWhereCompanyAppears_other": "{{count}} mercados onde {{company}} aparece",
+    "allMarkets": "Todos os mercados",
+    "allMarketsHeading": "Todos os Mercados",
+    "allMarketsDescription": "Avaliação de Fornecedores, Avaliação de Produtos, Avaliação de Ecossistema, Notícias e Chat de IA — totalmente acessível.",
+    "explore": "Explorar",
+    "reports": "Relatórios",
+    "myReports": "Meus Relatórios",
+    "myReportsDescription": "Mercados que você construiu através do Construtor de Mercado.",
+    "openMarketBuilder": "Abrir Construtor de Mercado",
+    "manageCustomReports": "Visualize e gerencie seus relatórios de mercado personalizados"
+  },
+  "vendorTools": {
+    "lead_gen": {
+      "label": "Gerador de Leads",
+      "description": "Capture e qualifique o interesse de compradores mapeado para o seu perfil de fornecedor."
+    },
+    "rfp": {
+      "label": "Respondedor de RFP",
+      "description": "Geração de resposta a RFP assistida por IA usando sua base de conhecimento de produtos."
+    },
+    "market_builder": {
+      "label": "Construtor de Mercado",
+      "description": "Construa avaliações personalizadas de fornecedores ponderadas para seus critérios específicos."
+    },
+    "forecast_builder": {
+      "label": "Construtor de Previsões",
+      "description": "Dimensionamento de mercado nativo em IA, projeções de múltiplos cenários e tabelas de sensibilidade."
+    },
+    "fact_review": {
+      "label": "Revisão de Fatos",
+      "description": "Revise e aprove fatos gerados por IA sobre seus produtos em todos os mercados."
+    },
+    "battle_cards": {
+      "label": "Cartas de Batalha",
+      "description": "Cartas de batalha competitivas para cada mercado onde você compete — prontas para uso em vendas."
+    },
+    "cve_intelligence": {
+      "label": "Inteligência de Segurança",
+      "description": "Vulnerabilidades CVE, alertas CISA KEV e pontuações de exploração EPSS acompanhadas em fornecedores de TI."
+    },
+    "market_trends": {
+      "label": "Tendências de Mercado",
+      "description": "Participação de visitantes e engajamento em mercados, países e fornecedores concorrentes — como porcentagens."
+    }
+  },
+  "stats": {
+    "marketsCovered": "Mercados de TI Cobertos",
+    "vendorsEvaluated": "Fornecedores Avaliados",
+    "independentResearch": "Pesquisa Independente",
+    "analysisEngine": "Motor de Análise"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "Impulsionado por IA · Independente · Em Tempo Real",
+      "titleLine1": "Veja Todos os Fornecedores.",
+      "titleLine2": "Conheça Cada Movimento.",
+      "subtitle": "Inteligência de TI empresarial independente e impulsionada por IA para compradores de tecnologia. Sem viés. Sem suposições.",
+      "freeMessage": "100% gratuito, para sempre — sem plano pago, sem cartão de crédito",
+      "features": {
+        "allMarkets": "Acesso a todos os mercados",
+        "vendorMaps": "Mapas de fornecedores em tempo real",
+        "productComparisons": "Comparações de produtos detalhadas",
+        "vendorIntelligence": "Inteligência de Fornecedores",
+        "securityIntelligence": "Inteligência de Segurança",
+        "rfpBuilder": "Construtor de RFP"
+      },
+      "getFreeAccess": "Obtenha acesso gratuito"
+    },
+    "markets": {
+      "eyebrow": "MERCADOS AO VIVO",
+      "titleLine1": "Cobertura que",
+      "titleLine2": "importa",
+      "description": "Avaliações aprofundadas em toda a pilha de infraestrutura empresarial, atualizadas continuamente com inteligência pontuada por IA.",
+      "createBuyerAccount": "Crie conta de comprador gratuita"
+    },
+    "howItWorks": {
+      "eyebrow": "COMO FUNCIONA",
+      "titleLine1": "Inteligência sem",
+      "titleLine2": "espera",
+      "description": "De dados brutos a insights acionáveis — totalmente automatizado, continuamente atualizado.",
+      "steps": [
+        {
+          "title": "Ingestão de Dados",
+          "description": "Nossa IA ingere continuamente dados públicos de fornecedores, notícias, lançamentos de produtos, finanças e comentários de analistas em todo o cenário de TI empresarial."
+        },
+        {
+          "title": "Análise Impulsionada por IA",
+          "description": "Modelos de linguagem de grande porte processam e pontuam fornecedores em mais de 40 dimensões de capacidade — execução, profundidade de produto, ecossistema e viabilidade financeira."
+        },
+        {
+          "title": "Inteligência Acionável",
+          "description": "Obtenha mapas interativos de fornecedores, matrizes de recursos, notícias com pontuação de impacto e relatórios de pesquisa gerados por IA — atualizados continuamente, sem viés."
+        }
+      ]
+    },
+    "news": {
+      "eyebrow": "INTELIGÊNCIA AO VIVO",
+      "titleLine1": "Notícias que",
+      "titleLine2": "movem mercados",
+      "description": "Cada evento de notícias de fornecedores é analisado por seu impacto no posicionamento de mercado. Saiba quem se beneficia — e quem não.",
+      "impact": "impacto",
+      "impactScore": "Pontuação de Impacto de IA",
+      "getBuyerAccess": "Obtenha acesso gratuito para compradores"
+    },
+    "bottomCta": {
+      "heading": "Pronto para ver claramente?",
+      "description": "Junte-se a equipes de TI empresariais que confiam na ITMAP para inteligência de fornecedores imparcial e impulsionada por IA.",
+      "buyerAccess": "Obtenha Acesso Gratuito para Compradores",
+      "vendorAccess": "Contate Vendas para Acesso de Fornecedores"
+    },
+    "footer": {
+      "rightsReserved": "Todos os direitos reservados.",
+      "platform": "Plataforma",
+      "about": "Sobre",
+      "licensing": "Licenciamento",
+      "contact": "Contato",
+      "privacy": "Privacidade",
+      "terms": "Termos",
+      "linkedinAriaLabel": "Siga a ITMAP no LinkedIn"
+    }
+  }
+}

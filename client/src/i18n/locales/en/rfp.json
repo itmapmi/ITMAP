@@ -1,0 +1,190 @@
+{
+  "list": {
+    "heading": "RFP Builder",
+    "subtitle": "Run a conversational interview and produce a customer-specific RFP, grounded in real market data.",
+    "newRfp": "New RFP",
+    "loading": "Loading…",
+    "loadingProjects": "Loading projects…",
+    "market": "Market",
+    "updated": "Updated",
+    "open": "Open",
+    "cancel": "Cancel",
+    "starting": "Starting…",
+    "startInterview": "Start interview",
+    "empty": "No RFPs yet. Start your first one from any market page or the button above.",
+    "startFirst": "Start your first RFP",
+    "deleteAria": "Delete {{title}}",
+    "mobile": {
+      "kicker": "BUYER / RFP BUILDER",
+      "heading": "Projects",
+      "subtitle": "Turn evidence into a customer-specific procurement brief.",
+      "empty": "No RFPs yet. Start your first project above."
+    },
+    "limits": {
+      "daily": "Daily limit reached ({{count}}/{{limit}} RFPs in 24 h). Try again tomorrow.",
+      "activeMobile": "{{count}} / {{limit}} active RFPs · complete or delete one before starting another.",
+      "active": "You have {{count}}/{{limit}} active RFPs. Complete or delete one before starting another."
+    },
+    "status": {
+      "draft": "draft",
+      "interviewing": "interviewing",
+      "generating": "generating",
+      "ready": "ready"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAI key required",
+      "openAiKeyDescription": "Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.",
+      "couldNotStart": "Could not start RFP",
+      "deleted": "RFP deleted"
+    },
+    "dialog": {
+      "title": "Start a new RFP",
+      "workingTitle": "Working title",
+      "titlePlaceholder": "Acme Corp — Endpoint Security RFP",
+      "market": "Market",
+      "pickMarket": "Pick a market"
+    }
+  },
+  "detail": {
+    "activeRfp": "ACTIVE RFP",
+    "rfpFallback": "RFP",
+    "loading": "loading",
+    "slots": "{{filled}}/{{total}} slots",
+    "slotsUpper": "{{filled}} / {{total}} SLOTS",
+    "statusLabel": "Status:",
+    "needCriticalSlots": "Need critical slots: {{slots}}",
+    "defaultCriticalSlots": "10 of 14 total",
+    "stepProgress": "Step {{current}} of {{total}}: {{step}}",
+    "mobileStepProgress": "Step {{current}} of {{total}} · {{step}}",
+    "steps": {
+      "interview": "Interview",
+      "requirements": "Requirements",
+      "preview": "Preview",
+      "shortlist": "Shortlist",
+      "outreach": "Outreach",
+      "export": "Export"
+    },
+    "generating": "Generating…",
+    "generate": "Generate",
+    "generateRfp": "Generate RFP",
+    "regenerate": "Regenerate",
+    "regenerateRfp": "Regenerate RFP",
+    "regenerating": "Regenerating…",
+    "vendorFallback": "Vendor",
+    "back": "Back",
+    "next": "Next: {{step}}",
+    "status": {
+      "draft": "draft",
+      "interviewing": "interviewing",
+      "generating": "generating",
+      "ready": "ready"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAI key required",
+      "openAiKeyDescription": "Add your OpenAI API key in Settings → LLM Keys.",
+      "couldNotSend": "Could not send",
+      "generated": "RFP generated",
+      "generatedDescription": "Preview, shortlist, and exports are ready.",
+      "generationFailed": "Generation failed",
+      "sectionRegenerated": "Section regenerated",
+      "regenerationFailed": "Regeneration failed",
+      "responseFileUploaded": "Response file uploaded"
+    },
+    "interview": {
+      "heading": "Discovery interview",
+      "you": "YOU",
+      "analyst": "ITMAP ANALYST",
+      "thinking": "Thinking…",
+      "complete": "Interview complete · ready to generate",
+      "inProgress": "Interview in progress · {{count}} critical slots remain",
+      "answerPlaceholder": "Type your answer…",
+      "send": "Send",
+      "unavailable": "Generate RFP is unavailable until all critical slots are captured.",
+      "completeDesktop": "Interview complete — click Generate RFP above.",
+      "slotsCaptured": "{{filled}}/{{total}} interview slots captured"
+    },
+    "requirements": {
+      "heading": "Requirements",
+      "subtitle": "Generated from your interview and market catalogue.",
+      "empty": "Generate the RFP to seed weighted requirements.",
+      "seededDescription": "Requirements will be seeded automatically the first time you Generate the RFP, based on this market's feature catalogue and your must-haves.",
+      "deleteAria": "Delete {{label}}",
+      "kindRequirement": "{{kind}} requirement",
+      "priority": {
+        "must": "Must",
+        "should": "Should",
+        "nice": "Nice"
+      },
+      "priorityLower": {
+        "must": "must",
+        "should": "should",
+        "nice": "nice"
+      },
+      "weight": "Weight {{weight}}"
+    },
+    "preview": {
+      "heading": "Document preview",
+      "subtitle": "Generated markdown · current document",
+      "empty": "Generate the RFP to produce the document.",
+      "emptySection": "(empty)",
+      "generatePrompt": "Click Generate RFP above to produce the document."
+    },
+    "shortlist": {
+      "heading": "Vendor shortlist",
+      "subtitle": "Deterministic fit against your weighted requirements.",
+      "empty": "Generate the RFP to score vendors.",
+      "rank": "RANK #{{rank}}",
+      "included": "Included",
+      "excluded": "Excluded",
+      "desktopHeading": "Vendor Shortlist (deterministic fit)",
+      "desktopEmpty": "No shortlist yet — generate the RFP to score vendors."
+    },
+    "outreach": {
+      "heading": "Outreach tracker",
+      "subtitle": "Capture vendor contact details and responses.",
+      "status": {
+        "draft": "Draft",
+        "not_started": "Draft",
+        "sent": "Sent",
+        "invited": "Sent",
+        "declined": "Declined",
+        "responded": "Responded",
+        "awarded": "Awarded"
+      },
+      "badge": {
+        "draft": "draft",
+        "not_started": "not started",
+        "sent": "sent",
+        "invited": "sent",
+        "declined": "declined",
+        "responded": "responded",
+        "awarded": "awarded"
+      },
+      "sent": "Sent {{date}}",
+      "replied": "· Replied {{date}}",
+      "contactName": "Contact name",
+      "contactEmail": "Contact email",
+      "email": "Email",
+      "notesPlaceholder": "Outreach notes…",
+      "responsePlaceholder": "Paste vendor response text here…",
+      "responsePlaceholderDesktop": "Paste vendor's response text here…",
+      "uploadResponseLimit": "Upload response file · one file, up to 25MB",
+      "uploadResponse": "Upload response file",
+      "viewUploadedFile": "View uploaded file",
+      "empty": "Include vendors in the Shortlist step to track outreach.",
+      "desktopHeading": "Vendor Outreach Tracker",
+      "desktopEmpty": "Include vendors in the Shortlist tab to track outreach.",
+      "responseComparison": "Response comparison"
+    },
+    "export": {
+      "heading": "Export RFP",
+      "subtitle": "Download the generated document in your preferred format.",
+      "documentReady": "DOCUMENT READY",
+      "documentSummary": "Generated markdown available · {{sections}} sections · {{requirements}} requirements",
+      "downloadFormat": "Download {{format}}",
+      "generatedFromCurrent": "Generated from current RFP",
+      "empty": "Generate the RFP first to enable exports.",
+      "downloadHeading": "Download"
+    }
+  }
+}

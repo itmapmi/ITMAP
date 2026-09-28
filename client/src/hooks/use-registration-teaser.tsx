@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Timer } from "lucide-react";
@@ -112,6 +113,7 @@ function writeBool(key: string, v: boolean): void {
 }
 
 export function TeaserGateProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation("common");
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
   const [now, setNow] = useState(() => Date.now());
@@ -328,7 +330,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
           className="fixed bottom-24 right-5 z-40 inline-flex items-center gap-1.5 rounded-full bg-slate-900/90 backdrop-blur text-white text-xs font-medium px-3 py-2 shadow-lg shadow-black/20 border border-white/10"
         >
           <Timer className="h-3.5 w-3.5 text-cyan-400" />
-          Free preview: {remainingSeconds}s left
+          {t("teaser.freePreviewSecondsLeft", { seconds: remainingSeconds })}
         </div>
       )}
 

@@ -1,0 +1,112 @@
+{
+  "seo": {
+    "title": "ITMAP 소개 — 독립적인 AI 기반 벤더 인텔리전스",
+    "description": "ITMAP의 미션에 대해 알아보세요. 전통적인 분석 회사보다 더 빠르고 투명하게 편견 없는 실시간 기업 IT 벤더 인텔리전스를 제공합니다."
+  },
+  "hero": {
+    "eyebrow": "ITMAP 소개",
+    "titleLine1": "분석가의 소음을",
+    "titleLine2": "뚫고 나가기 위해 구축됨",
+    "subtitle": "ITMAP은 평가해야 할 벤더들이 이미 비용을 지불한 연구에 다시 비용을 지불하는 것에 지친 기업 IT 실무자들에 의해 만들어졌습니다."
+  },
+  "mission": {
+    "eyebrow": "우리의 미션",
+    "heading": "기업 구매자에게 그들이 마땅히 받아야 할 인텔리전스를 제공",
+    "paragraph1": "오랫동안 기업 기술 연구는 먼저 벤더에게, 그 다음에 구매자에게 판매되는 제품이었습니다.",
+    "paragraph2": "ITMAP은 다릅니다. 우리는 조달 팀, CIO 및 IT 아키텍트가 공공 데이터에 기반하고 AI에 의해 평가되며 벤더에게 판매되지 않는 편견 없는 인텔리전스를 받을 자격이 있다고 믿습니다.",
+    "button": "우리가 분석하는 방법 보기",
+    "metrics": {
+      "independence": {
+        "label": "독립성",
+        "note": "벤더 자금 제로"
+      },
+      "dataCurrency": {
+        "label": "데이터 최신성",
+        "note": "매일 업데이트"
+      },
+      "sourceTransparency": {
+        "label": "출처 투명성",
+        "note": "모든 출처 공개"
+      },
+      "coverageBreadth": {
+        "label": "커버리지 폭",
+        "note": "6개 이상의 시장, 성장 중"
+      }
+    }
+  },
+  "values": {
+    "eyebrow": "우리의 가치",
+    "heading": "타협하지 않을 원칙",
+    "items": [
+      {
+        "title": "급진적 독립성",
+        "description": "우리는 벤더 지불, 후원 또는 유료 배치를 전혀 받지 않습니다. 모든 점수는 순수하게 데이터와 방법론에 의해 결정됩니다."
+      },
+      {
+        "title": "완전한 투명성",
+        "description": "모든 벤더 평가에는 출처, 기준 및 가중치가 공개됩니다. 숨겨진 것은 없습니다. 모든 것이 검증 가능합니다."
+      },
+      {
+        "title": "실시간 정밀성",
+        "description": "오늘을 반영하는 시장 인텔리전스 — 지난 분기가 아닙니다. 우리의 AI는 뉴스, 릴리스 및 신호를 지속적으로 처리합니다."
+      },
+      {
+        "title": "AI-기반 방법론",
+        "description": "대형 언어 모델을 중심으로 처음부터 구축되었습니다 — 후에 추가된 것이 아닙니다. AI는 우리가 생산하는 모든 분석의 핵심입니다."
+      }
+    ]
+  },
+  "team": {
+    "eyebrow": "팀 소개",
+    "heading": "실무자를 위해 실무자가 구축",
+    "description": "ITMAP은 기술 선택 프로젝트를 양쪽에서 이끌어온 기업 IT 베테랑 팀에 의해 구축되었습니다 — 의사 결정을 내리는 IT 리더로서, 그리고 평가되는 플랫폼을 구축하는 기술자로서.",
+    "highlights": [
+      "40년 이상의 합산 기업 IT 경험",
+      "선도적인 연구 회사 출신의 전직 분석가",
+      "인프라, 클라우드 및 데이터 보호 분야의 깊은 운영 전문성",
+      "벤더 선택 문제를 직접 경험한 기술자"
+    ]
+  },
+  "contact": {
+    "eyebrow": "문의하기",
+    "heading": "인텔리전스에 대해 이야기합시다",
+    "description": "플랫폼 탐색, 라이선스 문의 또는 조직의 벤더 선택 문제에 대해 논의하고 싶다면, 저희에게 연락해 주세요.",
+    "form": {
+      "heading": "메시지 보내기",
+      "responseTime": "보통 영업일 기준 1일 이내에 응답합니다.",
+      "firstName": "이름",
+      "firstNamePlaceholder": "Jane",
+      "lastName": "성",
+      "lastNamePlaceholder": "Smith",
+      "workEmail": "업무 이메일",
+      "emailPlaceholder": "jane.smith@company.com",
+      "company": "회사",
+      "companyPlaceholder": "Acme Corp",
+      "subject": "제목",
+      "subjectPlaceholder": "플랫폼 문의 / 라이선스 / 연구",
+      "message": "메시지",
+      "messagePlaceholder": "기술 인텔리전스 필요 사항이나 저희가 어떻게 도울 수 있는지 알려주세요...",
+      "sendMessage": "메시지 보내기",
+      "privacyPrefix": "이 메시지를 보내면 저희의",
+      "privacyPolicy": "개인정보 보호정책에 동의하게 됩니다"
+    },
+    "details": {
+      "labels": [
+        "이메일",
+        "사무실",
+        "영업 시간"
+      ]
+    },
+    "partnership": {
+      "heading": "파트너십을 탐색하시겠습니까?",
+      "description": "우리는 연구 회사, IT 컨설팅 및 조달 플랫폼과 협력합니다. ITMAP 인텔리전스를 워크플로에 통합하는 데 관심이 있다면, 이야기해 봅시다.",
+      "button": "파트너십 탐색"
+    }
+  },
+  "cta": {
+    "heading": "다르게 볼 준비가 되셨습니까?",
+    "description": "의제 없는 인텔리전스를 선택하는 기업 IT 리더의 증가하는 수에 합류하세요.",
+    "getFreeAccess": "무료 액세스 받기",
+    "exploreMarkets": "시장 탐색"
+  }
+}

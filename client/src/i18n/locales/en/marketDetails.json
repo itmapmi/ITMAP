@@ -1,0 +1,127 @@
+{
+  "seo": {
+    "title": "{{marketName}} — Vendor Intelligence | ITMAP.ai",
+    "description": "Independent vendor rankings, feature evaluations, and market analysis for {{marketName}}. Compare vendors on ITMAP.ai.",
+    "defaultTitle": "ITMAP.ai — Enterprise IT Vendor Intelligence"
+  },
+  "tabs": {
+    "marketSections": "Market sections",
+    "vendorEvaluation": {
+      "mobile": "Vendor Eval",
+      "desktop": "Vendor Evaluation"
+    },
+    "compareProducts": {
+      "mobile": "Compare",
+      "desktop": "Compare Products"
+    },
+    "supportMatrix": {
+      "mobile": "Support",
+      "desktop": "Support Matrix"
+    },
+    "methodology": {
+      "mobile": "Method",
+      "desktop": "Methodology"
+    },
+    "mobile": {
+      "vendor-evaluation": {
+        "label": "Vendor Eval",
+        "fullLabel": "Vendor Evaluation"
+      },
+      "support-matrix": {
+        "label": "Compare",
+        "fullLabel": "Compare Products"
+      },
+      "ecosystem-support": {
+        "label": "Interop",
+        "fullLabel": "Interop"
+      },
+      "vendor-intelligence": {
+        "label": "Intelligence",
+        "fullLabel": "Vendor Intelligence"
+      },
+      "research-reports": {
+        "label": "Reports",
+        "fullLabel": "Research Reports"
+      }
+    },
+    "intelligence": "Intelligence",
+    "intelligenceWithActive": "Intelligence: {{active}}",
+    "news": "News",
+    "intelligenceFeed": "Intelligence Feed",
+    "newPlayers": "New Players",
+    "vendorNewsroomUrls": "Vendor Newsroom URLs",
+    "reports": "Reports",
+    "aiChat": "AI Chat"
+  },
+  "states": {
+    "errorLoadingMarket": "Error Loading Market",
+    "unableToFetchMarket": "Unable to fetch market details. Please try again later.",
+    "marketNotFound": "Market Not Found",
+    "requestedMarketNotFound": "The requested market could not be found.",
+    "noStoredDefinition": "No stored market definition is available."
+  },
+  "buttons": {
+    "backToMarkets": "Back to Markets",
+    "allMarkets": "All Markets",
+    "back": "Back",
+    "getFreeAccess": "Get Free Access",
+    "signIn": "Sign In",
+    "toggleFullDefinition": "Toggle full market definition",
+    "hideDefinition": "Hide definition",
+    "readFullDefinition": "Read full definition",
+    "starting": "Starting…",
+    "rfp": "RFP",
+    "generateRfp": "Generate RFP",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "savePositions": "Save Positions",
+    "editLabelPositions": "Edit Label Positions",
+    "openAiChat": "Open AI Chat"
+  },
+  "preview": {
+    "vendorsTracked": "Vendors tracked in this market",
+    "signInDescription": "Sign in for vendor scores, feature matrices, quadrant positioning, and research reports.",
+    "fullAccessFree": "Full access is free",
+    "createAccountDescription": "Create a free account to unlock vendor scores, feature evaluation matrices, quadrant charts, news analysis, and downloadable PDF reports."
+  },
+  "owner": {
+    "phases": {
+      "product": "Product",
+      "ecosystem": "Ecosystem"
+    },
+    "phaseNotAdded": "{{phase}} phase not added yet",
+    "phaseDescription": "This market was published without the {{phase}} phase. Add it in the Market Builder to populate this section.",
+    "addPhase": "Add {{phase}} phase"
+  },
+  "toasts": {
+    "openAiKeyRequired": "OpenAI key required",
+    "addOpenAiKey": "Add your OpenAI API key in Settings → LLM Keys.",
+    "couldNotStartRfp": "Could not start RFP",
+    "saved": "Saved",
+    "labelPositionsUpdated": "Updated {{count}} label position(s).",
+    "saveFailed": "Save failed",
+    "couldNotSaveLabelPositions": "Could not save label positions.",
+    "success": "Success",
+    "fullReportGenerated": "Full market report generated successfully",
+    "error": "Error",
+    "fullReportFailed": "Failed to generate full report",
+    "summaryReportGenerated": "Summary report generated successfully",
+    "summaryReportFailed": "Failed to generate summary report"
+  },
+  "labels": {
+    "dragVendorToReposition": "Drag any vendor name to reposition it.",
+    "unsavedChanges": "{{count}} unsaved change(s)",
+    "adjustClutteredLabels": "Labels look cluttered? Adjust them."
+  },
+  "vendorNewsroom": {
+    "heading": "Vendor Newsroom URLs",
+    "description": "Add a press / newsroom page for each vendor — the daily ingestion at 7:00 AM UTC will pull their news automatically.",
+    "openDedicatedPage": "Open dedicated page"
+  },
+  "reports": {
+    "generateFullTitle": "Generate Full Market Report",
+    "generateFullDescription": "Select vendors to include in the full market report (all sections combined)",
+    "downloadSummaryTitle": "Download Summary Report",
+    "downloadSummaryDescription": "Select vendors for a short AI-generated summary (~2-3 pages per vendor). This may take a moment while the AI condenses each section."
+  }
+}

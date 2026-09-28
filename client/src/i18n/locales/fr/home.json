@@ -1,0 +1,174 @@
+{
+  "seo": {
+    "title": "ITMAP — Intelligence des fournisseurs IT d'entreprise | Voir chaque fournisseur. Connaître chaque mouvement.",
+    "description": "Intelligence des fournisseurs IT d'entreprise native à l'IA — classements indépendants des fournisseurs, évaluations des fonctionnalités, prévisions de marché alimentées par l'IA, analyse de l'impact des actualités et rapports de recherche pour les acheteurs de technologie."
+  },
+  "marketCard": {
+    "inReview": "En révision",
+    "liveData": "Données en direct",
+    "explore": "Explorer"
+  },
+  "buyerDashboard": {
+    "welcomeBack": "Bon retour{{name}}.",
+    "decisionTools": "Outils de décision",
+    "researchWorkflow": "Votre flux de recherche",
+    "markets": "Marchés",
+    "evaluateVendors": "Évaluer les fournisseurs à travers la recherche de marché en direct, le contexte produit et les signaux.",
+    "rfpBuilder": "Générateur de RFP",
+    "createVendorRequests": "Créer, gérer et envoyer des demandes aux fournisseurs.",
+    "securityIntelligence": "Intelligence de sécurité",
+    "vulnerabilitiesAlerts": "Vulnérabilités et alertes",
+    "methodology": "Méthodologie",
+    "howItmapEvaluates": "Comment ITMAP évalue",
+    "researchCoverage": "Couverture de recherche",
+    "liveMarkets": "Marchés en direct",
+    "currentMarketIntelligence": "Intelligence de marché actuelle prête à être examinée.",
+    "viewAll": "Voir tout"
+  },
+  "vendorDashboard": {
+    "notLinked": {
+      "heading": "Compte non lié à un fournisseur",
+      "messageBefore": "Votre compte est provisionné en tant que siège fournisseur mais n'a pas encore été lié à un enregistrement fournisseur. Cela est fait par un",
+      "administrator": "administrateur itmap.ai",
+      "messageAfter": " — veuillez contacter votre gestionnaire de compte pour finaliser la configuration.",
+      "accountLabel": "Votre compte",
+      "contactSales": "Contactez sales@itmap.ai"
+    },
+    "vendorSeat": "Siège fournisseur",
+    "itVendor": "Fournisseur IT",
+    "linkedAs": "lié en tant que",
+    "intelligenceHub": "Centre d'intelligence",
+    "your": "Votre",
+    "vendorHub": "Centre fournisseur",
+    "fallbackHubWithName": "Centre fournisseur de {{name}}",
+    "headerDescription": "Données de marché, signaux concurrentiels et outils fournisseurs — les fonctionnalités verrouillées nécessitent une mise à niveau du plan.",
+    "platformTools": "Outils de la plateforme",
+    "vendorTools": "Outils fournisseurs",
+    "toolsDescription": "Outils puissants pour la génération de leads, la réponse concurrentielle et l'intelligence de marché — mise à niveau du plan requise.",
+    "markets": "Marchés",
+    "marketsDescription": "Parcourez tous les marchés et explorez les évaluations des fournisseurs, les comparaisons de produits et les données d'écosystème.",
+    "yourMarkets": "Vos marchés",
+    "myMarkets": "Mes marchés",
+    "marketsWhereCompanyAppears_one": "{{count}} marché où {{company}} apparaît",
+    "marketsWhereCompanyAppears_other": "{{count}} marchés où {{company}} apparaît",
+    "allMarkets": "Tous les marchés",
+    "allMarketsHeading": "Tous les marchés",
+    "allMarketsDescription": "Évaluation des fournisseurs, évaluation des produits, évaluation de l'écosystème, actualités et chat IA — entièrement accessible.",
+    "explore": "Explorer",
+    "reports": "Rapports",
+    "myReports": "Mes rapports",
+    "myReportsDescription": "Marchés que vous avez construits via le Générateur de marché.",
+    "openMarketBuilder": "Ouvrir le Générateur de marché",
+    "manageCustomReports": "Voir et gérer vos rapports de marché personnalisés"
+  },
+  "vendorTools": {
+    "lead_gen": {
+      "label": "Générateur de leads",
+      "description": "Capturer et qualifier l'intérêt des acheteurs entrants mappé à votre profil fournisseur."
+    },
+    "rfp": {
+      "label": "Répondeur de RFP",
+      "description": "Génération de réponse RFP assistée par IA utilisant votre base de connaissances produit."
+    },
+    "market_builder": {
+      "label": "Générateur de marché",
+      "description": "Construire des évaluations de fournisseurs personnalisées pondérées selon vos critères spécifiques."
+    },
+    "forecast_builder": {
+      "label": "Générateur de prévisions",
+      "description": "Dimensionnement de marché natif à l'IA, projections multi-scénarios et tableaux de sensibilité."
+    },
+    "fact_review": {
+      "label": "Révision des faits",
+      "description": "Réviser et approuver les faits générés par l'IA sur vos produits à travers les marchés."
+    },
+    "battle_cards": {
+      "label": "Cartes de bataille",
+      "description": "Cartes de bataille concurrentielles pour chaque marché où vous concourez — prêtes à l'emploi en vente."
+    },
+    "cve_intelligence": {
+      "label": "Intelligence de sécurité",
+      "description": "Vulnérabilités CVE, alertes CISA KEV et scores d'exploitation EPSS suivis à travers les fournisseurs IT."
+    },
+    "market_trends": {
+      "label": "Tendances du marché",
+      "description": "Part de visiteurs et d'engagement à travers les marchés, pays et fournisseurs concurrents — en pourcentages."
+    }
+  },
+  "stats": {
+    "marketsCovered": "Marchés IT couverts",
+    "vendorsEvaluated": "Fournisseurs évalués",
+    "independentResearch": "Recherche indépendante",
+    "analysisEngine": "Moteur d'analyse"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "Alimenté par l'IA · Indépendant · En temps réel",
+      "titleLine1": "Voir chaque fournisseur.",
+      "titleLine2": "Connaître chaque mouvement.",
+      "subtitle": "Intelligence IT d'entreprise indépendante et alimentée par l'IA pour les acheteurs de technologie. Pas de biais. Pas de conjecture.",
+      "freeMessage": "100% gratuit, pour toujours — pas de plan payant, pas de carte de crédit",
+      "features": {
+        "allMarkets": "Accès à tous les marchés",
+        "vendorMaps": "Cartes des fournisseurs en temps réel",
+        "productComparisons": "Comparaisons de produits approfondies",
+        "vendorIntelligence": "Intelligence des fournisseurs",
+        "securityIntelligence": "Intelligence de sécurité",
+        "rfpBuilder": "Générateur de RFP"
+      },
+      "getFreeAccess": "Obtenez un accès gratuit"
+    },
+    "markets": {
+      "eyebrow": "MARCHÉS EN DIRECT",
+      "titleLine1": "Couverture qui",
+      "titleLine2": "compte",
+      "description": "Évaluations approfondies à travers la pile d'infrastructure d'entreprise, mises à jour en continu avec une intelligence notée par l'IA.",
+      "createBuyerAccount": "Créer un compte acheteur gratuit"
+    },
+    "howItWorks": {
+      "eyebrow": "COMMENT ÇA MARCHE",
+      "titleLine1": "Intelligence sans",
+      "titleLine2": "attente",
+      "description": "Des données brutes aux insights exploitables — entièrement automatisé, continuellement rafraîchi.",
+      "steps": [
+        {
+          "title": "Ingestion de données",
+          "description": "Notre IA ingère en continu les données publiques des fournisseurs, actualités, sorties de produits, finances et commentaires d'analystes à travers le paysage IT d'entreprise."
+        },
+        {
+          "title": "Analyse alimentée par l'IA",
+          "description": "Les grands modèles de langage traitent et notent les fournisseurs sur plus de 40 dimensions de capacité — exécution, profondeur du produit, écosystème et viabilité financière."
+        },
+        {
+          "title": "Intelligence exploitable",
+          "description": "Obtenez des cartes interactives des fournisseurs, des matrices de fonctionnalités, des actualités notées par impact et des rapports de recherche générés par l'IA — mis à jour en continu, sans biais."
+        }
+      ]
+    },
+    "news": {
+      "eyebrow": "INTELLIGENCE EN DIRECT",
+      "titleLine1": "Actualités qui",
+      "titleLine2": "font bouger les marchés",
+      "description": "Chaque événement d'actualité des fournisseurs est analysé pour son impact sur le positionnement du marché. Sachez à qui cela profite — et à qui cela ne profite pas.",
+      "impact": "impact",
+      "impactScore": "Score d'impact IA",
+      "getBuyerAccess": "Obtenez un accès acheteur gratuit"
+    },
+    "bottomCta": {
+      "heading": "Prêt à voir clairement ?",
+      "description": "Rejoignez les équipes IT d'entreprise qui font confiance à ITMAP pour une intelligence des fournisseurs impartiale et alimentée par l'IA.",
+      "buyerAccess": "Obtenez un accès acheteur gratuit",
+      "vendorAccess": "Contactez les ventes pour un accès fournisseur"
+    },
+    "footer": {
+      "rightsReserved": "Tous droits réservés.",
+      "platform": "Plateforme",
+      "about": "À propos",
+      "licensing": "Licence",
+      "contact": "Contact",
+      "privacy": "Confidentialité",
+      "terms": "Conditions",
+      "linkedinAriaLabel": "Suivez ITMAP sur LinkedIn"
+    }
+  }
+}

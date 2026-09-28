@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
 import { formatCoveragePercent, getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
-import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
+import { useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface EcosystemSupportProps {
   marketId: string;
@@ -46,6 +47,8 @@ const HarveyBall = ({
   onClick: () => void; 
   isMobile?: boolean;
 }) => {
+  const { t } = useTranslation("ecosystemSupport");
+
   const getHarveyBallIcon = (level: number) => {
     switch (level) {
       case 0: return "○"; // Empty circle - No support
@@ -70,12 +73,12 @@ const HarveyBall = ({
 
   const getSupportText = (level: number) => {
     switch (level) {
-      case 0: return "No Support";
-      case 1: return "Limited";
-      case 2: return "Partial";
-      case 3: return "Good";
-      case 4: return "Full Support";
-      default: return "Unknown";
+      case 0: return t("support.level.noSupport");
+      case 1: return t("support.level.limited");
+      case 2: return t("support.level.partial");
+      case 3: return t("support.level.good");
+      case 4: return t("support.level.fullSupport");
+      default: return t("support.level.unknown");
     }
   };
 
@@ -84,7 +87,9 @@ const HarveyBall = ({
       <button
         onClick={onClick}
         className={`${isMobile ? 'text-3xl p-2' : 'text-2xl p-1'} ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full ${isMobile ? 'min-w-[44px] min-h-[44px]' : ''}`}
-        title={`${getSupportText(level)}${notes ? ' - Click for notes' : ''}`}
+        title={notes
+          ? t("support.tooltipWithNotes", { level: getSupportText(level) })
+          : t("support.tooltip", { level: getSupportText(level) })}
       >
         {getHarveyBallIcon(level)}
         {notes && (
@@ -96,6 +101,7 @@ const HarveyBall = ({
 };
 
 export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick, mobileMode = false }: EcosystemSupportProps) {
+  const { t } = useTranslation("ecosystemSupport");
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -151,7 +157,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       );
 
       if (!response.ok) {
-        throw new Error("Failed to generate report");
+        throw new Error(t("messages.generateFailed"));
       }
 
       const contentDisposition = response.headers.get('Content-Disposition');
@@ -168,16 +174,16 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       document.body.removeChild(a);
 
       toast({
-        title: "Success",
-        description: "ISV Ecosystem report generated successfully",
+        title: t("messages.success"),
+        description: t("messages.reportGenerated"),
       });
 
       setShowVendorModal(false);
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
-        title: "Error",
-        description: "Failed to generate report",
+        title: t("messages.error"),
+        description: t("messages.generateFailed"),
         variant: "destructive",
       });
     } finally {
@@ -253,8 +259,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       } else {
         if (mobileMode && newSet.size >= MOBILE_VENDOR_CAP) {
           toast({
-            title: "Choose exactly 2 products",
-            description: "Deselect one product before selecting another.",
+            title: t("selection.exactlyTwoTitle"),
+            description: t("selection.deselectOneDescription"),
           });
           return prev;
         }
@@ -304,9 +310,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
           <CardTitle className="flex items-center gap-2">
             <Network className="h-5 w-5 text-green-500" />
-            Ecosystem Support
+            {t("heading")}
           </CardTitle>
-          <CardDescription>Third-party integrations and ecosystem partnerships</CardDescription>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -333,18 +339,18 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <CardHeader className="border-b border-[#d6dcd6] bg-white px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">01 · Products to compare</p>
-              <CardTitle className="mt-1 text-base text-[#18394b]">Choose exactly 2</CardTitle>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">{t("selection.stepHeading")}</p>
+              <CardTitle className="mt-1 text-base text-[#18394b]">{t("selection.exactlyTwoTitle")}</CardTitle>
             </div>
           </div>
           <CardDescription className="text-xs leading-5 text-[#647579]">
-            Select two products. Each ecosystem row keeps both support records together.
+            {t("selection.twoProductsDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4">
           {allVendors && allVendors.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Products to compare">
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("selection.productsToCompare")}>
                 {allVendors.map((vendor) => {
                   const active = selectedVendors.has(vendor.id);
                   return (
@@ -368,7 +374,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                       <span className="min-w-0">
                         <strong className="block break-words text-xs">{vendor.name}</strong>
                         <span className="mt-1 block break-words text-[10px] leading-[1.3] text-[#748285]">
-                          {vendor.product || "Product name unavailable"}
+                          {vendor.product || t("selection.productNameUnavailable")}
                         </span>
                       </span>
                     </button>
@@ -376,8 +382,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 })}
               </div>
               <div className="mt-4 border border-[#d6dcd6] bg-white p-3">
-                <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-[#647579]">Support levels</p>
-                <p className="mt-2 text-[11px] leading-5 text-[#647579]">○ None · ◔ Limited · ◑ Partial · ◕ Good · ● Full</p>
+                <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-[#647579]">{t("support.levelsHeading")}</p>
+                <p className="mt-2 text-[11px] leading-5 text-[#647579]">{t("support.legendCompact")}</p>
               </div>
               <Button
                 onClick={handleProceedWithSelection}
@@ -385,11 +391,11 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 className="mt-4 min-h-11 w-full rounded-none bg-[#18394b] text-white hover:bg-[#102c3b]"
                 data-testid="proceed-with-selection-button"
               >
-                Compare {selectedVendors.size}/2
+                {t("selection.compareCount", { count: selectedVendors.size })}
               </Button>
             </>
           ) : (
-            <p className="py-8 text-center text-sm text-[#647579]">No products are available for this market.</p>
+            <p className="py-8 text-center text-sm text-[#647579]">{t("selection.noProducts")}</p>
           )}
         </CardContent>
       </Card>
@@ -403,14 +409,14 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
           <CardTitle className="flex items-center gap-2">
             <Network className="h-5 w-5 text-green-500" />
-            Ecosystem Support
+            {t("heading")}
           </CardTitle>
-          <CardDescription>Select vendors to compare their third-party integrations and ecosystem partnerships</CardDescription>
+          <CardDescription>{t("selection.chooseVendorsDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           {isLoading ? (
             <div className="space-y-4">
-              <div className="text-center text-gray-500">Loading vendors...</div>
+              <div className="text-center text-gray-500">{t("selection.loadingVendors")}</div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="p-4 border rounded-lg">
@@ -422,8 +428,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
           ) : allVendors && allVendors.length > 0 ? (
             <div className="space-y-6">
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Vendors to Compare</h3>
-                <p className="text-gray-600 mb-4">Select one or more vendors to view their ecosystem support capabilities</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("selection.chooseVendorsHeading")}</h3>
+                <p className="text-gray-600 mb-4">{t("selection.chooseVendorsPrompt")}</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -463,7 +469,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="text-sm text-gray-600">
-                  {selectedVendors.size === 0 ? 'No vendors selected' : `${selectedVendors.size} vendor${selectedVendors.size === 1 ? '' : 's'} selected`}
+                  {selectedVendors.size === 0
+                    ? t("selection.noVendorsSelected")
+                    : t("selection.vendorsSelected", { count: selectedVendors.size })}
                 </div>
                 <div className="space-x-2">
                   <Button
@@ -472,14 +480,14 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                     disabled={selectedVendors.size === 0}
                     data-testid="clear-vendors-button"
                   >
-                    Clear All
+                    {t("selection.clearAll")}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={selectAllVendors}
                     data-testid="select-all-vendors-button"
                   >
-                    Select All
+                    {t("selection.selectAll")}
                   </Button>
                   <Button
                     onClick={handleProceedWithSelection}
@@ -487,14 +495,16 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                     className="bg-green-600 hover:bg-green-700"
                     data-testid="proceed-with-selection-button"
                   >
-                    {mobileMode ? `Compare ${selectedVendors.size}/2` : `View Ecosystem Support (${selectedVendors.size})`}
+                    {mobileMode
+                      ? t("selection.compareCount", { count: selectedVendors.size })
+                      : t("selection.viewEcosystemSupport", { count: selectedVendors.size })}
                   </Button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-center text-gray-500">
-              <p>No vendors available for this market.</p>
+              <p>{t("selection.noVendorsAvailable")}</p>
             </div>
           )}
         </CardContent>
@@ -506,9 +516,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     if (mobileMode) {
       return (
         <section className="border border-slate-200 bg-white p-5 font-[Montserrat]" role="status">
-          <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-wider text-sky-600">Ecosystem evaluation</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-950">Ecosystem support unavailable</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">No stored ecosystem-support records are available for this market.</p>
+          <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-wider text-sky-600">{t("headingEvaluation")}</p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-950">{t("empty.supportUnavailableHeading")}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">{t("empty.noStoredSupportRecords")}</p>
         </section>
       );
     }
@@ -517,12 +527,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
           <CardTitle className="flex items-center gap-2">
             <Network className="h-5 w-5 text-green-500" />
-            Ecosystem Support
+            {t("heading")}
           </CardTitle>
-          <CardDescription>Third-party integrations and ecosystem partnerships</CardDescription>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <p className="text-gray-500">No ecosystem support data available for this market.</p>
+          <p className="text-gray-500">{t("empty.noSupportData")}</p>
         </CardContent>
       </Card>
     );
@@ -533,8 +543,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       return (
         <section className="border border-dashed border-slate-300 bg-slate-50 p-6 text-center font-[Montserrat]">
           <Network className="mx-auto h-6 w-6 text-sky-500" />
-          <p className="mt-3 text-sm font-semibold text-slate-950">No ecosystem features stored</p>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">This market does not currently contain stored ecosystem feature evaluations.</p>
+          <p className="mt-3 text-sm font-semibold text-slate-950">{t("empty.noFeaturesStoredHeading")}</p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-500">{t("empty.noStoredFeatureEvaluations")}</p>
         </section>
       );
     }
@@ -543,17 +553,17 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
           <CardTitle className="flex items-center gap-2">
             <Network className="h-5 w-5 text-green-500" />
-            Ecosystem Support
+            {t("heading")}
           </CardTitle>
-          <CardDescription>Third-party integrations and ecosystem partnerships</CardDescription>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="text-center py-12">
             <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
               <Network className="h-8 w-8 text-gray-400" />
             </div>
-            <p className="text-lg font-medium text-gray-900 mb-2">No Ecosystem Features</p>
-            <p className="text-gray-500">No ecosystem features have been defined for this market yet.</p>
+            <p className="text-lg font-medium text-gray-900 mb-2">{t("empty.noFeaturesHeading")}</p>
+            <p className="text-gray-500">{t("empty.noFeaturesDescription")}</p>
           </div>
         </CardContent>
       </Card>
@@ -572,12 +582,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
   const getSupportText = (level: number) => {
     switch (level) {
-      case 0: return "No Support";
-      case 1: return "Limited";
-      case 2: return "Partial";
-      case 3: return "Good";
-      case 4: return "Full Support";
-      default: return "Unknown";
+      case 0: return t("support.level.noSupport");
+      case 1: return t("support.level.limited");
+      case 2: return t("support.level.partial");
+      case 3: return t("support.level.good");
+      case 4: return t("support.level.fullSupport");
+      default: return t("support.level.unknown");
     }
   };
 
@@ -601,7 +611,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         featureName: feature.name,
         supportLevel: record?.level ?? 0,
         unavailable: !record,
-        notes: record?.notes?.trim() || "No stored commentary is available for this support record.",
+        notes: record?.notes?.trim() || t("notes.noStoredCommentary"),
       });
     };
 
@@ -610,8 +620,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <CardHeader className="border-b border-[#d6dcd6] bg-white px-4 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">02 · Ecosystem support &amp; commentary</p>
-              <CardTitle className="mt-1 text-base text-[#18394b]">Ecosystem evaluation</CardTitle>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">{t("evaluation.stepHeading")}</p>
+              <CardTitle className="mt-1 text-base text-[#18394b]">{t("headingEvaluation")}</CardTitle>
             </div>
             <Button
               variant="outline"
@@ -621,7 +631,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               data-testid="button-generate-ecosystem-report"
             >
               {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
-              PDF
+              {t("reports.pdf")}
             </Button>
           </div>
           <Button
@@ -630,18 +640,18 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             className="h-auto w-fit p-0 text-[11px] font-bold text-[#16877c] hover:bg-transparent"
             data-testid="back-to-vendor-selection-button"
           >
-            Change products
+            {t("selection.changeProducts")}
           </Button>
         </CardHeader>
         <CardContent className="p-4">
           <div className="border border-[#d6dcd6] bg-white">
             <div className="grid grid-cols-3 bg-[#18394b] text-[#f8f6ee]">
-              <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9ac4c1]">Feature</span>
+              <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9ac4c1]">{t("table.feature")}</span>
               {vendors.map((vendor) => (
                 <span key={vendor.id} className="border-r border-white/15 p-2">
                   <strong className="block break-words text-[11px] leading-tight text-white">{vendor.name}</strong>
                   <small className="mt-1 block break-words text-[9px] leading-tight text-[#bdd3d1]">
-                    {vendor.product || "Product unavailable"}
+                    {vendor.product || t("selection.productUnavailable")}
                   </small>
                 </span>
               ))}
@@ -660,7 +670,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                   >
                     <span>
                       <strong className="block text-xs text-[#18394b]">{category.name}</strong>
-                      <small className="mt-1 block text-[10px] text-[#718083]">{categoryFeatures.length} stored rows</small>
+                      <small className="mt-1 block text-[10px] text-[#718083]">{t("evaluation.storedRows", { count: categoryFeatures.length })}</small>
                     </span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                   </button>
@@ -670,7 +680,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                         <article key={feature.id} className="border-t border-[#e1e4de] p-3">
                           <h3 className="m-0 text-xs font-semibold text-[#18394b]">{feature.name}</h3>
                           <p className="mb-2.5 mt-1 text-[11px] leading-[1.4] text-[#718082]">
-                            {feature.description || "No evaluation criteria stored for this feature."}
+                            {feature.description || t("evaluation.noCriteriaForFeature")}
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             {vendors.map((vendor) => {
@@ -685,21 +695,21 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                         record.level === 3 ? "text-blue-500" :
                                         record.level === 2 ? "text-yellow-500" :
                                         record.level === 1 ? "text-orange-500" : "text-gray-300"
-                                      }`} aria-label={`${record.level} of 4 support`}>
+                                      }`} aria-label={t("support.accessibleLevel", { level: record.level })}>
                                         {["○", "◔", "◑", "◕", "●"][record.level] ?? "○"}
                                       </span>
                                       <b className="font-mono text-[11px] text-[#16877c]">{record.level} / 4</b>
                                     </div>
                                   ) : (
-                                    <p className="m-0 min-h-6 text-[10px] font-bold text-[#9a5a42]">Unavailable</p>
+                                    <p className="m-0 min-h-6 text-[10px] font-bold text-[#9a5a42]">{t("selection.unavailable")}</p>
                                   )}
                                   <button
                                     type="button"
                                     onClick={() => openNotes(vendor, feature)}
                                     className="mt-2 min-h-8 w-full border border-[#b9d8ec] bg-[#dcebf6] px-1 text-[10px] font-bold text-[#087fca]"
-                                    aria-label={`View notes for ${vendor.name}, ${feature.name}`}
+                                    aria-label={t("notes.viewNotesFor", { vendor: vendor.name, feature: feature.name })}
                                   >
-                                    View notes
+                                    {t("notes.viewNotes")}
                                   </button>
                                 </div>
                               );
@@ -718,29 +728,31 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         <Dialog open={!!selectedNotes} onOpenChange={(open) => !open && setSelectedNotes(null)}>
           <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-md flex-col gap-0 overflow-hidden rounded-none border-[#d6dcd6] p-0">
             <DialogHeader className="border-b border-[#d6dcd6] bg-[#f4f5ef] px-4 py-4 pr-12">
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">Evaluation notes</p>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">{t("notes.evaluationNotes")}</p>
               <DialogTitle className="text-left text-base text-[#18394b]">{selectedNotes?.featureName}</DialogTitle>
             </DialogHeader>
             {selectedNotes && (
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-testid="ecosystem-notes-body">
                 <div className="grid grid-cols-2 border-b border-[#d6dcd6] px-4">
                   <div className="py-3 pr-2">
-                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Vendor</span>
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">{t("notes.vendor")}</span>
                     <strong className="mt-1 block break-words text-xs">{selectedNotes.vendorName}</strong>
                   </div>
                   <div className="py-3">
-                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Product</span>
-                    <strong className="mt-1 block break-words text-xs">{selectedNotes.productName || "Unavailable"}</strong>
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">{t("notes.product")}</span>
+                    <strong className="mt-1 block break-words text-xs">{selectedNotes.productName || t("selection.unavailable")}</strong>
                   </div>
                   <div className="col-span-2 border-t border-[#e4e6e0] py-3">
-                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Support</span>
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">{t("notes.support")}</span>
                     <strong className="mt-1 block text-xs">
-                      {selectedNotes.unavailable ? "Support record unavailable" : `${selectedNotes.supportLevel} / 4 · ${getSupportText(selectedNotes.supportLevel)}`}
+                      {selectedNotes.unavailable
+                        ? t("notes.supportRecordUnavailable")
+                        : t("notes.supportLevel", { level: selectedNotes.supportLevel, support: getSupportText(selectedNotes.supportLevel) })}
                     </strong>
                   </div>
                 </div>
                 <div className="p-4">
-                  <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Stored commentary</span>
+                  <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">{t("notes.storedCommentary")}</span>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#42565d]">{selectedNotes.notes}</p>
                 </div>
               </div>
@@ -753,8 +765,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
           onOpenChange={setShowVendorModal}
           vendors={allVendors || []}
           onGenerate={handleGenerateReport}
-          title="Generate ISV Ecosystem Report"
-          description="Select vendors to include in the ISV Ecosystem PDF report"
+          title={t("reports.generateTitle")}
+          description={t("reports.generateDescription")}
           isGenerating={isGenerating}
         />
       </Card>
@@ -810,7 +822,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
   const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string, key?: string) => {
     if (mobileMode) {
-      setSelectedNotes({ vendorName, featureName, supportLevel, notes: notes || "No stored commentary is available for this support record." });
+      setSelectedNotes({ vendorName, featureName, supportLevel, notes: notes || t("notes.noStoredCommentary") });
       return;
     }
     if (notes) {
@@ -832,37 +844,37 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg shadow-md">
                 <Network className="h-5 w-5 text-white" />
               </div>
-              Ecosystem Support
+              {t("heading")}
               <Badge variant="secondary" className="bg-green-100 text-green-700 shadow-sm">
                 <Globe className="h-3 w-3 mr-1" />
-                {vendors.length} of {allVendors?.length || 0} vendors
+                {t("selection.vendorCount", { selected: vendors.length, total: allVendors?.length || 0 })}
               </Badge>
             </CardTitle>
             <CardDescription className="flex items-center gap-4 flex-wrap mt-3">
               <span className="text-gray-600 flex items-center gap-2">
                 <Info className="h-4 w-4" />
-                Third-party integrations and ecosystem partnerships
+                {t("description")}
               </span>
               <div className="flex items-center gap-3 p-2 bg-white/60 rounded-lg border border-white/40 backdrop-blur-sm">
                 <div className="flex items-center gap-1">
                   <span className="text-green-500 text-lg font-bold">●</span>
-                  <span className="text-xs font-medium">Full</span>
+                  <span className="text-xs font-medium">{t("support.legend.full")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-blue-500 text-lg font-bold">◕</span>
-                  <span className="text-xs font-medium">Good</span>
+                  <span className="text-xs font-medium">{t("support.legend.good")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-500 text-lg font-bold">◑</span>
-                  <span className="text-xs font-medium">Partial</span>
+                  <span className="text-xs font-medium">{t("support.legend.partial")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-orange-500 text-lg font-bold">◔</span>
-                  <span className="text-xs font-medium">Limited</span>
+                  <span className="text-xs font-medium">{t("support.legend.limited")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-gray-400 text-lg font-bold">○</span>
-                  <span className="text-xs font-medium">None</span>
+                  <span className="text-xs font-medium">{t("support.legend.none")}</span>
                 </div>
               </div>
             </CardDescription>
@@ -876,7 +888,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               data-testid="button-generate-ecosystem-report"
             >
               {pdfLocked ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
-              PDF Report
+              {t("reports.pdfReport")}
             </Button>
             <Button
               variant="outline"
@@ -888,7 +900,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
               </svg>
-              Change Selection
+              {t("selection.changeSelection")}
             </Button>
             <div className="flex items-center gap-2">
               <Button
@@ -898,7 +910,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
               >
                 <ChevronDown className="h-4 w-4" />
-                Expand All
+                {t("categories.expandAll")}
               </Button>
               <Button
                 variant="outline"
@@ -907,7 +919,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
               >
                 <ChevronRight className="h-4 w-4" />
-                Collapse All
+                {t("categories.collapseAll")}
               </Button>
             </div>
             <Button
@@ -917,7 +929,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-md transition-all duration-200"
             >
               <Filter className="h-4 w-4" />
-              {showVendorSelection ? "Hide Filters" : "Filter Vendors"}
+              {showVendorSelection ? t("selection.hideFilters") : t("selection.filterVendors")}
             </Button>
           </div>
         </div>
@@ -928,14 +940,14 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
                 <Filter className="h-4 w-4 text-green-500" />
-                Choose Vendors to Compare
+                {t("selection.chooseVendorsHeading")}
               </h4>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={selectAllVendors} className="hover:bg-green-50">
-                  Select All
+                  {t("selection.selectAll")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={clearAllVendors} className="hover:bg-red-50">
-                  Clear All
+                  {t("selection.clearAll")}
                 </Button>
               </div>
             </div>
@@ -960,7 +972,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             {selectedVendors.size === 0 && (
               <p className="text-sm text-amber-600 mt-3 flex items-center gap-2 p-2 bg-amber-50 rounded-lg">
                 <Eye className="h-4 w-4" />
-                Select at least one vendor to view the ecosystem support matrix
+                {t("selection.selectAtLeastOne")}
               </p>
             )}
           </div>
@@ -973,9 +985,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
               <Users className="h-8 w-8 text-gray-400" />
             </div>
-            <p className="text-lg font-medium text-gray-900 mb-2">No Vendors Selected</p>
+            <p className="text-lg font-medium text-gray-900 mb-2">{t("empty.noVendorsSelectedHeading")}</p>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Choose vendors from the filters above to compare their ecosystem support capabilities
+              {t("empty.chooseVendorsDescription")}
             </p>
             <Button
               variant="outline"
@@ -983,7 +995,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               className="flex items-center gap-2 mx-auto hover:bg-green-50"
             >
               <Filter className="h-4 w-4" />
-              Filter Vendors
+              {t("selection.filterVendors")}
             </Button>
           </div>
         ) : (
@@ -1000,10 +1012,10 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 }}
               >
                 <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Features
+                  {t("table.features")}
                 </div>
                 <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Evaluation Criteria
+                  {t("table.evaluationCriteria")}
                 </div>
                 {vendors.map(vendor => (
                   <div key={vendor.id} className="text-center min-w-0">
@@ -1059,7 +1071,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                               {category.name}
                               <Badge variant="outline" className="ml-2 text-xs">
-                                {categoryFeatures.length} features
+                                {t("evaluation.featureCount", { count: categoryFeatures.length })}
                               </Badge>
                             </button>
                           </div>
@@ -1079,7 +1091,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                 {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                 {category.name}
                                 <Badge variant="outline" className="ml-2 text-xs">
-                                  {categoryFeatures.length} features
+                                  {t("evaluation.featureCount", { count: categoryFeatures.length })}
                                 </Badge>
                               </button>
                             </div>
@@ -1094,7 +1106,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                       {vendorTotal}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                      Total Score
+                                      {t("scores.totalScore")}
                                     </div>
                                   </div>
                                 </div>
@@ -1123,12 +1135,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                     
                                     const getSupportText = (level: number) => {
                                       switch (level) {
-                                        case 0: return "No Support";
-                                        case 1: return "Limited";
-                                        case 2: return "Partial";
-                                        case 3: return "Good";
-                                        case 4: return "Full Support";
-                                        default: return "Unknown";
+                                        case 0: return t("support.level.noSupport");
+                                        case 1: return t("support.level.limited");
+                                        case 2: return t("support.level.partial");
+                                        case 3: return t("support.level.good");
+                                        case 4: return t("support.level.fullSupport");
+                                        default: return t("support.level.unknown");
                                       }
                                     };
                                     
@@ -1148,16 +1160,16 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                               onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}
                                               isMobile={true}
                                             />
-                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}>View notes</button>}
+                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}>{t("notes.viewNotes")}</button>}
                                           </div>
                                         </div>
                                         {/* Inline expandable notes — replaces the desktop Dialog on mobile */}
                                         {isExpanded && (
                                           <div className="px-3 pb-3 pt-0 animate-in slide-in-from-top-1 duration-150">
                                             <div className="rounded-md bg-white border border-gray-200 p-3">
-                                              <p className="text-xs font-medium text-gray-500 mb-1">Notes</p>
+                                              <p className="text-xs font-medium text-gray-500 mb-1">{t("notes.notes")}</p>
                                               <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                                {notes || "No additional notes for this rating."}
+                                                {notes || t("notes.noAdditionalNotes")}
                                               </p>
                                             </div>
                                           </div>
@@ -1184,7 +1196,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
                                 <div className="flex flex-col justify-center">
                                   <div className="text-sm text-gray-700 leading-relaxed">
-                                    {feature.description || 'No evaluation criteria specified'}
+                                    {feature.description || t("evaluation.noCriteriaSpecified")}
                                   </div>
                                 </div>
                                 
@@ -1230,10 +1242,10 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                       <div className="flex flex-col justify-center col-span-2">
                         <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                           <TrendingUp className="h-5 w-5 text-green-500" />
-                          Total Score
+                          {t("scores.totalScore")}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Maximum: {maxScore} points
+                          {t("scores.maximumPoints", { count: maxScore })}
                         </div>
                       </div>
                       
@@ -1249,10 +1261,10 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                 {totalScore.toFixed(1)}
                               </div>
                               <div className="text-xs text-gray-500">
-                                of {maxScore} ({percentage}%)
+                                {t("scores.ofMaximum", { maximum: maxScore, percentage })}
                               </div>
                               <div className="text-xs text-green-600 font-medium">
-                                Total Score
+                                {t("scores.totalScore")}
                               </div>
                             </div>
                           </div>
@@ -1276,10 +1288,10 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                     <div className="flex flex-col justify-center col-span-2">
                       <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-green-500" />
-                        Final Ecosystem Support Score
+                        {t("scores.finalEcosystemSupport")}
                       </div>
                       <div className="text-sm text-gray-600">
-                        ISV Ecosystem criterion on the 0–10 rubric, derived from the coverage above
+                        {t("scores.finalScoreDescription")}
                       </div>
                     </div>
                     
@@ -1291,17 +1303,27 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                         <div key={vendor.id} className="flex justify-center items-center">
                           <div
                             className="text-center p-3 bg-white rounded-lg border-2 border-green-200 shadow-sm"
-                            title={describeDerivedScore("isvEcosystem", derived)}
+                            title={!derived
+                              ? t("scores.tooltipNotDerived")
+                              : !coverageLabel
+                                ? t("scores.tooltipWithoutCoverage", { score: derived.score.toFixed(1) })
+                                : t("scores.tooltipWithCoverage", {
+                                    coverage: coverageLabel,
+                                    features: derived.featureCount != null ? ` across ${derived.featureCount} features` : "",
+                                    score: derived.score.toFixed(1),
+                                  })}
                             data-testid={`derived-score-ecosystem-${vendor.id}`}
                           >
                             <div className="font-bold text-xl text-green-700">
                               {derived ? derived.score.toFixed(1) : "—"}
                             </div>
                             <div className="text-xs text-gray-500">
-                              out of 10
+                              {t("scores.outOfTen")}
                             </div>
                             <div className="text-xs text-green-600 font-medium">
-                              {coverageLabel ? `${coverageLabel} coverage` : derived ? "Ecosystem Score" : "Not derived yet"}
+                              {coverageLabel
+                                ? t("scores.coverage", { coverage: coverageLabel })
+                                : derived ? t("scores.ecosystemScore") : t("scores.notDerived")}
                             </div>
                           </div>
                         </div>
@@ -1322,18 +1344,18 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Ecosystem Support Details
+              {t("notes.detailsTitle")}
             </DialogTitle>
           </DialogHeader>
           {selectedNotes && (
             <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-2 gap-4 min-w-0">
                 <div className="min-w-0">
-                  <label className="text-sm font-medium text-gray-700">Vendor</label>
+                  <label className="text-sm font-medium text-gray-700">{t("notes.vendor")}</label>
                   <p className="text-lg font-semibold break-words">{selectedNotes.vendorName}</p>
                 </div>
                 <div className="min-w-0">
-                  <label className="text-sm font-medium text-gray-700">Feature</label>
+                  <label className="text-sm font-medium text-gray-700">{t("table.feature")}</label>
                   <p className="text-lg font-semibold break-words">{selectedNotes.featureName}</p>
                 </div>
               </div>
@@ -1347,12 +1369,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 />
                 <div className="min-w-0">
                   <span className="font-medium">{getSupportText(selectedNotes.supportLevel)}</span>
-                  <p className="text-sm text-gray-600">Support Level: {selectedNotes.supportLevel}/4</p>
+                  <p className="text-sm text-gray-600">{t("notes.supportLevelLabel", { level: selectedNotes.supportLevel })}</p>
                 </div>
               </div>
               
               <div className="min-w-0">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Notes</label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">{t("notes.notes")}</label>
                 <div className="p-4 bg-white border rounded-lg min-h-[100px] text-sm text-gray-900 whitespace-pre-wrap break-words">
                   {selectedNotes.notes}
                 </div>
@@ -1367,8 +1389,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         onOpenChange={setShowVendorModal}
         vendors={allVendors || []}
         onGenerate={handleGenerateReport}
-        title="Generate ISV Ecosystem Report"
-        description="Select vendors to include in the ISV Ecosystem PDF report"
+        title={t("reports.generateTitle")}
+        description={t("reports.generateDescription")}
         isGenerating={isGenerating}
       />
     </Card>

@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "platform": "Plataforma",
+    "markets": "Mercados",
+    "myMarkets": "Meus Mercados",
+    "licensing": "Licenciamento",
+    "pricing": "Preços",
+    "about": "Sobre Nós",
+    "forVendors": "Para Fornecedores",
+    "rfpBuilder": "Construtor de RFP",
+    "securityIntelligence": "Inteligência de Segurança",
+    "methodology": "Metodologia",
+    "intelligence": "Inteligência",
+    "tools": "Ferramentas",
+    "admin": "Administração",
+    "forecastBuilder": "Construtor de Previsão",
+    "marketBuilder": "Construtor de Mercado",
+    "newsAndSignals": "Notícias e Sinais",
+    "leadGenerator": "Gerador de Leads",
+    "rfpResponder": "Respondedor de RFP",
+    "battleCards": "Cartas de Batalha",
+    "mobileView": "Visualização móvel",
+    "desktopSite": "Site para desktop",
+    "switchToMobileView": "Mudar para visualização móvel"
+  },
+  "auth": {
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "getStarted": "Começar",
+    "profile": "Perfil",
+    "settings": "Configurações",
+    "myReports": "Meus Relatórios",
+    "factReview": "Revisão de Fatos",
+    "vendorSeat": "Assento do fornecedor",
+    "signedOutSuccess": "Saiu com sucesso",
+    "signOutFailed": "Falha ao sair"
+  },
+  "language": {
+    "label": "Idioma",
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch",
+    "pt-BR": "Português (Brasil)",
+    "ja": "日本語",
+    "ko": "한국어"
+  },
+  "common": {
+    "loading": "Carregando...",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "close": "Fechar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "continue": "Continuar",
+    "submit": "Enviar",
+    "search": "Pesquisar",
+    "filter": "Filtrar",
+    "all": "Todos",
+    "none": "Nenhum",
+    "yes": "Sim",
+    "no": "Não",
+    "error": "Algo deu errado",
+    "retry": "Tentar novamente",
+    "noResults": "Nenhum resultado encontrado"
+  },
+  "criteria": {
+    "revenue": "Receita",
+    "innovation": "Inovação",
+    "pricingStrategy": "Estratégia de Preços",
+    "productCapabilities": "Capacidades do Produto",
+    "businessModel": "Modelo de Negócio",
+    "customerExperience": "Experiência do Cliente",
+    "partnerEcosystem": "Ecossistema de Parceiros",
+    "isvEcosystem": "Ecossistema ISV"
+  },
+  "teaser": {
+    "freePreviewSecondsLeft": "Prévia gratuita: {{seconds}}s restantes"
+  }
+}

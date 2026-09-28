@@ -12,6 +12,7 @@ import {
 import type { Vendor } from "@shared/schema";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CompanyProfileLockedPanel, isCompanyEmailRequiredError } from "@/components/company-profile-lock";
+import { useTranslation } from "react-i18next";
 
 interface VendorSignalsPage {
   data: SignalData[];
@@ -21,12 +22,12 @@ interface VendorSignalsPage {
 }
 
 const SOURCE_FILTERS = [
-  { value: "all", label: "All" },
-  { value: "hackernews", label: "HN" },
-  { value: "reddit", label: "Reddit" },
-  { value: "github", label: "GitHub" },
-  { value: "layoffs", label: "Layoffs" },
-  { value: "cve", label: "CVE" },
+  { value: "all", key: "filters.sources.all" },
+  { value: "hackernews", key: "filters.sources.hn" },
+  { value: "reddit", key: "filters.sources.reddit" },
+  { value: "github", key: "filters.sources.github" },
+  { value: "layoffs", key: "filters.sources.layoffs" },
+  { value: "cve", key: "filters.sources.cve" },
 ] as const;
 
 interface IntelligenceFeedProps {
@@ -35,6 +36,7 @@ interface IntelligenceFeedProps {
 }
 
 export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
+  const { t } = useTranslation("intelligenceFeed");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const isMobile = useIsMobile();
@@ -51,15 +53,15 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
   });
 
   if (isCompanyEmailRequiredError(error)) {
-    return <CompanyProfileLockedPanel feature="The intelligence feed" />;
+    return <CompanyProfileLockedPanel feature={t("locked.feature")} />;
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-semibold text-gray-900">Intelligence Feed</h3>
+        <h3 className="text-base font-semibold text-gray-900">{t("heading")}</h3>
         <p className="text-sm text-gray-500 mt-0.5">
-          Real-time signals from Hacker News, Reddit, GitHub, Layoffs.fyi, and CVE vulnerability data.
+          {t("description")}
         </p>
       </div>
 
@@ -67,10 +69,10 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
       <div className={isMobile ? "flex flex-col gap-2" : "flex flex-wrap gap-2 items-center"}>
         <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
           <SelectTrigger className={isMobile ? "w-full h-9 text-sm" : "w-48 h-9 text-sm"}>
-            <SelectValue placeholder="All vendors" />
+            <SelectValue placeholder={t("filters.allVendors")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All vendors</SelectItem>
+            <SelectItem value="all">{t("filters.allVendors")}</SelectItem>
             {vendors.map(v => (
               <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
             ))}
@@ -91,7 +93,7 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {f.label}
+              {t(f.key)}
             </button>
           ))}
         </div>
@@ -108,9 +110,9 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
         <div className="text-center py-12 text-gray-400 text-sm">
           {selectedVendorId === "all"
             ? sourceFilter === "cve"
-              ? "No CVE signals yet. CVE events appear here after confirmed crosswalk mappings are set up."
-              : "No signals collected yet for this market."
-            : "No signals collected yet for this vendor."}
+              ? t("empty.noCveSignals")
+              : t("empty.noMarketSignals")
+            : t("empty.noVendorSignals")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -119,7 +121,7 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
           ))}
           {page.total > page.data.length && (
             <p className="text-xs text-gray-400 text-center pt-2">
-              Showing {page.data.length} of {page.total} signals
+              {t("pagination.showing", { shown: page.data.length, total: page.total })}
             </p>
           )}
         </div>

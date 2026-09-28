@@ -1,0 +1,55 @@
+{
+  "seo": {
+    "title": "Contate o ITMAP — Fale com a Equipe de Inteligência de Fornecedores",
+    "description": "Entre em contato com o ITMAP para parcerias, licenciamento, acesso corporativo ou consultas de mídia."
+  },
+  "hero": {
+    "eyebrow": "Entre em Contato",
+    "titleLine1": "Vamos falar sobre",
+    "titleLine2": "inteligência",
+    "subtitle": "Seja explorando a plataforma, perguntando sobre licenciamento ou discutindo os desafios de seleção de fornecedores da sua organização — adoraríamos ouvir de você."
+  },
+  "form": {
+    "title": "Envie-nos uma mensagem",
+    "responseTime": "Normalmente respondemos dentro de 1 dia útil.",
+    "fields": {
+      "website": "Website",
+      "firstName": "Nome",
+      "lastName": "Sobrenome",
+      "email": "Email Corporativo",
+      "company": "Empresa",
+      "subject": "Assunto",
+      "message": "Mensagem"
+    },
+    "placeholders": {
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@company.com",
+      "company": "Acme Corp",
+      "subject": "Consulta sobre a plataforma / Licenciamento / Pesquisa",
+      "message": "Conte-nos sobre suas necessidades de inteligência em tecnologia, ou como podemos ajudar..."
+    },
+    "sending": "Enviando…",
+    "sendMessage": "Enviar Mensagem",
+    "privacyPrefix": "Ao enviar esta mensagem, você concorda com nossa",
+    "privacyPolicy": "política de privacidade",
+    "success": {
+      "title": "Mensagem enviada",
+      "description": "Obrigado. Nossa equipe responderá dentro de um dia útil."
+    },
+    "error": {
+      "title": "Mensagem não enviada",
+      "description": "Por favor, tente novamente ou envie um email para sales@itmap.ai."
+    }
+  },
+  "details": {
+    "email": "Email",
+    "office": "Escritório",
+    "businessHours": "Horário Comercial"
+  },
+  "partnership": {
+    "title": "Explorando uma parceria?",
+    "description": "Trabalhamos com empresas de pesquisa, consultorias de TI e plataformas de compras. Se você está interessado em integrar a inteligência do ITMAP ao seu fluxo de trabalho, vamos conversar.",
+    "button": "Explorar Parceria"
+  }
+}

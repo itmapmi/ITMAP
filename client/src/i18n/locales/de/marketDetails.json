@@ -1,0 +1,127 @@
+{
+  "seo": {
+    "title": "{{marketName}} — Anbieter-Intelligenz | ITMAP.ai",
+    "description": "Unabhängige Anbieterrankings, Funktionsbewertungen und Marktanalysen für {{marketName}}. Vergleichen Sie Anbieter auf ITMAP.ai.",
+    "defaultTitle": "ITMAP.ai — Enterprise IT Anbieter-Intelligenz"
+  },
+  "tabs": {
+    "marketSections": "Marktbereiche",
+    "vendorEvaluation": {
+      "mobile": "Anbieterbewertung",
+      "desktop": "Anbieterbewertung"
+    },
+    "compareProducts": {
+      "mobile": "Vergleichen",
+      "desktop": "Produkte vergleichen"
+    },
+    "supportMatrix": {
+      "mobile": "Support",
+      "desktop": "Support-Matrix"
+    },
+    "methodology": {
+      "mobile": "Methode",
+      "desktop": "Methodik"
+    },
+    "mobile": {
+      "vendor-evaluation": {
+        "label": "Anbieterbewertung",
+        "fullLabel": "Anbieterbewertung"
+      },
+      "support-matrix": {
+        "label": "Vergleichen",
+        "fullLabel": "Produkte vergleichen"
+      },
+      "ecosystem-support": {
+        "label": "Interop",
+        "fullLabel": "Interop"
+      },
+      "vendor-intelligence": {
+        "label": "Intelligenz",
+        "fullLabel": "Anbieter-Intelligenz"
+      },
+      "research-reports": {
+        "label": "Berichte",
+        "fullLabel": "Forschungsberichte"
+      }
+    },
+    "intelligence": "Intelligenz",
+    "intelligenceWithActive": "Intelligenz: {{active}}",
+    "news": "Nachrichten",
+    "intelligenceFeed": "Intelligenz-Feed",
+    "newPlayers": "Neue Anbieter",
+    "vendorNewsroomUrls": "Anbieter-Newsroom-URLs",
+    "reports": "Berichte",
+    "aiChat": "KI-Chat"
+  },
+  "states": {
+    "errorLoadingMarket": "Fehler beim Laden des Marktes",
+    "unableToFetchMarket": "Marktdetails konnten nicht abgerufen werden. Bitte versuchen Sie es später erneut.",
+    "marketNotFound": "Markt nicht gefunden",
+    "requestedMarketNotFound": "Der angeforderte Markt konnte nicht gefunden werden.",
+    "noStoredDefinition": "Keine gespeicherte Marktdefinition verfügbar."
+  },
+  "buttons": {
+    "backToMarkets": "Zurück zu den Märkten",
+    "allMarkets": "Alle Märkte",
+    "back": "Zurück",
+    "getFreeAccess": "Kostenlosen Zugang erhalten",
+    "signIn": "Anmelden",
+    "toggleFullDefinition": "Vollständige Marktdefinition umschalten",
+    "hideDefinition": "Definition ausblenden",
+    "readFullDefinition": "Vollständige Definition lesen",
+    "starting": "Startet…",
+    "rfp": "RFP",
+    "generateRfp": "RFP erstellen",
+    "cancel": "Abbrechen",
+    "saving": "Speichern…",
+    "savePositions": "Positionen speichern",
+    "editLabelPositions": "Label-Positionen bearbeiten",
+    "openAiChat": "KI-Chat öffnen"
+  },
+  "preview": {
+    "vendorsTracked": "Anbieter in diesem Markt verfolgt",
+    "signInDescription": "Melden Sie sich an, um Anbieterscores, Funktionsmatrizen, Quadrantenpositionierung und Forschungsberichte zu erhalten.",
+    "fullAccessFree": "Voller Zugang ist kostenlos",
+    "createAccountDescription": "Erstellen Sie ein kostenloses Konto, um Anbieterscores, Funktionsbewertungsmatrizen, Quadrantendiagramme, Nachrichtenanalysen und herunterladbare PDF-Berichte freizuschalten."
+  },
+  "owner": {
+    "phases": {
+      "product": "Produkt",
+      "ecosystem": "Ökosystem"
+    },
+    "phaseNotAdded": "{{phase}}-Phase noch nicht hinzugefügt",
+    "phaseDescription": "Dieser Markt wurde ohne die {{phase}}-Phase veröffentlicht. Fügen Sie sie im Market Builder hinzu, um diesen Abschnitt zu füllen.",
+    "addPhase": "{{phase}}-Phase hinzufügen"
+  },
+  "toasts": {
+    "openAiKeyRequired": "OpenAI-Schlüssel erforderlich",
+    "addOpenAiKey": "Fügen Sie Ihren OpenAI-API-Schlüssel in Einstellungen → LLM-Schlüssel hinzu.",
+    "couldNotStartRfp": "Konnte RFP nicht starten",
+    "saved": "Gespeichert",
+    "labelPositionsUpdated": "{{count}} Label-Position(en) aktualisiert.",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "couldNotSaveLabelPositions": "Konnte Label-Positionen nicht speichern.",
+    "success": "Erfolg",
+    "fullReportGenerated": "Vollständiger Marktbericht erfolgreich erstellt",
+    "error": "Fehler",
+    "fullReportFailed": "Erstellung des vollständigen Berichts fehlgeschlagen",
+    "summaryReportGenerated": "Zusammenfassender Bericht erfolgreich erstellt",
+    "summaryReportFailed": "Erstellung des zusammenfassenden Berichts fehlgeschlagen"
+  },
+  "labels": {
+    "dragVendorToReposition": "Ziehen Sie einen Anbieternamen, um ihn neu zu positionieren.",
+    "unsavedChanges": "{{count}} ungespeicherte Änderung(en)",
+    "adjustClutteredLabels": "Labels sehen überladen aus? Passen Sie sie an."
+  },
+  "vendorNewsroom": {
+    "heading": "Anbieter-Newsroom-URLs",
+    "description": "Fügen Sie für jeden Anbieter eine Presse-/Newsroom-Seite hinzu — die tägliche Erfassung um 7:00 Uhr UTC wird deren Nachrichten automatisch abrufen.",
+    "openDedicatedPage": "Dedizierte Seite öffnen"
+  },
+  "reports": {
+    "generateFullTitle": "Vollständigen Marktbericht erstellen",
+    "generateFullDescription": "Wählen Sie Anbieter aus, die im vollständigen Marktbericht enthalten sein sollen (alle Abschnitte kombiniert)",
+    "downloadSummaryTitle": "Zusammenfassenden Bericht herunterladen",
+    "downloadSummaryDescription": "Wählen Sie Anbieter für eine kurze, KI-generierte Zusammenfassung (~2-3 Seiten pro Anbieter). Dies kann einen Moment dauern, während die KI jeden Abschnitt zusammenfasst."
+  }
+}

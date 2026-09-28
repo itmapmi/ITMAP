@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Check, Mail, ArrowRight, Users, Building2 } from "lucide-react";
@@ -10,48 +11,16 @@ const fadeUp = {
   transition: { duration: 0.6, ease: [0.25, 0.25, 0, 1] as any },
 };
 
-const PLANS = [
-  {
-    key: "end-user",
-    icon: Users,
-    name: "Technology Buyer",
-    audience: "For enterprise IT buyers evaluating vendors",
-    price: "Free",
-    unit: "",
-    features: [
-      "Access to All Markets and Reports",
-      "RFP Builder",
-      "Datasheets",
-      "Security Intelligence",
-    ],
-    highlight: false,
-  },
-  {
-    key: "vendor",
-    icon: Building2,
-    name: "Vendor Access",
-    audience: "For vendors selling into enterprise IT",
-    price: "$2,500",
-    unit: "/ user / month",
-    features: [
-      "Access to All Markets and Reports",
-      "Lead Generator",
-      "Market Builder",
-      "Forecast Builder",
-      "Vendor Intelligence",
-      "Battle Cards",
-      "RFP Responder",
-      "Datasheets",
-      "Security Intelligence",
-    ],
-    highlight: true,
-  },
-];
+const PLAN_KEYS = [
+  { key: "end-user", i18nKey: "endUser", icon: Users, highlight: false },
+  { key: "vendor", i18nKey: "vendor", icon: Building2, highlight: true },
+] as const;
 
 export default function Pricing() {
+  const { t } = useTranslation("pricing");
   useSeo({
-    title: "Pricing — itmap.ai",
-    description: "itmap.ai pricing for enterprise IT buyers and vendors. Technology Buyer access is free, Vendor access from $2,500/user/month. Contact sales for details.",
+    title: t("seo.title"),
+    description: t("seo.description"),
     path: "/pricing",
   });
 
@@ -67,15 +36,15 @@ export default function Pricing() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <Mail className="h-4 w-4" /> Pricing
+              <Mail className="h-4 w-4" /> {t("hero.eyebrow")}
             </div>
             <h1 className="text-5xl sm:text-6xl font-bold mb-6 leading-tight">
-              Plans for buyers
+              {t("hero.titleLine1")}
               <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">and vendors</span>
+              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("hero.titleLine2")}</span>
             </h1>
             <p className="text-xl text-slate-400 leading-relaxed max-w-2xl">
-              Whether you're evaluating vendors or selling into enterprise IT, itmap.ai gives you the intelligence tools to move faster.
+              {t("hero.subtitle")}
             </p>
           </motion.div>
         </div>
@@ -84,8 +53,9 @@ export default function Pricing() {
       {/* Plans */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid md:grid-cols-2 gap-8">
-          {PLANS.map((plan, i) => {
+          {PLAN_KEYS.map((plan, i) => {
             const Icon = plan.icon;
+            const features = t(`plans.${plan.i18nKey}.features`, { returnObjects: true }) as string[];
             return (
               <motion.div
                 key={plan.key}
@@ -101,7 +71,7 @@ export default function Pricing() {
               >
                 {plan.highlight && (
                   <div className="absolute -top-3 left-8 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 text-xs font-semibold text-white">
-                    For Vendors
+                    {t(`plans.${plan.i18nKey}.badge`)}
                   </div>
                 )}
                 <div className="flex items-center gap-3 mb-6">
@@ -109,18 +79,18 @@ export default function Pricing() {
                     <Icon className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">{plan.name}</h2>
-                    <p className="text-sm text-slate-400">{plan.audience}</p>
+                    <h2 className="text-xl font-bold text-white">{t(`plans.${plan.i18nKey}.name`)}</h2>
+                    <p className="text-sm text-slate-400">{t(`plans.${plan.i18nKey}.audience`)}</p>
                   </div>
                 </div>
 
                 <div className="mb-6">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-slate-400 ml-1">{plan.unit}</span>
+                  <span className="text-4xl font-bold text-white">{t(`plans.${plan.i18nKey}.price`)}</span>
+                  <span className="text-slate-400 ml-1">{t(`plans.${plan.i18nKey}.unit`)}</span>
                 </div>
 
                 <ul className="space-y-3 mb-8 flex-grow">
-                  {plan.features.map((feature) => (
+                  {features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
                       <Check className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
                       <span className="text-slate-300 leading-snug">{feature}</span>
@@ -136,7 +106,7 @@ export default function Pricing() {
                         : "bg-slate-800 hover:bg-slate-700 text-white border border-white/10"
                     }`}
                   >
-                    Contact Sales <ArrowRight className="ml-2 h-4 w-4" />
+                    {t("contactSales")} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </a>
               </motion.div>
@@ -152,11 +122,11 @@ export default function Pricing() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.06)_0%,transparent_70%)]" />
           <div className="relative">
             <Mail className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Have questions about pricing?</h3>
-            <p className="text-slate-400 mb-6">Reach out to our sales team — we'll help you find the right plan.</p>
+            <h3 className="text-xl font-bold text-white mb-2">{t("cta.heading")}</h3>
+            <p className="text-slate-400 mb-6">{t("cta.body")}</p>
             <a href="mailto:Sales@itmap.ai">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                Contact Sales@itmap.ai <ArrowRight className="ml-2 h-4 w-4" />
+                {t("cta.buttonPrefix")} Sales@itmap.ai <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
           </div>

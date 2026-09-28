@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "platform": "Plateforme",
+    "markets": "Marchés",
+    "myMarkets": "Mes Marchés",
+    "licensing": "Licences",
+    "pricing": "Tarification",
+    "about": "À propos de nous",
+    "forVendors": "Pour les fournisseurs",
+    "rfpBuilder": "Constructeur de RFP",
+    "securityIntelligence": "Intelligence de sécurité",
+    "methodology": "Méthodologie",
+    "intelligence": "Intelligence",
+    "tools": "Outils",
+    "admin": "Admin",
+    "forecastBuilder": "Constructeur de prévisions",
+    "marketBuilder": "Constructeur de marché",
+    "newsAndSignals": "Actualités & Signaux",
+    "leadGenerator": "Générateur de leads",
+    "rfpResponder": "Répondeur de RFP",
+    "battleCards": "Cartes de bataille",
+    "mobileView": "Vue mobile",
+    "desktopSite": "Site de bureau",
+    "switchToMobileView": "Passer à la vue mobile"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "getStarted": "Commencer",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "myReports": "Mes Rapports",
+    "factReview": "Revue des faits",
+    "vendorSeat": "Place fournisseur",
+    "signedOutSuccess": "Déconnexion réussie",
+    "signOutFailed": "Échec de la déconnexion"
+  },
+  "language": {
+    "label": "Langue",
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch",
+    "pt-BR": "Português (Brasil)",
+    "ja": "日本語",
+    "ko": "한국어"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "continue": "Continuer",
+    "submit": "Soumettre",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "all": "Tous",
+    "none": "Aucun",
+    "yes": "Oui",
+    "no": "Non",
+    "error": "Une erreur s'est produite",
+    "retry": "Réessayer",
+    "noResults": "Aucun résultat trouvé"
+  },
+  "criteria": {
+    "revenue": "Chiffre d'affaires",
+    "innovation": "Innovation",
+    "pricingStrategy": "Stratégie tarifaire",
+    "productCapabilities": "Fonctionnalités du produit",
+    "businessModel": "Modèle économique",
+    "customerExperience": "Expérience client",
+    "partnerEcosystem": "Écosystème de partenaires",
+    "isvEcosystem": "Écosystème ISV"
+  },
+  "teaser": {
+    "freePreviewSecondsLeft": "Aperçu gratuit : {{seconds}} s restantes"
+  }
+}

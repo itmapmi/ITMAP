@@ -1,0 +1,190 @@
+{
+  "list": {
+    "heading": "Générateur de RFP",
+    "subtitle": "Menez un entretien conversationnel et produisez un RFP spécifique au client, basé sur des données réelles du marché.",
+    "newRfp": "Nouveau RFP",
+    "loading": "Chargement…",
+    "loadingProjects": "Chargement des projets…",
+    "market": "Marché",
+    "updated": "Mis à jour",
+    "open": "Ouvrir",
+    "cancel": "Annuler",
+    "starting": "Démarrage…",
+    "startInterview": "Commencer l'entretien",
+    "empty": "Pas encore de RFP. Commencez votre premier depuis n'importe quelle page de marché ou le bouton ci-dessus.",
+    "startFirst": "Commencez votre premier RFP",
+    "deleteAria": "Supprimer {{title}}",
+    "mobile": {
+      "kicker": "ACHETEUR / GÉNÉRATEUR DE RFP",
+      "heading": "Projets",
+      "subtitle": "Transformez les preuves en un cahier des charges spécifique au client.",
+      "empty": "Pas encore de RFP. Commencez votre premier projet ci-dessus."
+    },
+    "limits": {
+      "daily": "Limite quotidienne atteinte ({{count}}/{{limit}} RFP en 24 h). Réessayez demain.",
+      "activeMobile": "{{count}} / {{limit}} RFP actifs · complétez ou supprimez-en un avant d'en commencer un autre.",
+      "active": "Vous avez {{count}}/{{limit}} RFP actifs. Complétez ou supprimez-en un avant d'en commencer un autre."
+    },
+    "status": {
+      "draft": "brouillon",
+      "interviewing": "en entretien",
+      "generating": "en génération",
+      "ready": "prêt"
+    },
+    "toast": {
+      "openAiKeyRequired": "Clé OpenAI requise",
+      "openAiKeyDescription": "Ajoutez votre clé API OpenAI dans Paramètres → Clés LLM pour utiliser le Générateur de RFP.",
+      "couldNotStart": "Impossible de démarrer le RFP",
+      "deleted": "RFP supprimé"
+    },
+    "dialog": {
+      "title": "Commencer un nouveau RFP",
+      "workingTitle": "Titre provisoire",
+      "titlePlaceholder": "Acme Corp — RFP Sécurité des Points de Terminaison",
+      "market": "Marché",
+      "pickMarket": "Choisissez un marché"
+    }
+  },
+  "detail": {
+    "activeRfp": "RFP ACTIF",
+    "rfpFallback": "RFP",
+    "loading": "chargement",
+    "slots": "{{filled}}/{{total}} créneaux",
+    "slotsUpper": "{{filled}} / {{total}} CRÉNEAUX",
+    "statusLabel": "Statut :",
+    "needCriticalSlots": "Besoin de créneaux critiques : {{slots}}",
+    "defaultCriticalSlots": "10 sur 14 au total",
+    "stepProgress": "Étape {{current}} sur {{total}} : {{step}}",
+    "mobileStepProgress": "Étape {{current}} sur {{total}} · {{step}}",
+    "steps": {
+      "interview": "Entretien",
+      "requirements": "Exigences",
+      "preview": "Aperçu",
+      "shortlist": "Liste restreinte",
+      "outreach": "Sensibilisation",
+      "export": "Exporter"
+    },
+    "generating": "Génération…",
+    "generate": "Générer",
+    "generateRfp": "Générer le RFP",
+    "regenerate": "Régénérer",
+    "regenerateRfp": "Régénérer le RFP",
+    "regenerating": "Régénération…",
+    "vendorFallback": "Fournisseur",
+    "back": "Retour",
+    "next": "Suivant : {{step}}",
+    "status": {
+      "draft": "brouillon",
+      "interviewing": "en entretien",
+      "generating": "en génération",
+      "ready": "prêt"
+    },
+    "toast": {
+      "openAiKeyRequired": "Clé OpenAI requise",
+      "openAiKeyDescription": "Ajoutez votre clé API OpenAI dans Paramètres → Clés LLM.",
+      "couldNotSend": "Impossible d'envoyer",
+      "generated": "RFP généré",
+      "generatedDescription": "Aperçu, liste restreinte et exportations sont prêts.",
+      "generationFailed": "Échec de la génération",
+      "sectionRegenerated": "Section régénérée",
+      "regenerationFailed": "Échec de la régénération",
+      "responseFileUploaded": "Fichier de réponse téléchargé"
+    },
+    "interview": {
+      "heading": "Entretien de découverte",
+      "you": "VOUS",
+      "analyst": "ANALYSTE ITMAP",
+      "thinking": "Réflexion…",
+      "complete": "Entretien terminé · prêt à générer",
+      "inProgress": "Entretien en cours · {{count}} créneaux critiques restants",
+      "answerPlaceholder": "Tapez votre réponse…",
+      "send": "Envoyer",
+      "unavailable": "Générer le RFP est indisponible tant que tous les créneaux critiques ne sont pas capturés.",
+      "completeDesktop": "Entretien terminé — cliquez sur Générer le RFP ci-dessus.",
+      "slotsCaptured": "{{filled}}/{{total}} créneaux d'entretien capturés"
+    },
+    "requirements": {
+      "heading": "Exigences",
+      "subtitle": "Généré à partir de votre entretien et du catalogue de marché.",
+      "empty": "Générez le RFP pour initialiser les exigences pondérées.",
+      "seededDescription": "Les exigences seront automatiquement initialisées la première fois que vous générez le RFP, basées sur le catalogue de fonctionnalités de ce marché et vos impératifs.",
+      "deleteAria": "Supprimer {{label}}",
+      "kindRequirement": "Exigence {{kind}}",
+      "priority": {
+        "must": "Doit",
+        "should": "Devrait",
+        "nice": "Agréable"
+      },
+      "priorityLower": {
+        "must": "doit",
+        "should": "devrait",
+        "nice": "agréable"
+      },
+      "weight": "Poids {{weight}}"
+    },
+    "preview": {
+      "heading": "Aperçu du document",
+      "subtitle": "Markdown généré · document actuel",
+      "empty": "Générez le RFP pour produire le document.",
+      "emptySection": "(vide)",
+      "generatePrompt": "Cliquez sur Générer le RFP ci-dessus pour produire le document."
+    },
+    "shortlist": {
+      "heading": "Liste restreinte de fournisseurs",
+      "subtitle": "Adéquation déterministe par rapport à vos exigences pondérées.",
+      "empty": "Générez le RFP pour évaluer les fournisseurs.",
+      "rank": "RANG #{{rank}}",
+      "included": "Inclus",
+      "excluded": "Exclu",
+      "desktopHeading": "Liste Restreinte de Fournisseurs (adéquation déterministe)",
+      "desktopEmpty": "Pas encore de liste restreinte — générez le RFP pour évaluer les fournisseurs."
+    },
+    "outreach": {
+      "heading": "Suivi de sensibilisation",
+      "subtitle": "Capturez les coordonnées et réponses des fournisseurs.",
+      "status": {
+        "draft": "Brouillon",
+        "not_started": "Brouillon",
+        "sent": "Envoyé",
+        "invited": "Envoyé",
+        "declined": "Refusé",
+        "responded": "Répondu",
+        "awarded": "Attribué"
+      },
+      "badge": {
+        "draft": "brouillon",
+        "not_started": "non commencé",
+        "sent": "envoyé",
+        "invited": "envoyé",
+        "declined": "refusé",
+        "responded": "répondu",
+        "awarded": "attribué"
+      },
+      "sent": "Envoyé le {{date}}",
+      "replied": "· Répondu le {{date}}",
+      "contactName": "Nom du contact",
+      "contactEmail": "Email du contact",
+      "email": "Email",
+      "notesPlaceholder": "Notes de sensibilisation…",
+      "responsePlaceholder": "Collez le texte de réponse du fournisseur ici…",
+      "responsePlaceholderDesktop": "Collez le texte de réponse du fournisseur ici…",
+      "uploadResponseLimit": "Téléchargez le fichier de réponse · un fichier, jusqu'à 25 Mo",
+      "uploadResponse": "Télécharger le fichier de réponse",
+      "viewUploadedFile": "Voir le fichier téléchargé",
+      "empty": "Incluez des fournisseurs dans l'étape Liste Restreinte pour suivre la sensibilisation.",
+      "desktopHeading": "Suivi de Sensibilisation des Fournisseurs",
+      "desktopEmpty": "Incluez des fournisseurs dans l'onglet Liste Restreinte pour suivre la sensibilisation.",
+      "responseComparison": "Comparaison des réponses"
+    },
+    "export": {
+      "heading": "Exporter le RFP",
+      "subtitle": "Téléchargez le document généré dans le format de votre choix.",
+      "documentReady": "DOCUMENT PRÊT",
+      "documentSummary": "Markdown généré disponible · {{sections}} sections · {{requirements}} exigences",
+      "downloadFormat": "Télécharger {{format}}",
+      "generatedFromCurrent": "Généré à partir du RFP actuel",
+      "empty": "Générez d'abord le RFP pour activer les exportations.",
+      "downloadHeading": "Télécharger"
+    }
+  }
+}

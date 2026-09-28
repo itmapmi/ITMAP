@@ -1,0 +1,190 @@
+{
+  "list": {
+    "heading": "RFP-Generator",
+    "subtitle": "Führen Sie ein Gesprächsinterview durch und erstellen Sie ein kundenspezifisches RFP, basierend auf realen Marktdaten.",
+    "newRfp": "Neues RFP",
+    "loading": "Laden…",
+    "loadingProjects": "Projekte laden…",
+    "market": "Markt",
+    "updated": "Aktualisiert",
+    "open": "Öffnen",
+    "cancel": "Abbrechen",
+    "starting": "Starten…",
+    "startInterview": "Interview starten",
+    "empty": "Noch keine RFPs. Starten Sie Ihr erstes von einer beliebigen Marktseite oder über den obigen Button.",
+    "startFirst": "Starten Sie Ihr erstes RFP",
+    "deleteAria": "{{title}} löschen",
+    "mobile": {
+      "kicker": "KÄUFER / RFP-GENERATOR",
+      "heading": "Projekte",
+      "subtitle": "Verwandeln Sie Beweise in ein kundenspezifisches Beschaffungsdokument.",
+      "empty": "Noch keine RFPs. Starten Sie Ihr erstes Projekt oben."
+    },
+    "limits": {
+      "daily": "Tageslimit erreicht ({{count}}/{{limit}} RFPs in 24 h). Versuchen Sie es morgen erneut.",
+      "activeMobile": "{{count}} / {{limit}} aktive RFPs · Schließen oder löschen Sie eines, bevor Sie ein weiteres starten.",
+      "active": "Sie haben {{count}}/{{limit}} aktive RFPs. Schließen oder löschen Sie eines, bevor Sie ein weiteres starten."
+    },
+    "status": {
+      "draft": "Entwurf",
+      "interviewing": "Interview",
+      "generating": "Generierung",
+      "ready": "Bereit"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAI-Schlüssel erforderlich",
+      "openAiKeyDescription": "Fügen Sie Ihren OpenAI-API-Schlüssel unter Einstellungen → LLM-Schlüssel hinzu, um den RFP-Generator zu nutzen.",
+      "couldNotStart": "Konnte RFP nicht starten",
+      "deleted": "RFP gelöscht"
+    },
+    "dialog": {
+      "title": "Neues RFP starten",
+      "workingTitle": "Arbeitstitel",
+      "titlePlaceholder": "Acme Corp — Endpoint Security RFP",
+      "market": "Markt",
+      "pickMarket": "Wählen Sie einen Markt"
+    }
+  },
+  "detail": {
+    "activeRfp": "AKTIVES RFP",
+    "rfpFallback": "RFP",
+    "loading": "laden",
+    "slots": "{{filled}}/{{total}} Slots",
+    "slotsUpper": "{{filled}} / {{total}} SLOTS",
+    "statusLabel": "Status:",
+    "needCriticalSlots": "Benötigte kritische Slots: {{slots}}",
+    "defaultCriticalSlots": "10 von 14 insgesamt",
+    "stepProgress": "Schritt {{current}} von {{total}}: {{step}}",
+    "mobileStepProgress": "Schritt {{current}} von {{total}} · {{step}}",
+    "steps": {
+      "interview": "Interview",
+      "requirements": "Anforderungen",
+      "preview": "Vorschau",
+      "shortlist": "Shortlist",
+      "outreach": "Kontaktaufnahme",
+      "export": "Export"
+    },
+    "generating": "Generierung…",
+    "generate": "Generieren",
+    "generateRfp": "RFP generieren",
+    "regenerate": "Neu generieren",
+    "regenerateRfp": "RFP neu generieren",
+    "regenerating": "Neu generieren…",
+    "vendorFallback": "Anbieter",
+    "back": "Zurück",
+    "next": "Weiter: {{step}}",
+    "status": {
+      "draft": "Entwurf",
+      "interviewing": "Interview",
+      "generating": "Generierung",
+      "ready": "Bereit"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAI-Schlüssel erforderlich",
+      "openAiKeyDescription": "Fügen Sie Ihren OpenAI-API-Schlüssel unter Einstellungen → LLM-Schlüssel hinzu.",
+      "couldNotSend": "Konnte nicht senden",
+      "generated": "RFP generiert",
+      "generatedDescription": "Vorschau, Shortlist und Exporte sind bereit.",
+      "generationFailed": "Generierung fehlgeschlagen",
+      "sectionRegenerated": "Abschnitt neu generiert",
+      "regenerationFailed": "Neugenerierung fehlgeschlagen",
+      "responseFileUploaded": "Antwortdatei hochgeladen"
+    },
+    "interview": {
+      "heading": "Entdeckungsinterview",
+      "you": "SIE",
+      "analyst": "ITMAP-ANALYST",
+      "thinking": "Denken…",
+      "complete": "Interview abgeschlossen · bereit zur Generierung",
+      "inProgress": "Interview läuft · {{count}} kritische Slots verbleiben",
+      "answerPlaceholder": "Geben Sie Ihre Antwort ein…",
+      "send": "Senden",
+      "unavailable": "RFP-Generierung ist nicht verfügbar, bis alle kritischen Slots erfasst sind.",
+      "completeDesktop": "Interview abgeschlossen — klicken Sie oben auf RFP generieren.",
+      "slotsCaptured": "{{filled}}/{{total}} Interview-Slots erfasst"
+    },
+    "requirements": {
+      "heading": "Anforderungen",
+      "subtitle": "Generiert aus Ihrem Interview und dem Marktkatalog.",
+      "empty": "Generieren Sie das RFP, um gewichtete Anforderungen zu erstellen.",
+      "seededDescription": "Anforderungen werden automatisch beim ersten Generieren des RFPs basierend auf dem Funktionskatalog dieses Marktes und Ihren Muss-Kriterien erstellt.",
+      "deleteAria": "{{label}} löschen",
+      "kindRequirement": "{{kind}} Anforderung",
+      "priority": {
+        "must": "Muss",
+        "should": "Sollte",
+        "nice": "Nett"
+      },
+      "priorityLower": {
+        "must": "muss",
+        "should": "sollte",
+        "nice": "nett"
+      },
+      "weight": "Gewicht {{weight}}"
+    },
+    "preview": {
+      "heading": "Dokumentvorschau",
+      "subtitle": "Generiertes Markdown · aktuelles Dokument",
+      "empty": "Generieren Sie das RFP, um das Dokument zu erstellen.",
+      "emptySection": "(leer)",
+      "generatePrompt": "Klicken Sie oben auf RFP generieren, um das Dokument zu erstellen."
+    },
+    "shortlist": {
+      "heading": "Anbieter-Shortlist",
+      "subtitle": "Deterministische Passform gegen Ihre gewichteten Anforderungen.",
+      "empty": "Generieren Sie das RFP, um Anbieter zu bewerten.",
+      "rank": "RANG #{{rank}}",
+      "included": "Eingeschlossen",
+      "excluded": "Ausgeschlossen",
+      "desktopHeading": "Anbieter-Shortlist (deterministische Passform)",
+      "desktopEmpty": "Noch keine Shortlist — generieren Sie das RFP, um Anbieter zu bewerten."
+    },
+    "outreach": {
+      "heading": "Kontaktverfolgung",
+      "subtitle": "Erfassen Sie Anbieterkontaktdaten und Antworten.",
+      "status": {
+        "draft": "Entwurf",
+        "not_started": "Entwurf",
+        "sent": "Gesendet",
+        "invited": "Gesendet",
+        "declined": "Abgelehnt",
+        "responded": "Geantwortet",
+        "awarded": "Zugewiesen"
+      },
+      "badge": {
+        "draft": "Entwurf",
+        "not_started": "nicht gestartet",
+        "sent": "gesendet",
+        "invited": "gesendet",
+        "declined": "abgelehnt",
+        "responded": "geantwortet",
+        "awarded": "zugewiesen"
+      },
+      "sent": "Gesendet {{date}}",
+      "replied": "· Geantwortet {{date}}",
+      "contactName": "Kontaktname",
+      "contactEmail": "Kontakt-E-Mail",
+      "email": "E-Mail",
+      "notesPlaceholder": "Kontaktnotizen…",
+      "responsePlaceholder": "Antworttext des Anbieters hier einfügen…",
+      "responsePlaceholderDesktop": "Antworttext des Anbieters hier einfügen…",
+      "uploadResponseLimit": "Antwortdatei hochladen · eine Datei, bis zu 25MB",
+      "uploadResponse": "Antwortdatei hochladen",
+      "viewUploadedFile": "Hochgeladene Datei ansehen",
+      "empty": "Fügen Sie Anbieter im Shortlist-Schritt hinzu, um die Kontaktaufnahme zu verfolgen.",
+      "desktopHeading": "Anbieter-Kontaktverfolgung",
+      "desktopEmpty": "Fügen Sie Anbieter im Shortlist-Tab hinzu, um die Kontaktaufnahme zu verfolgen.",
+      "responseComparison": "Antwortvergleich"
+    },
+    "export": {
+      "heading": "RFP exportieren",
+      "subtitle": "Laden Sie das generierte Dokument in Ihrem bevorzugten Format herunter.",
+      "documentReady": "DOKUMENT BEREIT",
+      "documentSummary": "Generiertes Markdown verfügbar · {{sections}} Abschnitte · {{requirements}} Anforderungen",
+      "downloadFormat": "Herunterladen {{format}}",
+      "generatedFromCurrent": "Generiert aus aktuellem RFP",
+      "empty": "Generieren Sie zuerst das RFP, um Exporte zu ermöglichen.",
+      "downloadHeading": "Herunterladen"
+    }
+  }
+}

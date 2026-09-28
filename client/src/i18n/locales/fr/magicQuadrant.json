@@ -1,0 +1,134 @@
+{
+  "chart": {
+    "axes": {
+      "execution": "Stratégie produit et exécution →",
+      "executionCompact": "Exécution →",
+      "executionHeading": "Stratégie produit et exécution",
+      "viability": "Viabilité du fournisseur →",
+      "viabilityCompact": "Viabilité →",
+      "viabilityHeading": "Viabilité du fournisseur"
+    },
+    "poweredBy": "Propulsé par itmap.ai",
+    "vendorPositioning": "Positionnement du fournisseur",
+    "fixedScoreDomain": "Domaine de score fixe · 0–100",
+    "whatIfTooltip": "Les points sont positionnés avec vos poids de curseur. Réinitialisez les curseurs pour voir le graphique publié.",
+    "whatIfWeights": "Poids hypothétiques",
+    "exportTooltip": "Exporter le graphique en PDF",
+    "exporting": "Exportation…",
+    "exportPdf": "Exporter en PDF",
+    "mobileZoomHint": "Pincez ou utilisez les contrôles pour zoomer · glissez pour déplacer",
+    "zoomOut": "Dézoomer",
+    "zoomIn": "Zoomer",
+    "resetChartToFit": "Réinitialiser le graphique pour l'ajuster",
+    "fit": "Ajuster",
+    "mobileExecutionAxis": "Exécution / stratégie produit"
+  },
+  "quadrants": {
+    "custodians": "Gardiens",
+    "contenders": "Concurrents",
+    "leaders": "Leaders",
+    "emergingCompact": "Émergents",
+    "emergingPlayers": "Acteurs émergents",
+    "emerging_players": "Acteurs émergents",
+    "specialists": "Spécialistes",
+    "catalysts": "Catalyseurs"
+  },
+  "evidence": {
+    "label": "Preuve",
+    "latestNews": "Derniers événements d'actualité",
+    "empty": "Aucun événement d'actualité récent pour ce fournisseur.",
+    "viewVendorDetails": "Voir les détails complets du fournisseur →"
+  },
+  "timeline": {
+    "now": "Maintenant",
+    "current": "Actuel",
+    "historicalView": "Vue historique",
+    "weeksAgoShort": "Il y a {{weeks}} sem.",
+    "weekAgo": "Il y a {{weeks}} semaine",
+    "weeksAgo": "Il y a {{weeks}} semaines",
+    "ariaLabel": "Chronologie de la vue historique pour les six derniers mois"
+  },
+  "criteriaWeights": {
+    "title": "Poids des critères",
+    "mobileTitle": "Poids des critères",
+    "whatIfDescription": "Affichage de votre vue hypothétique. Le graphique publié utilise les poids enregistrés de ce marché.",
+    "description": "Déplacez un curseur pour créer votre propre vue hypothétique. Le graphique publié utilise les poids enregistrés de ce marché.",
+    "reset": "Réinitialiser à la version publiée",
+    "hide": "Masquer",
+    "show": "Afficher",
+    "axisPersistedWeight": "Axe {{category}} · poids persistant"
+  },
+  "vendorDetails": {
+    "tabs": {
+      "overview": "Aperçu",
+      "scores": "Scores",
+      "notes": "Notes"
+    },
+    "financialPerformance": "Performance financière",
+    "revenue": "Revenu :",
+    "notAvailable": "N/D",
+    "website": "Site web :",
+    "quadrantPosition": "Position dans le quadrant",
+    "executionComposite": "Composite d'exécution :",
+    "viabilityComposite": "Composite de viabilité :",
+    "box": "Boîte :",
+    "chartPosition": "Position sur le graphique :",
+    "whatIfPosition": "Calculé avec vos poids de curseur hypothétiques, pas les poids publiés.",
+    "individualCriteriaScores": "Scores des critères individuels",
+    "productCapabilitiesAutoCalculated": "Capacités du produit (Calcul automatique)",
+    "criteriaNotes": "Notes sur les critères",
+    "productCapabilitiesScore": "Capacités du produit - Calcul automatique (Score : {{score}}/10)",
+    "productCapabilitiesNotesPlaceholder": "Ajoutez vos notes sur les capacités du produit de ce fournisseur...",
+    "criterionScore": "{{criterion}} (Score : {{score}}/10)",
+    "criterionNotesPlaceholder": "Ajoutez vos notes sur {{criterion}}...",
+    "saving": "Enregistrement...",
+    "saveNotes": "Enregistrer les notes"
+  },
+  "compare": {
+    "title": "Comparer les fournisseurs",
+    "criteria": "Critères",
+    "notes": "Notes",
+    "viewNotes": "Voir les notes",
+    "hideNotes": "Masquer les notes",
+    "viewDetailedReport": "Voir le rapport détaillé",
+    "selectAtLeastTwo": "Sélectionnez au moins 2 fournisseurs pour comparer leurs scores",
+    "productNameUnavailable": "Nom du produit indisponible",
+    "noStoredCommentary": "Aucun commentaire enregistré n'est disponible pour ce score.",
+    "mobileTitle": "Comparer les produits",
+    "mobileScoresTitle": "Scores et commentaires",
+    "mobileSelectedCount": "{{count}} sélectionné(s) · max 3",
+    "mobileSelectPrompt": "Sélectionnez jusqu'à trois produits pour voir leurs scores et commentaires ci-dessous.",
+    "mobileMaxSelected": "Maximum de trois produits sélectionnés. Décochez-en un pour le remplacer.",
+    "mobileSelectHint": "Sélectionnez jusqu'à trois produits. Chacun que vous cochez est répertorié ci-dessous.",
+    "mobileViewNotes": "Voir les notes",
+    "vendor": "Fournisseur",
+    "score": "Score",
+    "product": "Produit"
+  },
+  "reportModal": {
+    "title": "Générer un rapport d'évaluation du fournisseur",
+    "description": "Sélectionnez les fournisseurs à inclure dans le rapport PDF d'évaluation du fournisseur"
+  },
+  "toasts": {
+    "notesSaved": {
+      "title": "Notes enregistrées",
+      "description": "Vos notes ont été enregistrées avec succès."
+    },
+    "saveNotesError": {
+      "title": "Erreur",
+      "description": "Échec de l'enregistrement des notes. Veuillez réessayer."
+    },
+    "reportGenerated": {
+      "title": "Succès",
+      "description": "Rapport d'évaluation du fournisseur généré avec succès"
+    },
+    "reportError": {
+      "title": "Erreur",
+      "description": "Échec de la génération du rapport"
+    },
+    "exportError": {
+      "title": "Échec de l'exportation",
+      "description": "Impossible de générer le PDF. Veuillez réessayer."
+    }
+  }
+}

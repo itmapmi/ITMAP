@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +34,7 @@ const MOBILE_VENDOR_CAP = 2;
 
 // Component for updating vendor evaluation scores from product evaluation
 const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
+  const { t } = useTranslation("supportMatrix");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -47,8 +49,8 @@ const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
     },
     onSuccess: (data) => {
       toast({
-        title: "Scores Updated Successfully",
-        description: `Updated Product Capabilities scores for ${data.updatedScores} vendors`,
+        title: t("toasts.scoresUpdated.title"),
+        description: t("toasts.scoresUpdated.description", { count: data.updatedScores }),
       });
       // Invalidate vendor evaluation queries to refresh the visualization
       queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "scores"] });
@@ -57,8 +59,8 @@ const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
     onError: (error: any) => {
       console.error("Error updating scores:", error);
       toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update vendor evaluation scores",
+        title: t("toasts.updateFailed.title"),
+        description: error.message || t("toasts.updateFailed.description"),
         variant: "destructive",
       });
     }
@@ -75,7 +77,7 @@ const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
       ) : (
         <Sparkles className="h-4 w-4" />
       )}
-      {updateScoresMutation.isPending ? "Updating..." : "Update Vendor Evaluation"}
+      {updateScoresMutation.isPending ? t("buttons.updating") : t("buttons.updateVendorEvaluation")}
     </Button>
   );
 };
@@ -98,6 +100,7 @@ const HarveyBall = ({
   isMobile?: boolean;
   mobileContext?: any;
 }) => {
+  const { t } = useTranslation("supportMatrix");
   const getHarveyBallIcon = (level: number) => {
     switch (level) {
       case 0: return "○"; // Empty circle - No support
@@ -122,12 +125,12 @@ const HarveyBall = ({
 
   const getSupportText = (level: number) => {
     switch (level) {
-      case 0: return "No Support";
-      case 1: return "Limited";
-      case 2: return "Partial";
-      case 3: return "Good";
-      case 4: return "Full Support";
-      default: return "Unknown";
+      case 0: return t("supportLevels.none");
+      case 1: return t("supportLevels.limited");
+      case 2: return t("supportLevels.partial");
+      case 3: return t("supportLevels.good");
+      case 4: return t("supportLevels.full");
+      default: return t("supportLevels.unknown");
     }
   };
 
@@ -172,11 +175,11 @@ const HarveyBall = ({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">
-                Product evaluation
+                {t("mobile.eyebrow")}
               </p>
-              <CardTitle className="mt-1 text-xl text-[#0f1418]">Compare product support</CardTitle>
+              <CardTitle className="mt-1 text-xl text-[#0f1418]">{t("mobile.title")}</CardTitle>
               <CardDescription className="mt-2 text-xs leading-5 text-[#66737b]">
-                Compare two stored product-support records feature by feature.
+                {t("mobile.description")}
               </CardDescription>
             </div>
             <Button
@@ -187,7 +190,7 @@ const HarveyBall = ({
               data-testid="button-generate-product-evaluation-report"
             >
               {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
-              PDF
+              {t("buttons.pdf")}
             </Button>
           </div>
         </CardHeader>
@@ -196,8 +199,8 @@ const HarveyBall = ({
           <section aria-labelledby="mobile-product-picker-title">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
-              <h2 id="mobile-product-picker-title" className="text-sm font-bold text-[#0f1418]">Products to compare</h2>
-              <span className="ml-auto font-mono text-[9px] font-bold uppercase text-[#66737b]">Choose exactly 2</span>
+              <h2 id="mobile-product-picker-title" className="text-sm font-bold text-[#0f1418]">{t("mobile.productsToCompare")}</h2>
+              <span className="ml-auto font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("mobile.chooseExactlyTwo")}</span>
             </div>
 
             {allVendors && allVendors.length > 0 ? (
@@ -236,7 +239,7 @@ const HarveyBall = ({
                           <span className="min-w-0">
                             <strong className="block break-words text-xs leading-4">{vendor.name}</strong>
                             <small className="mt-1 block break-words text-[10px] leading-[1.3] text-[#66737b]">
-                              {vendor.product || "Product name unavailable"}
+                              {vendor.product || t("fallbacks.productNameUnavailable")}
                             </small>
                           </span>
                         </span>
@@ -246,18 +249,24 @@ const HarveyBall = ({
                 </div>
                 <p className="mt-2 text-[11px] leading-4 text-[#66737b]">
                   {selectedProducts.length === 2
-                    ? "Two products selected. Both columns remain visible below."
-                    : `Select ${2 - selectedProducts.length} more product${selectedProducts.length === 1 ? "" : "s"} to view the comparison.`}
+                    ? t("mobile.twoProductsSelected")
+                    : t(selectedProducts.length === 1 ? "mobile.moreProducts_one" : "mobile.moreProducts_other", { count: 2 - selectedProducts.length })}
                 </p>
               </>
             ) : (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-4 text-center text-xs text-[#66737b]">
-                No products are available for this market.
+                {t("mobile.noProducts")}
               </div>
             )}
 
             <div className="mt-3 grid grid-cols-5 gap-1 border border-[#dfe8ed] bg-[#f7f9f9] p-2">
-              {["0 none", "1 limited", "2 partial", "3 good", "4 full"].map((label, level) => (
+              {[
+                `0 ${t("supportLevels.legendNone")}`,
+                `1 ${t("supportLevels.legendLimited")}`,
+                `2 ${t("supportLevels.legendPartial")}`,
+                `3 ${t("supportLevels.legendGood")}`,
+                `4 ${t("supportLevels.legendFull")}`,
+              ].map((label, level) => (
                 <span key={label} className="text-center font-mono text-[8px] uppercase text-[#66737b]">
                   <i className="mx-auto mb-1 block h-2 w-2 rounded-full" style={{ background: harveyFill[level] }} />
                   {label}
@@ -270,28 +279,28 @@ const HarveyBall = ({
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
               <h2 id="mobile-product-support-title" className="text-sm font-bold text-[#0f1418]">
-                Feature support &amp; commentary
+                {t("mobile.featureSupportCommentary")}
               </h2>
             </div>
 
             {selectedProducts.length !== MOBILE_VENDOR_CAP ? (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center">
-                <p className="text-xs font-bold text-[#0f1418]">Comparison unavailable</p>
-                <p className="mt-1 text-[11px] text-[#66737b]">Choose exactly two products above.</p>
+                <p className="text-xs font-bold text-[#0f1418]">{t("mobile.comparisonUnavailable")}</p>
+                <p className="mt-1 text-[11px] text-[#66737b]">{t("mobile.chooseExactlyTwoAbove")}</p>
               </div>
             ) : sortedCategories.length === 0 ? (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]">
-                No product capability features are available for this market.
+                {t("mobile.noCapabilityFeatures")}
               </div>
             ) : (
               <div className="mt-3 border border-[#dfe8ed] bg-white">
                 <div className="grid grid-cols-3 bg-[#0f1418] text-white">
-                  <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9bbbd0]">Feature</span>
+                  <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9bbbd0]">{t("matrix.feature")}</span>
                   {selectedProducts.map(vendor => (
                     <span key={vendor.id} className="border-r border-white/15 p-2">
                       <strong className="block break-words text-[11px] leading-4">{vendor.name}</strong>
                       <small className="mt-0.5 block break-words text-[9px] leading-3 text-[#bdd3d1]">
-                        {vendor.product || "Product unavailable"}
+                        {vendor.product || t("fallbacks.productUnavailable")}
                       </small>
                     </span>
                   ))}
@@ -310,7 +319,7 @@ const HarveyBall = ({
                       >
                         <span>
                           <strong className="block text-xs text-[#0f1418]">{category.name}</strong>
-                          <small className="mt-0.5 block text-[10px] text-[#66737b]">{categoryFeatures.length} stored rows</small>
+                          <small className="mt-0.5 block text-[10px] text-[#66737b]">{t("mobile.storedRows", { count: categoryFeatures.length })}</small>
                         </span>
                         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                       </button>
@@ -321,7 +330,7 @@ const HarveyBall = ({
                             <article key={feature.id} className="border-t border-[#dfe8ed] p-3">
                               <h3 className="text-xs font-bold text-[#0f1418]">{feature.name}</h3>
                               <p className="mb-2 mt-1 text-[11px] leading-[1.4] text-[#66737b]">
-                                {feature.description || "Feature description unavailable."}
+                                {feature.description || t("fallbacks.featureDescriptionUnavailable")}
                               </p>
                               <div className="grid grid-cols-2 gap-2">
                                 {selectedProducts.map(vendor => {
@@ -336,7 +345,7 @@ const HarveyBall = ({
                                       <div className="flex items-center gap-2">
                                         <span
                                           role="img"
-                                          aria-label={unavailable ? "Support score unavailable" : `${level} of 4 support`}
+                                          aria-label={unavailable ? t("supportLevels.scoreUnavailable") : t("supportLevels.levelOfFour", { level })}
                                           className={`block h-7 w-7 shrink-0 rounded-full border-[2px] ${unavailable ? "border-dashed border-[#b9cbd5]" : "border-[#00b890]"}`}
                                           style={unavailable ? undefined : {
                                             background: `conic-gradient(#00b890 ${level * 25}%, #e6e6e6 0)`,
@@ -344,24 +353,24 @@ const HarveyBall = ({
                                           }}
                                         />
                                         <b className="font-mono text-[10px] text-[#087fca]">
-                                          {unavailable ? "Unavailable" : `${level} / 4`}
+                                          {unavailable ? t("supportLevels.unavailable") : `${level} / 4`}
                                         </b>
                                       </div>
                                       <button
                                         type="button"
                                         onClick={() => setSelectedNotes({
                                           vendorName: vendor.name,
-                                          productName: vendor.product || "Product name unavailable",
+                                          productName: vendor.product || t("fallbacks.productNameUnavailable"),
                                           featureName: feature.name,
                                           supportLevel: level,
                                           unavailable,
                                           notes: unavailable
-                                            ? "No support record is available for this vendor, product, and feature."
-                                            : support.notes || "No stored commentary is available for this support record.",
+                                            ? t("fallbacks.noSupportRecord")
+                                            : support.notes || t("fallbacks.noStoredCommentary"),
                                         })}
                                         className="mt-2 min-h-9 w-full border border-[#b9d8ec] bg-[#dcebf6] px-1 text-[10px] font-bold text-[#087fca]"
                                       >
-                                        View notes
+                                        {t("buttons.viewNotes")}
                                       </button>
                                     </div>
                                   );
@@ -382,36 +391,36 @@ const HarveyBall = ({
         <Dialog open={!!selectedNotes} onOpenChange={(open) => !open && setSelectedNotes(null)}>
           <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm flex-col gap-0 overflow-hidden rounded-none border-[#dfe8ed] p-0">
             <DialogHeader className="border-b border-[#dfe8ed] p-4 pr-10 text-left">
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#66737b]">Evaluation notes</p>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#66737b]">{t("notes.evaluationNotes")}</p>
               <DialogTitle className="mt-1 text-base text-[#0f1418]">{selectedNotes?.featureName}</DialogTitle>
             </DialogHeader>
             {selectedNotes && (
               <>
                 <div className="grid grid-cols-2 border-b border-[#dfe8ed] bg-[#f7f9f9] text-xs">
                   <div className="border-r border-[#dfe8ed] p-3">
-                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Vendor</span>
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("notes.vendor")}</span>
                     <strong className="mt-1 block">{selectedNotes.vendorName}</strong>
                   </div>
                   <div className="p-3">
-                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Product</span>
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("notes.product")}</span>
                     <strong className="mt-1 block break-words">{selectedNotes.productName}</strong>
                   </div>
                   <div className="col-span-2 border-t border-[#dfe8ed] p-3">
-                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Support</span>
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("notes.support")}</span>
                     <strong className="mt-1 block">
                       {selectedNotes.unavailable
-                        ? "Unavailable"
+                        ? t("supportLevels.unavailable")
                         : `${selectedNotes.supportLevel} / 4 · ${getSupportText(selectedNotes.supportLevel)}`}
                     </strong>
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                  <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Stored commentary</span>
+                  <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("notes.storedCommentary")}</span>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">{selectedNotes.notes}</p>
                 </div>
                 <div className="border-t border-[#dfe8ed] p-3">
                   <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setSelectedNotes(null)}>
-                    Close notes
+                    {t("buttons.closeNotes")}
                   </Button>
                 </div>
               </>
@@ -424,8 +433,8 @@ const HarveyBall = ({
           onOpenChange={setShowVendorModal}
           vendors={allVendors || []}
           onGenerate={handleGenerateReport}
-          title="Generate Product Evaluation Report"
-          description="Select vendors to include in the Product Evaluation PDF report"
+          title={t("reports.title")}
+          description={t("reports.description")}
           isGenerating={isGenerating}
         />
       </Card>
@@ -437,7 +446,9 @@ const HarveyBall = ({
       <button
         onClick={onClick}
         className={`${isMobile ? 'text-3xl p-2' : 'text-2xl p-1'} ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full ${isMobile ? 'min-w-[44px] min-h-[44px]' : ''}`}
-        title={`${getSupportText(level)}${notes ? ' - Click for notes' : ''}`}
+        title={notes
+          ? t("supportLevels.tooltipWithNotes", { support: getSupportText(level) })
+          : getSupportText(level)}
       >
         {getHarveyBallIcon(level)}
         {notes && (
@@ -449,6 +460,7 @@ const HarveyBall = ({
 };
 
 export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, mobileMode = false }: SupportMatrixProps) {
+  const { t } = useTranslation("supportMatrix");
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -504,7 +516,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       );
 
       if (!response.ok) {
-        throw new Error("Failed to generate report");
+        throw new Error(t("toasts.reportFailed.description"));
       }
 
       const contentDisposition = response.headers.get('Content-Disposition');
@@ -521,16 +533,16 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       document.body.removeChild(a);
 
       toast({
-        title: "Success",
-        description: "Product Evaluation report generated successfully",
+        title: t("toasts.reportSuccess.title"),
+        description: t("toasts.reportSuccess.description"),
       });
 
       setShowVendorModal(false);
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
-        title: "Error",
-        description: "Failed to generate report",
+        title: t("toasts.reportFailed.title"),
+        description: t("toasts.reportFailed.description"),
         variant: "destructive",
       });
     } finally {
@@ -606,8 +618,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       } else {
         if (mobileMode && newSet.size >= MOBILE_VENDOR_CAP) {
           toast({
-            title: "Choose exactly 2 products",
-            description: "Deselect one product before selecting another.",
+            title: t("toasts.chooseTwoProducts.title"),
+            description: t("toasts.chooseTwoProducts.description"),
           });
           return prev;
         }
@@ -657,9 +669,9 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
-            Product Evaluation
+            {t("heading.productEvaluation")}
           </CardTitle>
-          <CardDescription>Harvey ball indicators showing vendor product evaluation levels</CardDescription>
+          <CardDescription>{t("loading.description")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -686,16 +698,16 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
-            Product Evaluation
+            {t("heading.productEvaluation")}
           </CardTitle>
-          <CardDescription>Select vendors to compare their product features and capabilities</CardDescription>
+          <CardDescription>{t("selection.description")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           {allVendors && allVendors.length > 0 ? (
             <div className="space-y-6">
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Vendors to Evaluate</h3>
-                <p className="text-gray-600 mb-4">Select one or more vendors to compare their product capabilities in detail</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("selection.chooseVendors")}</h3>
+                <p className="text-gray-600 mb-4">{t("selection.chooseVendorsDescription")}</p>
               </div>
               
               <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
@@ -737,7 +749,9 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
 
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="text-sm text-gray-600">
-                  {selectedVendors.size === 0 ? 'No vendors selected' : `${selectedVendors.size} vendor${selectedVendors.size === 1 ? '' : 's'} selected`}
+                  {selectedVendors.size === 0
+                    ? t("selection.noVendorsSelected")
+                    : t(selectedVendors.size === 1 ? "selection.vendorsSelected_one" : "selection.vendorsSelected_other", { count: selectedVendors.size })}
                 </div>
                 <div className="space-x-2">
                   <Button
@@ -746,14 +760,14 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                     disabled={selectedVendors.size === 0}
                     data-testid="clear-vendors-button"
                   >
-                    Clear All
+                    {t("buttons.clearAll")}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={selectAllVendors}
                     data-testid="select-all-vendors-button"
                   >
-                    Select All
+                    {t("buttons.selectAll")}
                   </Button>
                   <Button
                     onClick={handleProceedWithSelection}
@@ -761,14 +775,16 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="proceed-with-selection-button"
                   >
-                    {mobileMode ? `Compare ${selectedVendors.size}/2` : `View Product Evaluation (${selectedVendors.size})`}
+                    {mobileMode
+                      ? t("buttons.compareProducts", { count: selectedVendors.size })
+                      : t("buttons.viewProductEvaluation", { count: selectedVendors.size })}
                   </Button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-center text-gray-500">
-              <p>No vendors available for this market.</p>
+              <p>{t("selection.noVendorsAvailable")}</p>
             </div>
           )}
         </CardContent>
@@ -782,12 +798,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
-            Product Evaluation
+            {t("heading.productEvaluation")}
           </CardTitle>
-          <CardDescription>Harvey ball indicators showing vendor product capabilities (excluding ecosystem features)</CardDescription>
+          <CardDescription>{t("loading.capabilitiesDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <p className="text-gray-500">No product capability features available for this market.</p>
+          <p className="text-gray-500">{t("matrix.noCapabilityFeatures")}</p>
         </CardContent>
       </Card>
     );
@@ -805,7 +821,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
 
   const handleHarveyBallClick = (vendorName: string, productName: string, featureName: string, supportLevel: number, notes?: string) => {
     if (mobileMode) {
-      setSelectedNotes({ vendorName, productName, featureName, supportLevel, notes: notes || "No stored commentary is available for this support record." });
+      setSelectedNotes({ vendorName, productName, featureName, supportLevel, notes: notes || t("fallbacks.noStoredCommentary") });
       return;
     }
     if (notes) {
@@ -855,12 +871,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
 
   const getSupportText = (level: number) => {
     switch (level) {
-      case 0: return "No Support";
-      case 1: return "Limited";
-      case 2: return "Partial";
-      case 3: return "Good";
-      case 4: return "Full Support";
-      default: return "Unknown";
+      case 0: return t("supportLevels.none");
+      case 1: return t("supportLevels.limited");
+      case 2: return t("supportLevels.partial");
+      case 3: return t("supportLevels.good");
+      case 4: return t("supportLevels.full");
+      default: return t("supportLevels.unknown");
     }
   };
 
@@ -903,37 +919,37 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg shadow-md">
                 <LayoutGrid className="h-5 w-5 text-white" />
               </div>
-              Product Evaluation
+              {t("heading.productEvaluation")}
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 shadow-sm">
                 <Award className="h-3 w-3 mr-1" />
-                {vendors.length} of {allVendors?.length || 0} vendors
+                {t("heading.vendorCount", { selected: vendors.length, total: allVendors?.length || 0 })}
               </Badge>
             </CardTitle>
             <CardDescription className="flex items-center gap-4 flex-wrap mt-3">
               <span className="text-gray-600 flex items-center gap-2">
                 <Info className="h-4 w-4" />
-                Product capabilities only (ecosystem support excluded)
+                {t("heading.capabilitiesOnly")}
               </span>
               <div className="flex items-center gap-3 p-2 bg-white/60 rounded-lg border border-white/40 backdrop-blur-sm">
                 <div className="flex items-center gap-1">
                   <span className="text-green-500 text-lg font-bold">●</span>
-                  <span className="text-xs font-medium">Full</span>
+                  <span className="text-xs font-medium">{t("supportLevels.legendFull")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-blue-500 text-lg font-bold">◕</span>
-                  <span className="text-xs font-medium">Good</span>
+                  <span className="text-xs font-medium">{t("supportLevels.legendGood")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-500 text-lg font-bold">◑</span>
-                  <span className="text-xs font-medium">Partial</span>
+                  <span className="text-xs font-medium">{t("supportLevels.legendPartial")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-orange-500 text-lg font-bold">◔</span>
-                  <span className="text-xs font-medium">Limited</span>
+                  <span className="text-xs font-medium">{t("supportLevels.legendLimited")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-gray-400 text-lg font-bold">○</span>
-                  <span className="text-xs font-medium">None</span>
+                  <span className="text-xs font-medium">{t("supportLevels.legendNone")}</span>
                 </div>
               </div>
             </CardDescription>
@@ -948,7 +964,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 data-testid="button-generate-product-evaluation-report"
               >
                 {pdfLocked ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
-                {isMobile ? 'PDF' : 'PDF Report'}
+                {isMobile ? t("buttons.pdf") : t("buttons.pdfReport")}
               </Button>
               <Button
                 variant="outline"
@@ -960,7 +976,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
                 </svg>
-                {isMobile ? "Change" : "Change Selection"}
+                {isMobile ? t("buttons.change") : t("buttons.changeSelection")}
               </Button>
               
               <Button
@@ -970,7 +986,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
               >
                 <ChevronDown className="h-4 w-4" />
-                Expand All
+                {t("buttons.expandAll")}
               </Button>
               
               <Button
@@ -980,7 +996,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
               >
                 <ChevronRight className="h-4 w-4" />
-                Collapse All
+                {t("buttons.collapseAll")}
               </Button>
             </div>
             
@@ -991,7 +1007,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
               className={`flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 shadow-md transition-all duration-200 ${isMobile ? 'w-full' : ''}`}
             >
               <Filter className="h-4 w-4" />
-              {showVendorSelection ? "Hide Filters" : "Filter Vendors"}
+              {showVendorSelection ? t("buttons.hideFilters") : t("buttons.filterVendors")}
             </Button>
           </div>
         </div>
@@ -1002,14 +1018,14 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
                 <Filter className="h-4 w-4 text-blue-500" />
-                Choose Vendors to Compare
+                {t("selection.chooseVendorsToCompare")}
               </h4>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={selectAllVendors} className="hover:bg-blue-50">
-                  Select All
+                  {t("buttons.selectAll")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={clearAllVendors} className="hover:bg-red-50">
-                  Clear All
+                  {t("buttons.clearAll")}
                 </Button>
               </div>
             </div>
@@ -1034,7 +1050,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
             {selectedVendors.size === 0 && (
               <p className="text-sm text-amber-600 mt-3 flex items-center gap-2 p-2 bg-amber-50 rounded-lg">
                 <Eye className="h-4 w-4" />
-                Select at least one vendor to view the comparison matrix
+                {t("selection.selectAtLeastOne")}
               </p>
             )}
           </div>
@@ -1047,9 +1063,9 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
             <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
               <Users className="h-8 w-8 text-gray-400" />
             </div>
-            <p className="text-lg font-medium text-gray-900 mb-2">No Vendors Selected</p>
+            <p className="text-lg font-medium text-gray-900 mb-2">{t("matrix.noVendorsSelected")}</p>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Choose vendors from the filters above to compare their feature support capabilities
+              {t("matrix.chooseVendorsToCompare")}
             </p>
             <Button
               variant="outline"
@@ -1057,7 +1073,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
               className="flex items-center gap-2 mx-auto hover:bg-blue-50"
             >
               <Filter className="h-4 w-4" />
-              Filter Vendors
+              {t("buttons.filterVendors")}
             </Button>
           </div>
         ) : (
@@ -1074,10 +1090,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 }}
               >
                 <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Features
+                  {t("matrix.features")}
                 </div>
                 <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Evaluation Criteria
+                  {t("matrix.evaluationCriteria")}
                 </div>
                 {vendors.map(vendor => (
                   <div key={vendor.id} className="text-center min-w-0">
@@ -1133,7 +1149,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                               {category.name}
                               <Badge variant="outline" className="ml-2 text-xs">
-                                {categoryFeatures.length} features
+                                {t("matrix.featureCount", { count: categoryFeatures.length })}
                               </Badge>
                             </button>
                           </div>
@@ -1153,7 +1169,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                 {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                 {category.name}
                                 <Badge variant="outline" className="ml-2 text-xs">
-                                  {categoryFeatures.length} features
+                                  {t("matrix.featureCount", { count: categoryFeatures.length })}
                                 </Badge>
                               </button>
                             </div>
@@ -1168,7 +1184,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                       {vendorTotal}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                      Total Score
+                                      {t("scores.totalScore")}
                                     </div>
                                   </div>
                                 </div>
@@ -1186,7 +1202,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                               <div key={feature.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <div className="mb-3">
                                   <h4 className="font-medium text-gray-900 mb-1">{feature.name}</h4>
-                                  <p className="text-sm text-gray-600">{feature.description || 'No evaluation criteria specified'}</p>
+                                    <p className="text-sm text-gray-600">{feature.description || t("fallbacks.noEvaluationCriteria")}</p>
                                 </div>
                                 <div className="space-y-3">
                                   {vendors.map(vendor => {
@@ -1209,19 +1225,19 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                               notes={notes}
                                               vendorName={vendor.name}
                                               featureName={feature.name}
-                                              onClick={() => handleHarveyBallClick(vendor.name, vendor.product || "Product name unavailable", feature.name, supportLevel, notes)}
+                                              onClick={() => handleHarveyBallClick(vendor.name, vendor.product || t("fallbacks.productNameUnavailable"), feature.name, supportLevel, notes)}
                                               isMobile={true}
                                             />
-                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, vendor.product || "Product name unavailable", feature.name, supportLevel, notes)}>View notes</button>}
+                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, vendor.product || t("fallbacks.productNameUnavailable"), feature.name, supportLevel, notes)}>{t("buttons.viewNotes")}</button>}
                                           </div>
                                         </div>
                                         {/* Inline expandable notes — replaces the desktop Dialog on mobile */}
                                         {isExpanded && (
                                           <div className="px-3 pb-3 pt-0 animate-in slide-in-from-top-1 duration-150">
                                             <div className="rounded-md bg-white border border-gray-200 p-3">
-                                              <p className="text-xs font-medium text-gray-500 mb-1">Notes</p>
+                                              <p className="text-xs font-medium text-gray-500 mb-1">{t("notes.notes")}</p>
                                               <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                                {notes || "No additional notes for this rating."}
+                                                {notes || t("fallbacks.noAdditionalNotes")}
                                               </p>
                                             </div>
                                           </div>
@@ -1248,7 +1264,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                               
                               <div className="flex flex-col justify-center">
                                 <div className="text-sm text-gray-700 leading-relaxed">
-                                  {feature.description || 'No evaluation criteria specified'}
+                                  {feature.description || t("fallbacks.noEvaluationCriteria")}
                                 </div>
                               </div>
                               
@@ -1263,7 +1279,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                       notes={supportData.notes}
                                       vendorName={vendor.name}
                                       featureName={feature.name}
-                                      onClick={() => handleHarveyBallClick(vendor.name, vendor.product || "Product name unavailable", feature.name, supportData.level, supportData.notes)}
+                                      onClick={() => handleHarveyBallClick(vendor.name, vendor.product || t("fallbacks.productNameUnavailable"), feature.name, supportData.level, supportData.notes)}
                                     />
                                   </div>
                                 );
@@ -1295,10 +1311,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                       <div className="flex flex-col justify-center col-span-2">
                         <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                           <TrendingUp className="h-5 w-5 text-blue-500" />
-                          Total Score
+                          {t("scores.totalScore")}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Maximum: {maxScore} points
+                          {t("scores.maximumPoints", { maxScore })}
                         </div>
                       </div>
                       
@@ -1316,7 +1332,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                 {percentage}%
                               </div>
                               <div className="text-xs text-blue-600 font-medium">
-                                of {maxScore}
+                                  {t("scores.ofMaximum", { maxScore })}
                               </div>
                             </div>
                           </div>
@@ -1341,10 +1357,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                       <div className="flex flex-col justify-center col-span-2">
                         <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                           <TrendingUp className="h-5 w-5 text-purple-500" />
-                          Product Capabilities Score
+                          {t("scores.productCapabilitiesScore")}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Vendor Evaluation criterion on the 0–10 rubric, derived from the coverage above
+                          {t("scores.criterionDescription")}
                         </div>
                       </div>
                       
@@ -1363,10 +1379,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                 {derived ? derived.score.toFixed(1) : "—"}
                               </div>
                               <div className="text-xs text-gray-500">
-                                out of 10
+                                {t("scores.outOfTen")}
                               </div>
                               <div className="text-xs text-purple-600 font-medium">
-                                {coverageLabel ? `${coverageLabel} coverage` : derived ? "Product Score" : "Not derived yet"}
+                                {coverageLabel ? t("scores.coverage", { coverage: coverageLabel }) : derived ? t("scores.productScore") : t("scores.notDerivedYet")}
                               </div>
                             </div>
                           </div>
@@ -1388,18 +1404,18 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Feature Support Details
+              {t("notes.featureSupportDetails")}
             </DialogTitle>
           </DialogHeader>
           {selectedNotes && (
             <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-2 gap-4 min-w-0">
                 <div className="min-w-0">
-                  <label className="text-sm font-medium text-gray-700">Vendor</label>
+                  <label className="text-sm font-medium text-gray-700">{t("notes.vendor")}</label>
                   <p className="text-lg font-semibold break-words">{selectedNotes.vendorName}</p>
                 </div>
                 <div className="min-w-0">
-                  <label className="text-sm font-medium text-gray-700">Feature</label>
+                  <label className="text-sm font-medium text-gray-700">{t("notes.feature")}</label>
                   <p className="text-lg font-semibold break-words">{selectedNotes.featureName}</p>
                 </div>
               </div>
@@ -1413,12 +1429,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 />
                 <div className="min-w-0">
                   <span className="font-medium">{getSupportText(selectedNotes.supportLevel)}</span>
-                  <p className="text-sm text-gray-600">Support Level: {selectedNotes.supportLevel}/4</p>
+                  <p className="text-sm text-gray-600">{t("notes.supportLevel", { level: selectedNotes.supportLevel })}</p>
                 </div>
               </div>
               
               <div className="min-w-0">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Notes</label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">{t("notes.notes")}</label>
                 <div className="p-4 bg-white border rounded-lg min-h-[100px] text-sm text-gray-900 whitespace-pre-wrap break-words">
                   {selectedNotes.notes}
                 </div>
@@ -1433,8 +1449,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
         onOpenChange={setShowVendorModal}
         vendors={allVendors || []}
         onGenerate={handleGenerateReport}
-        title="Generate Product Evaluation Report"
-        description="Select vendors to include in the Product Evaluation PDF report"
+        title={t("reports.title")}
+        description={t("reports.description")}
         isGenerating={isGenerating}
       />
     </Card>

@@ -1,0 +1,67 @@
+{
+  "seo": {
+    "title": "Compradores de Tecnologia — ITMAP | Inteligência Gratuita de Fornecedores de TI para Sempre",
+    "description": "Inteligência gratuita de fornecedores de TI para compradores de tecnologia. Avalie fornecedores, compare produtos, crie RFPs, monitore segurança — sempre grátis, sem plano pago, sem cartão de crédito."
+  },
+  "hero": {
+    "eyebrow": "PARA COMPRADORES DE TECNOLOGIA",
+    "titleLine1": "Inteligência de TI empresarial,",
+    "titleLine2": "completamente gratuita",
+    "description": "Classificações independentes de fornecedores, comparações de recursos, monitoramento de segurança e ferramentas de RFP — tudo gratuito para compradores. Sem patrocínios, sem paywalls, sem planos de cobrar você. Nunca.",
+    "createAccount": "Criar Conta Gratuita",
+    "exploreMarkets": "Explorar Mercados ao Vivo",
+    "stats": {
+      "scoringDimensions": "Dimensões de pontuação",
+      "independentResearch": "Pesquisa independente",
+      "freeForever": "Grátis para Sempre",
+      "noCreditCard": "Sem cartão de crédito · Sem plano pago"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "CAPACIDADES",
+    "title": "Tudo que você precisa para avaliar fornecedores",
+    "description": "Uma plataforma para mapas de mercado, comparações de produtos, monitoramento de segurança e criação de RFP — tudo incluído, sempre gratuito.",
+    "items": {
+      "vendorEvaluation": {
+        "title": "Avaliação de Fornecedores ITMAP",
+        "description": "Mapas interativos de execução versus produto posicionam cada fornecedor no seu mercado. Aprofunde-se na lógica das pontuações, compare movimentos históricos e identifique líderes versus desafiantes de relance."
+      },
+      "productEvaluation": {
+        "title": "Avaliação de Produtos",
+        "description": "Matrizes de suporte a recursos lado a lado em centenas de capacidades. Veja quais fornecedores entregam os recursos que você valoriza e onde existem lacunas."
+      },
+      "ecosystemEvaluation": {
+        "title": "Avaliação de Ecossistema",
+        "description": "Mapeie redes de parceiros, integrações e alianças para entender todo o cenário competitivo além das listas de verificação de produtos."
+      },
+      "conversationPlatform": {
+        "title": "Plataforma de Conversação",
+        "description": "Faça perguntas em linguagem natural sobre qualquer mercado ou fornecedor. Nosso analista de IA sintetiza pontuações, notícias, recursos e relatórios em respostas fundamentadas."
+      },
+      "securityIntelligence": {
+        "title": "Inteligência de Segurança",
+        "description": "Monitore CVEs, alertas CISA KEV e pontuações de exploração EPSS para os fornecedores em sua pilha. Receba avisos antecipados quando a postura de segurança de um fornecedor mudar."
+      },
+      "createRfps": {
+        "title": "Criar RFPs",
+        "description": "Gere RFPs agnósticas de fornecedores a partir do conjunto de recursos de qualquer mercado, depois execute avaliações estruturadas e listas de finalistas em um único fluxo de trabalho."
+      }
+    }
+  },
+  "freePromise": {
+    "eyebrow": "GRÁTIS PARA COMPRADORES — SEM EXCEÇÕES",
+    "title": "Sem paywalls. Sem vendas adicionais. Sem letras miúdas.",
+    "description": "ITMAP é gratuito para compradores de tecnologia porque nossa missão é tornar a seleção de TI empresarial transparente. Nunca cobraremos dos compradores pelo acesso à inteligência de fornecedores, avaliações ou ferramentas de RFP."
+  },
+  "registration": {
+    "eyebrow": "COMECE AGORA",
+    "title": "Comece a avaliar gratuitamente hoje",
+    "description": "O registro é gratuito e o acesso é gratuito — hoje e sempre. Crie sua conta de comprador com qualquer endereço de e-mail e desbloqueie todos os recursos.",
+    "benefits": {
+      "noCreditCard": "Nenhum cartão de crédito necessário",
+      "noSponsorships": "Sem patrocínios de fornecedores ou colocações pagas",
+      "allFeatures": "Todos os recursos para compradores incluídos sem custo",
+      "anyEmail": "E-mail pessoal ou corporativo — ambos funcionam"
+    }
+  }
+}

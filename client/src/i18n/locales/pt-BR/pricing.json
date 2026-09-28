@@ -1,0 +1,51 @@
+{
+  "seo": {
+    "title": "Preços — itmap.ai",
+    "description": "Preços do itmap.ai para compradores e fornecedores de TI empresarial. Acesso para Compradores de Tecnologia é gratuito, acesso para Fornecedores a partir de $2,500/usuário/mês. Contate o departamento de vendas para mais detalhes."
+  },
+  "hero": {
+    "eyebrow": "Preços",
+    "titleLine1": "Planos para compradores",
+    "titleLine2": "e fornecedores",
+    "subtitle": "Seja avaliando fornecedores ou vendendo para TI empresarial, o itmap.ai oferece as ferramentas de inteligência para acelerar seu processo."
+  },
+  "plans": {
+    "endUser": {
+      "name": "Comprador de Tecnologia",
+      "audience": "Para compradores de TI empresarial avaliando fornecedores",
+      "price": "Gratuito",
+      "unit": "",
+      "badge": "",
+      "features": [
+        "Acesso a Todos os Mercados e Relatórios",
+        "Construtor de RFP",
+        "Folhas de Dados",
+        "Inteligência de Segurança"
+      ]
+    },
+    "vendor": {
+      "name": "Acesso do Fornecedor",
+      "audience": "Para fornecedores vendendo para TI empresarial",
+      "price": "$2,500",
+      "unit": "/ usuário / mês",
+      "badge": "Para Fornecedores",
+      "features": [
+        "Acesso a Todos os Mercados e Relatórios",
+        "Gerador de Leads",
+        "Construtor de Mercado",
+        "Construtor de Previsões",
+        "Inteligência de Fornecedor",
+        "Cartões de Batalha",
+        "Respondedor de RFP",
+        "Folhas de Dados",
+        "Inteligência de Segurança"
+      ]
+    }
+  },
+  "contactSales": "Contate Vendas",
+  "cta": {
+    "heading": "Tem dúvidas sobre preços?",
+    "body": "Entre em contato com nossa equipe de vendas — ajudaremos você a encontrar o plano certo.",
+    "buttonPrefix": "Contate"
+  }
+}

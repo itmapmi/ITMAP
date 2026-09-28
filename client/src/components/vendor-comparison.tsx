@@ -9,6 +9,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 import { recordHighIntentAction } from "@/lib/high-intent";
+import { useTranslation } from "react-i18next";
+import { translateCriterionName } from "@/lib/criteria-i18n";
 
 interface VendorComparisonProps {
   marketId: string;
@@ -18,6 +20,8 @@ interface VendorComparisonProps {
 }
 
 export default function VendorComparison({ marketId, mobileMode = false, mobileSelectedVendors, onMobileSelectedVendorsChange }: VendorComparisonProps) {
+  const { t } = useTranslation("magicQuadrant");
+  const { t: tc } = useTranslation("common");
   const [localSelectedVendors, setLocalSelectedVendors] = useState<string[]>([]);
   const selectedVendors = mobileMode && mobileSelectedVendors ? mobileSelectedVendors : localSelectedVendors;
   const setSelectedVendors = (updater: (previous: string[]) => string[]) => {
@@ -118,8 +122,8 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
       <section className="space-y-5 font-[Montserrat]">
         <div>
           <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
-            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">03</p><h3 className="text-base font-bold">Compare products</h3></div>
-            <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{selectedVendors.length} selected · max 3</span>
+            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">03</p><h3 className="text-base font-bold">{t("compare.mobileTitle")}</h3></div>
+            <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{t("compare.mobileSelectedCount", { count: selectedVendors.length })}</span>
           </div>
           <div className="grid gap-2">
             {vendors?.map(vendor => {
@@ -127,34 +131,34 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
               return (
                 <button key={vendor.id} type="button" onClick={() => handleVendorToggle(vendor.id, !active)} disabled={!active && atMax} className={`flex min-h-14 items-center gap-3 border p-2.5 text-left ${active ? "border-sky-500 bg-blue-50 shadow-[inset_3px_0_#13a8f0]" : "border-slate-200 bg-white"} ${!active && atMax ? "opacity-50" : ""}`} aria-pressed={active} data-testid={`mobile-compare-vendor-${vendor.id}`}>
                   <span className={`grid h-5 w-5 place-items-center border ${active ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300"}`}>{active ? "✓" : ""}</span>
-                  <span><strong className="block text-xs">{vendor.name}</strong><small className="mt-0.5 block text-[10px] text-slate-500">{vendor.product || "Product name unavailable"}</small></span>
+                  <span><strong className="block text-xs">{vendor.name}</strong><small className="mt-0.5 block text-[10px] text-slate-500">{vendor.product || t("compare.productNameUnavailable")}</small></span>
                 </button>
               );
             })}
           </div>
           <p className="mt-2 text-[11px] text-slate-500">
             {selectedVendorData.length === 0
-              ? "Select up to three products to see their scores and commentary below."
+              ? t("compare.mobileSelectPrompt")
               : atMax
-                ? "Maximum of three products selected. Uncheck one to swap it out."
-                : "Select up to three products. Each one you check is listed below."}
+                ? t("compare.mobileMaxSelected")
+                : t("compare.mobileSelectHint")}
           </p>
         </div>
         {selectedVendorData.length >= 1 && (
           <div>
-            <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">Scores &amp; commentary</h3></div>
+            <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">{t("compare.mobileScoresTitle")}</h3></div>
             <div className="overflow-hidden border border-slate-200 bg-slate-50">
               <div className="grid bg-slate-950 text-white" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
                 {selectedVendorData.map(vendor => (
                   <span key={vendor.id} className="min-w-0 border-r border-white/15 px-2.5 py-3 last:border-0">
                     <strong className="block break-words text-xs">{vendor.name}</strong>
-                    <small className="mt-0.5 block break-words text-[10px] leading-snug text-slate-300">{vendor.product || "Product name unavailable"}</small>
+                    <small className="mt-0.5 block break-words text-[10px] leading-snug text-slate-300">{vendor.product || t("compare.productNameUnavailable")}</small>
                   </span>
                 ))}
               </div>
               {criteria?.map(criterion => (
                 <div key={criterion.id} className="border-b border-slate-200 last:border-0">
-                  <h4 className="bg-blue-50 px-3 py-2.5 text-xs font-semibold">{criterion.name}</h4>
+                  <h4 className="bg-blue-50 px-3 py-2.5 text-xs font-semibold">{translateCriterionName(tc, criterion.name)}</h4>
                   <div className="grid" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
                     {selectedVendorData.map(vendor => {
                       const score = getVendorScore(vendor.id, criterion.id);
@@ -163,7 +167,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                         <div key={vendor.id} className="min-w-0 border-r border-slate-200 p-2.5 last:border-0">
                           <span className="block truncate text-[10px] text-slate-500">{vendor.name}</span>
                           <strong className="mt-1 block font-[Menlo] text-xl text-sky-600">{score.toFixed(1)}<span className="text-[10px] font-normal text-slate-400"> / 10</span></strong>
-                          <button type="button" className="mt-2 min-h-9 w-full border border-blue-200 bg-blue-100 text-[10px] font-bold text-sky-700" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>View notes</button>
+                          <button type="button" className="mt-2 min-h-9 w-full border border-blue-200 bg-blue-100 text-[10px] font-bold text-sky-700" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>{t("compare.mobileViewNotes")}</button>
                         </div>
                       );
                     })}
@@ -175,11 +179,11 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
         )}
         <Dialog open={!!mobileNote} onOpenChange={open => { if (!open) setMobileNote(null); }}>
           <DialogContent className="max-h-[78dvh] max-w-[calc(100%-2rem)] overflow-y-auto font-[Montserrat] sm:max-w-sm">
-            <DialogHeader><DialogTitle>{mobileNote?.criterion.name}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{mobileNote && translateCriterionName(tc, mobileNote.criterion.name)}</DialogTitle></DialogHeader>
             {mobileNote && <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-xs"><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Vendor</span><strong className="block">{mobileNote.vendor.name}</strong></div><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Score</span><strong className="block">{mobileNote.score.toFixed(1)} / 10</strong></div></div>
-              <div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Product</span><strong className="block text-xs">{mobileNote.vendor.product || "Product name unavailable"}</strong></div>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{mobileNote.notes || "No stored commentary is available for this score."}</p>
+              <div className="grid grid-cols-2 gap-3 text-xs"><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">{t("compare.vendor")}</span><strong className="block">{mobileNote.vendor.name}</strong></div><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">{t("compare.score")}</span><strong className="block">{mobileNote.score.toFixed(1)} / 10</strong></div></div>
+              <div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">{t("compare.product")}</span><strong className="block text-xs">{mobileNote.vendor.product || t("compare.productNameUnavailable")}</strong></div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{mobileNote.notes || t("compare.noStoredCommentary")}</p>
             </div>}
           </DialogContent>
         </Dialog>
@@ -190,7 +194,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Compare Vendors</CardTitle>
+        <CardTitle>{t("compare.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className={`grid gap-4 mb-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
@@ -221,11 +225,11 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Criteria</TableHead>
+                      <TableHead>{t("compare.criteria")}</TableHead>
                       {selectedVendorData.map(vendor => (
                         <TableHead key={vendor.id}>{vendor.name}</TableHead>
                       ))}
-                      <TableHead className="text-center">Notes</TableHead>
+                      <TableHead className="text-center">{t("compare.notes")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -236,7 +240,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                       return (
                         <>
                           <TableRow key={criterion.id}>
-                            <TableCell className="font-medium">{criterion.name}</TableCell>
+                            <TableCell className="font-medium">{translateCriterionName(tc, criterion.name)}</TableCell>
                             {selectedVendorData.map(vendor => (
                               <TableCell key={vendor.id} className="text-center">
                                 <span className="font-semibold">
@@ -253,7 +257,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                                   className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
                                 >
                                   <FileText className="mr-1 h-3 w-3" />
-                                  View Notes
+                                  {t("compare.viewNotes")}
                                   {isExpanded ? (
                                     <ChevronDown className="ml-1 h-3 w-3" />
                                   ) : (
@@ -306,7 +310,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                     <div key={criterion.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
                       <div className="mb-4">
                         <div className="font-medium text-base text-gray-900 mb-3">
-                          {criterion.name}
+                          {translateCriterionName(tc, criterion.name)}
                         </div>
                         
                         <div className="space-y-3">
@@ -333,7 +337,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                             data-testid={`button-notes-${criterion.id}`}
                           >
                             <FileText className="mr-2 h-4 w-4" />
-                            {isExpanded ? 'Hide Notes' : 'View Notes'}
+                            {isExpanded ? t("compare.hideNotes") : t("compare.viewNotes")}
                             {isExpanded ? (
                               <ChevronDown className="ml-2 h-4 w-4" />
                             ) : (
@@ -377,13 +381,13 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                 data-testid="button-detailed-report"
               >
                 <Download className="mr-2 h-4 w-4" />
-                View Detailed Report
+                {t("compare.viewDetailedReport")}
               </Button>
             </div>
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            Select at least 2 vendors to compare their scores
+            {t("compare.selectAtLeastTwo")}
           </div>
         )}
       </CardContent>

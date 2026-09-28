@@ -1,0 +1,71 @@
+{
+  "locked": {
+    "feature": "市場ニュース"
+  },
+  "heading": "市場ニュースと更新",
+  "description": "市場ベンダーからの最新ニュースと発表、AIによる分析付き",
+  "ranges": {
+    "allTime": "全期間",
+    "past30Days": "過去30日間",
+    "past90Days": "過去90日間",
+    "past180Days": "過去180日間",
+    "past12Months": "過去12か月"
+  },
+  "filters": {
+    "allVendors": "すべてのベンダー",
+    "allImpact": "すべての影響",
+    "highImpact": "高い影響",
+    "mediumImpact": "中程度の影響",
+    "lowImpact": "低い影響",
+    "allCategories": "すべてのカテゴリ"
+  },
+  "categories": {
+    "productAnnouncement": "製品発表",
+    "ma": "M&A",
+    "financialResults": "財務結果",
+    "partnership": "パートナーシップ",
+    "customerSuccess": "顧客成功",
+    "leadershipChanges": "リーダーシップの変更",
+    "general": "一般"
+  },
+  "impact": {
+    "high": "高",
+    "medium": "中",
+    "low": "低"
+  },
+  "export": {
+    "openButton": "PDFをエクスポート",
+    "title": "ニュースをPDFにエクスポート",
+    "description": "ベンダー、発表カテゴリ、期間を選択してください。ベンダーを選択しない場合、この市場のすべてのベンダーが含まれます。",
+    "timeRange": "期間",
+    "category": "カテゴリ",
+    "vendors": "ベンダー",
+    "clear_one": "クリア ({{count}})",
+    "clear_other": "クリア ({{count}})",
+    "noVendorsAvailable": "利用可能なベンダーがありません。",
+    "allVendorsIncluded": "すべてのベンダーが含まれます。",
+    "selectionSelected_one": "{{count}} ベンダーが選択されました。",
+    "selectionSelected_other": "{{count}} ベンダーが選択されました。",
+    "cancel": "キャンセル",
+    "generating": "生成中…",
+    "downloadPdf": "PDFをダウンロード"
+  },
+  "toast": {
+    "exportFailedFallback": "ニュースのエクスポートに失敗しました",
+    "exportReady": "エクスポートの準備ができました",
+    "exportDownloaded": "ニュースPDFがダウンロードされました。",
+    "exportFailed": "エクスポートに失敗しました",
+    "exportCouldNotGenerate": "PDFを生成できませんでした。"
+  },
+  "loading": "ニュースを読み込み中...",
+  "empty": {
+    "title": "ニュース記事が見つかりません",
+    "description": "管理パネルでベンダーにニュースルームURLを追加してニュースを追跡開始"
+  },
+  "article": {
+    "hideAnalysis": "分析を非表示",
+    "readAnalysis": "分析を読む",
+    "editorialAnalysis": "編集分析",
+    "competitiveContext": "競争環境"
+  }
+}

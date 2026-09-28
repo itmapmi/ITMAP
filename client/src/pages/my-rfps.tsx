@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { track, trackDwell } from "@/lib/track";
@@ -14,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Plus, Trash2, ArrowRight, AlertCircle } from "lucide-react";
 import type { RfpProject, Market } from "@shared/schema";
 import "@/styles/rfp-builder-mobile.css";
+import { formatDate } from "@/lib/i18n-format";
 
 interface RfpStatus {
   hasOpenAiKey: boolean;
@@ -33,6 +35,7 @@ function statusColor(s: string) {
 }
 
 export default function MyRfpsPage() {
+  const { t } = useTranslation("rfp");
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   // Registered at both /me/rfps and /mobile/me/rfps (see shared/mobile-paths.ts
@@ -88,15 +91,15 @@ export default function MyRfpsPage() {
       const msg = getErrorMessage(e);
       if (isMissingLlmKeyError(e)) {
         toast({
-          title: "OpenAI key required",
-          description: "Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.",
+          title: t("list.toast.openAiKeyRequired"),
+          description: t("list.toast.openAiKeyDescription"),
           variant: "destructive",
         });
         setOpen(false);
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Could not start RFP", description: msg, variant: "destructive" });
+      toast({ title: t("list.toast.couldNotStart"), description: msg, variant: "destructive" });
     },
   });
 
@@ -104,7 +107,7 @@ export default function MyRfpsPage() {
     mutationFn: async (id: string) => apiRequest(`/api/me/rfps/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps"] });
-      toast({ title: "RFP deleted" });
+      toast({ title: t("list.toast.deleted") });
     },
   });
 
@@ -112,38 +115,38 @@ export default function MyRfpsPage() {
     return (
       <div className="rfp-mobile">
         <main className="rfpm-main">
-          <div className="rfpm-kicker">BUYER / RFP BUILDER</div>
-          <h1 className="rfpm-h1">Projects</h1>
-          <p className="rfpm-sub">Turn evidence into a customer-specific procurement brief.</p>
+          <div className="rfpm-kicker">{t("list.mobile.kicker")}</div>
+          <h1 className="rfpm-h1">{t("list.mobile.heading")}</h1>
+          <p className="rfpm-sub">{t("list.mobile.subtitle")}</p>
           <button className="rfpm-btn primary" style={{ width: "100%", margin: "18px 0" }} onClick={() => setOpen(true)} data-testid="button-new-rfp">
-            <Plus size={15} /> New RFP
+            <Plus size={15} /> {t("list.newRfp")}
           </button>
           {(atActiveLimit || atDailyLimit) && status && (
             <div className="rfpm-alert">
               <AlertCircle size={14} />
               {atDailyLimit
-                ? `Daily limit reached (${status.last24hCount}/${status.dailyLimit} RFPs in 24 h). Try again tomorrow.`
-                : `${status.activeCount} / ${status.activeLimit} active RFPs · complete or delete one before starting another.`}
+                ? t("list.limits.daily", { count: status.last24hCount, limit: status.dailyLimit })
+                : t("list.limits.activeMobile", { count: status.activeCount, limit: status.activeLimit })}
             </div>
           )}
-          {isLoading ? <div className="rfpm-empty">Loading projects…</div> : rfps.length === 0 ? (
-            <div className="rfpm-empty">No RFPs yet. Start your first project above.</div>
+          {isLoading ? <div className="rfpm-empty">{t("list.loadingProjects")}</div> : rfps.length === 0 ? (
+            <div className="rfpm-empty">{t("list.mobile.empty")}</div>
           ) : rfps.map((rfp) => {
             const market = markets.find((m) => m.id === rfp.marketId);
             return (
               <article className="rfpm-card" key={rfp.id} data-testid={`card-rfp-${rfp.id}`}>
                 <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
                   <h2 className="rfpm-title">{rfp.title}</h2>
-                  <span className={`rfpm-tag ${rfp.status === "ready" ? "ready" : rfp.status === "generating" ? "warn" : ""}`}>{rfp.status}</span>
+                  <span className={`rfpm-tag ${rfp.status === "ready" ? "ready" : rfp.status === "generating" ? "warn" : ""}`}>{t(`list.status.${rfp.status}`, { defaultValue: rfp.status })}</span>
                 </div>
                 <p className="rfpm-meta">
-                  {market?.name.replace(/^ITMAP for /i, "") || "Market"} · Updated {rfp.updatedAt ? new Date(rfp.updatedAt).toLocaleDateString() : "—"}
+                  {market?.name.replace(/^ITMAP for /i, "") || t("list.market")} · {t("list.updated")} {formatDate(rfp.updatedAt) || "—"}
                 </p>
                 <div className="rfpm-row">
                   <button className="rfpm-btn" style={{ flex: 1 }} onClick={() => setLocation(`/mobile/me/rfps/${rfp.id}`)} data-testid={`button-open-rfp-${rfp.id}`}>
-                    Open <ArrowRight size={14} />
+                    {t("list.open")} <ArrowRight size={14} />
                   </button>
-                  <button className="rfpm-btn ghost" aria-label={`Delete ${rfp.title}`} onClick={() => deleteMutation.mutate(rfp.id)} data-testid={`button-delete-rfp-${rfp.id}`}>
+                  <button className="rfpm-btn ghost" aria-label={t("list.deleteAria", { title: rfp.title })} onClick={() => deleteMutation.mutate(rfp.id)} data-testid={`button-delete-rfp-${rfp.id}`}>
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -154,26 +157,26 @@ export default function MyRfpsPage() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="w-[calc(100%-2rem)] max-w-md border-[#40515a] bg-[#12191e] font-[Montserrat] text-[#edf3f4] shadow-[0_20px_60px_#000]">
             <DialogHeader>
-              <DialogTitle>Start a new RFP</DialogTitle>
+              <DialogTitle>{t("list.dialog.title")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="mobile-rfp-title" className="text-xs text-[#82909a]">Working title</Label>
+                <Label htmlFor="mobile-rfp-title" className="text-xs text-[#82909a]">{t("list.dialog.workingTitle")}</Label>
                 <Input
                   id="mobile-rfp-title"
                   autoFocus
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Acme Corp — Endpoint Security RFP"
+                  placeholder={t("list.dialog.titlePlaceholder")}
                   className="border-[#35434a] bg-[#0b1013] text-[#edf3f4]"
                   data-testid="input-rfp-title"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-[#82909a]">Market</Label>
+                <Label className="text-xs text-[#82909a]">{t("list.dialog.market")}</Label>
                 <Select value={marketId} onValueChange={setMarketId}>
                   <SelectTrigger className="border-[#35434a] bg-[#0b1013] text-[#edf3f4]" data-testid="select-rfp-market">
-                    <SelectValue placeholder="Pick a market" />
+                    <SelectValue placeholder={t("list.dialog.pickMarket")} />
                   </SelectTrigger>
                   <SelectContent className="border-[#35434a] bg-[#12191e] text-[#edf3f4]">
                     {markets.map((market) => (
@@ -186,19 +189,19 @@ export default function MyRfpsPage() {
               </div>
               {!status?.hasOpenAiKey && (
                 <div className="rounded-md border border-[#604a29] bg-[#211c14] p-3 text-xs leading-relaxed text-[#eacb91]">
-                  Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.
+                  {t("list.toast.openAiKeyDescription")}
                 </div>
               )}
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="ghost" className="text-[#edf3f4] hover:text-white" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="ghost" className="text-[#edf3f4] hover:text-white" onClick={() => setOpen(false)}>{t("list.cancel")}</Button>
               <button
                 className="inline-flex h-10 items-center justify-center rounded-md bg-[#6ee7e4] px-4 text-sm font-semibold text-[#071113] disabled:cursor-not-allowed disabled:opacity-40"
                 disabled={!title || !marketId || createMutation.isPending || !status?.hasOpenAiKey || !!atActiveLimit || !!atDailyLimit}
                 onClick={() => createMutation.mutate()}
                 data-testid="button-create-rfp"
               >
-                {createMutation.isPending ? "Starting…" : "Start interview"}
+                {createMutation.isPending ? t("list.starting") : t("list.startInterview")}
               </button>
             </DialogFooter>
           </DialogContent>
@@ -212,15 +215,15 @@ export default function MyRfpsPage() {
       <div className={mobileMode ? "px-4 py-6" : "max-w-6xl mx-auto px-6 py-12"}>
         <div className={mobileMode ? "mb-6" : "flex items-center justify-between mb-8"}>
           <div>
-            <h1 className={mobileMode ? "text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent" : "text-3xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent"}>RFP Builder</h1>
-            <p className={mobileMode ? "text-slate-400 mt-1.5 text-sm" : "text-slate-400 mt-2"}>Run a conversational interview and produce a customer-specific RFP, grounded in real market data.</p>
+            <h1 className={mobileMode ? "text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent" : "text-3xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent"}>{t("list.heading")}</h1>
+            <p className={mobileMode ? "text-slate-400 mt-1.5 text-sm" : "text-slate-400 mt-2"}>{t("list.subtitle")}</p>
           </div>
           <Button
             onClick={() => setOpen(true)}
             className={`bg-gradient-to-r from-cyan-500 to-violet-600 ${mobileMode ? "mt-4 w-full" : ""}`}
             data-testid="button-new-rfp"
           >
-            <Plus className="w-4 h-4 mr-2" /> New RFP
+            <Plus className="w-4 h-4 mr-2" /> {t("list.newRfp")}
           </Button>
         </div>
 
@@ -229,20 +232,20 @@ export default function MyRfpsPage() {
             <CardContent className="py-3 text-sm text-amber-200 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
               {atDailyLimit
-                ? `Daily limit reached (${status.last24hCount}/${status.dailyLimit} RFPs in 24 h). Try again tomorrow.`
-                : `You have ${status.activeCount}/${status.activeLimit} active RFPs. Complete or delete one before starting another.`}
+                ? t("list.limits.daily", { count: status.last24hCount, limit: status.dailyLimit })
+                : t("list.limits.active", { count: status.activeCount, limit: status.activeLimit })}
             </CardContent>
           </Card>
         )}
 
         {isLoading ? (
-          <div className="text-slate-400">Loading…</div>
+          <div className="text-slate-400">{t("list.loading")}</div>
         ) : rfps.length === 0 ? (
           <Card className="bg-slate-900 border-white/5">
             <CardContent className="py-16 text-center">
               <FileText className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-              <p className="text-slate-300 mb-4">No RFPs yet. Start your first one from any market page or the button above.</p>
-              <Button onClick={() => setOpen(true)} className="bg-gradient-to-r from-cyan-500 to-violet-600">Start your first RFP</Button>
+              <p className="text-slate-300 mb-4">{t("list.empty")}</p>
+              <Button onClick={() => setOpen(true)} className="bg-gradient-to-r from-cyan-500 to-violet-600">{t("list.startFirst")}</Button>
             </CardContent>
           </Card>
         ) : (
@@ -252,7 +255,7 @@ export default function MyRfpsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base">{rfp.title}</CardTitle>
-                    <span className={`text-[10px] uppercase tracking-wide px-2 py-1 rounded ${statusColor(rfp.status)}`}>{rfp.status}</span>
+                    <span className={`text-[10px] uppercase tracking-wide px-2 py-1 rounded ${statusColor(rfp.status)}`}>{t(`list.status.${rfp.status}`, { defaultValue: rfp.status })}</span>
                   </div>
                   {(() => {
                     const m = markets.find(x => x.id === rfp.marketId);
@@ -264,14 +267,14 @@ export default function MyRfpsPage() {
                   })()}
                 </CardHeader>
                 <CardContent>
-                  <p className="text-xs text-slate-500 mb-4">Updated {rfp.updatedAt ? new Date(rfp.updatedAt).toLocaleDateString() : "—"}</p>
+                  <p className="text-xs text-slate-500 mb-4">{t("list.updated")} {formatDate(rfp.updatedAt) || "—"}</p>
                   <div className="flex items-center gap-2">
                     <Link href={`${mobileMode ? "/mobile" : ""}/me/rfps/${rfp.id}`} className="flex-1">
                       <Button variant="outline" className="w-full bg-slate-800 border-white/10 hover:bg-slate-700 text-slate-100" data-testid={`button-open-rfp-${rfp.id}`}>
-                        Open <ArrowRight className="w-4 h-4 ml-2" />
+                        {t("list.open")} <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(rfp.id)} data-testid={`button-delete-rfp-${rfp.id}`}>
+                    <Button variant="ghost" size="icon" aria-label={t("list.deleteAria", { title: rfp.title })} onClick={() => deleteMutation.mutate(rfp.id)} data-testid={`button-delete-rfp-${rfp.id}`}>
                       <Trash2 className="w-4 h-4 text-slate-400" />
                     </Button>
                   </div>
@@ -284,16 +287,16 @@ export default function MyRfpsPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-slate-900 border-white/10 text-slate-100">
-          <DialogHeader><DialogTitle>Start a new RFP</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("list.dialog.title")}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Working title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Acme Corp — Endpoint Security RFP" className="bg-slate-800 border-white/10" data-testid="input-rfp-title" />
+              <Label>{t("list.dialog.workingTitle")}</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("list.dialog.titlePlaceholder")} className="bg-slate-800 border-white/10" data-testid="input-rfp-title" />
             </div>
             <div>
-              <Label>Market</Label>
+              <Label>{t("list.dialog.market")}</Label>
               <Select value={marketId} onValueChange={setMarketId}>
-                <SelectTrigger className="bg-slate-800 border-white/10" data-testid="select-rfp-market"><SelectValue placeholder="Pick a market" /></SelectTrigger>
+                <SelectTrigger className="bg-slate-800 border-white/10" data-testid="select-rfp-market"><SelectValue placeholder={t("list.dialog.pickMarket")} /></SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
                   {markets.map(m => (
                     <SelectItem key={m.id} value={m.id}>{m.name.replace(/^ITMAP for /i, "")}</SelectItem>
@@ -303,9 +306,9 @@ export default function MyRfpsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" className="text-slate-100 hover:text-white" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" className="text-slate-100 hover:text-white" onClick={() => setOpen(false)}>{t("list.cancel")}</Button>
             <Button onClick={() => createMutation.mutate()} disabled={!title || !marketId || createMutation.isPending || (status ? !status.hasOpenAiKey : false) || !!atActiveLimit || !!atDailyLimit} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-create-rfp">
-              {createMutation.isPending ? "Starting…" : "Start interview"}
+              {createMutation.isPending ? t("list.starting") : t("list.startInterview")}
             </Button>
           </DialogFooter>
         </DialogContent>

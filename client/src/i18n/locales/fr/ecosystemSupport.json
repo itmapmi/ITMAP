@@ -1,0 +1,127 @@
+{
+  "heading": "Support de l'écosystème",
+  "headingEvaluation": "Évaluation de l'écosystème",
+  "description": "Intégrations tierces et partenariats écosystémiques",
+  "messages": {
+    "success": "Succès",
+    "error": "Erreur",
+    "reportGenerated": "Rapport de l'écosystème ISV généré avec succès",
+    "generateFailed": "Échec de la génération du rapport"
+  },
+  "selection": {
+    "stepHeading": "01 · Produits à comparer",
+    "exactlyTwoTitle": "Choisissez exactement 2",
+    "deselectOneDescription": "Désélectionnez un produit avant d'en sélectionner un autre.",
+    "twoProductsDescription": "Sélectionnez deux produits. Chaque ligne de l'écosystème conserve les deux enregistrements de support ensemble.",
+    "productsToCompare": "Produits à comparer",
+    "productNameUnavailable": "Nom du produit indisponible",
+    "productUnavailable": "Produit indisponible",
+    "unavailable": "Indisponible",
+    "compareCount": "Comparer {{count}}/2",
+    "noProducts": "Aucun produit n'est disponible pour ce marché.",
+    "chooseVendorsDescription": "Sélectionnez des fournisseurs pour comparer leurs intégrations tierces et partenariats écosystémiques",
+    "loadingVendors": "Chargement des fournisseurs...",
+    "chooseVendorsHeading": "Choisissez les fournisseurs à comparer",
+    "chooseVendorsPrompt": "Sélectionnez un ou plusieurs fournisseurs pour voir leurs capacités de support écosystémique",
+    "noVendorsSelected": "Aucun fournisseur sélectionné",
+    "vendorsSelected_one": "{{count}} fournisseur sélectionné",
+    "vendorsSelected_other": "{{count}} fournisseurs sélectionnés",
+    "clearAll": "Tout effacer",
+    "selectAll": "Tout sélectionner",
+    "viewEcosystemSupport": "Voir le support de l'écosystème ({{count}})",
+    "noVendorsAvailable": "Aucun fournisseur disponible pour ce marché.",
+    "changeProducts": "Changer les produits",
+    "vendorCount": "{{selected}} sur {{total}} fournisseurs",
+    "changeSelection": "Modifier la sélection",
+    "hideFilters": "Masquer les filtres",
+    "filterVendors": "Filtrer les fournisseurs",
+    "selectAtLeastOne": "Sélectionnez au moins un fournisseur pour voir la matrice de support écosystémique"
+  },
+  "support": {
+    "levelsHeading": "Niveaux de support",
+    "legendCompact": "○ Aucun · ◔ Limité · ◑ Partiel · ◕ Bon · ● Complet",
+    "tooltip": "{{level}}",
+    "tooltipWithNotes": "{{level}} - Cliquez pour les notes",
+    "accessibleLevel": "{{level}} sur 4 de support",
+    "level": {
+      "noSupport": "Aucun support",
+      "limited": "Limité",
+      "partial": "Partiel",
+      "good": "Bon",
+      "fullSupport": "Support complet",
+      "unknown": "Inconnu"
+    },
+    "legend": {
+      "full": "Complet",
+      "good": "Bon",
+      "partial": "Partiel",
+      "limited": "Limité",
+      "none": "Aucun"
+    }
+  },
+  "empty": {
+    "supportUnavailableHeading": "Support de l'écosystème indisponible",
+    "noStoredSupportRecords": "Aucun enregistrement de support écosystémique stocké n'est disponible pour ce marché.",
+    "noSupportData": "Aucune donnée de support écosystémique disponible pour ce marché.",
+    "noFeaturesStoredHeading": "Aucune fonctionnalité écosystémique stockée",
+    "noStoredFeatureEvaluations": "Ce marché ne contient actuellement aucune évaluation de fonctionnalité écosystémique stockée.",
+    "noFeaturesHeading": "Aucune fonctionnalité écosystémique",
+    "noFeaturesDescription": "Aucune fonctionnalité écosystémique n'a encore été définie pour ce marché.",
+    "noVendorsSelectedHeading": "Aucun fournisseur sélectionné",
+    "chooseVendorsDescription": "Choisissez des fournisseurs dans les filtres ci-dessus pour comparer leurs capacités de support écosystémique"
+  },
+  "evaluation": {
+    "stepHeading": "02 · Support de l'écosystème et commentaires",
+    "storedRows_one": "{{count}} ligne stockée",
+    "storedRows_other": "{{count}} lignes stockées",
+    "noCriteriaForFeature": "Aucun critère d'évaluation stocké pour cette fonctionnalité.",
+    "featureCount_one": "{{count}} fonctionnalité",
+    "featureCount_other": "{{count}} fonctionnalités",
+    "noCriteriaSpecified": "Aucun critère d'évaluation spécifié"
+  },
+  "table": {
+    "feature": "Fonctionnalité",
+    "features": "Fonctionnalités",
+    "evaluationCriteria": "Critères d'évaluation"
+  },
+  "categories": {
+    "expandAll": "Tout développer",
+    "collapseAll": "Tout réduire"
+  },
+  "scores": {
+    "totalScore": "Score total",
+    "maximumPoints": "Maximum : {{count}} points",
+    "ofMaximum": "sur {{maximum}} ({{percentage}}%)",
+    "finalEcosystemSupport": "Score final de support de l'écosystème",
+    "finalScoreDescription": "Critère de l'écosystème ISV sur l'échelle de 0 à 10, dérivé de la couverture ci-dessus",
+    "outOfTen": "sur 10",
+    "coverage": "Couverture {{coverage}}",
+    "ecosystemScore": "Score de l'écosystème",
+    "notDerived": "Pas encore dérivé",
+    "tooltipNotDerived": "L'écosystème ISV n'a pas encore été dérivé pour ce fournisseur.",
+    "tooltipWithoutCoverage": "Écosystème ISV : {{score}} / 10 (score stocké ; couverture non enregistrée).",
+    "tooltipWithCoverage": "Écosystème ISV : couverture pondérée des fonctionnalités {{coverage}}{{features}}, mappée sur l'échelle de 0 à 10 (0% → 0, 55% → 5, 100% → 10) = {{score}}."
+  },
+  "notes": {
+    "noStoredCommentary": "Aucun commentaire stocké n'est disponible pour cet enregistrement de support.",
+    "viewNotesFor": "Voir les notes pour {{vendor}}, {{feature}}",
+    "viewNotes": "Voir les notes",
+    "evaluationNotes": "Notes d'évaluation",
+    "vendor": "Fournisseur",
+    "product": "Produit",
+    "support": "Support",
+    "supportRecordUnavailable": "Enregistrement de support indisponible",
+    "supportLevel": "{{level}} / 4 · {{support}}",
+    "storedCommentary": "Commentaire stocké",
+    "notes": "Notes",
+    "noAdditionalNotes": "Aucune note supplémentaire pour cette évaluation.",
+    "detailsTitle": "Détails du support de l'écosystème",
+    "supportLevelLabel": "Niveau de support : {{level}}/4"
+  },
+  "reports": {
+    "pdf": "PDF",
+    "pdfReport": "Rapport PDF",
+    "generateTitle": "Générer le rapport de l'écosystème ISV",
+    "generateDescription": "Sélectionnez les fournisseurs à inclure dans le rapport PDF de l'écosystème ISV"
+  }
+}

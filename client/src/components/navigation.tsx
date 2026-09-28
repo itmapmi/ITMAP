@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare, Shield, Smartphone } from "lucide-react";
 import { useViewMode } from "@/hooks/use-view-mode";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,14 @@ import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { Lock } from "lucide-react";
 import { VerificationBanner } from "@/components/email-verification-gate";
 import { CompanyProfilePromptBanner } from "@/components/company-profile-prompt";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import type { LockableFeatureKey } from "@shared/features";
 
 const ADMIN_PATHS = ["/admin", "/market-builder", "/lead-gen"];
 
 export default function Navigation() {
   const [location] = useLocation();
+  const { t } = useTranslation();
   const { user, isAdmin, logout, isAuthenticated, hasFeature, isVendorScoped } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -40,9 +43,9 @@ export default function Navigation() {
   const handleLogout = async () => {
     try {
       await logout();
-      toast({ title: "Signed out successfully" });
+      toast({ title: t("auth.signedOutSuccess") });
     } catch {
-      toast({ title: "Failed to sign out", variant: "destructive" });
+      toast({ title: t("auth.signOutFailed"), variant: "destructive" });
     }
   };
 
@@ -59,33 +62,33 @@ export default function Navigation() {
 
   // Public nav (unauthenticated)
   const publicNavItems = [
-    { href: "/platform", label: "Platform" },
-    { href: "/markets", label: "Markets" },
-    { href: "/licensing", label: "Licensing" },
-    { href: "/pricing", label: "Pricing" },
-    { href: "/about", label: "About Us" },
-    { href: "/vendor", label: "For Vendors" },
+    { href: "/platform", label: t("nav.platform") },
+    { href: "/markets", label: t("nav.markets") },
+    { href: "/licensing", label: t("nav.licensing") },
+    { href: "/pricing", label: t("nav.pricing") },
+    { href: "/about", label: t("nav.about") },
+    { href: "/vendor", label: t("nav.forVendors") },
   ];
 
   // Buyer nav (all features unlocked — no locks needed)
   const buyerNavItems = [
-    { href: "/markets", label: "Markets" },
-    { href: "/me/rfps", label: "RFP Builder" },
-    { href: "/security", label: "Security Intelligence" },
-    { href: "/platform", label: "Methodology" },
+    { href: "/markets", label: t("nav.markets") },
+    { href: "/me/rfps", label: t("nav.rfpBuilder") },
+    { href: "/security", label: t("nav.securityIntelligence") },
+    { href: "/platform", label: t("nav.methodology") },
   ];
 
   // Vendor nav — intelligence and tools dropdowns
   const intelligenceItems: { href: string; label: string; featureKey: LockableFeatureKey }[] = [
-    { href: "/forecast-builder", label: "Forecast Builder", featureKey: "forecast_builder" },
-    { href: "/me/market-builder", label: "Market Builder", featureKey: "market_builder" },
-    { href: "/markets", label: "News & Signals", featureKey: "news" },
+    { href: "/forecast-builder", label: t("nav.forecastBuilder"), featureKey: "forecast_builder" },
+    { href: "/me/market-builder", label: t("nav.marketBuilder"), featureKey: "market_builder" },
+    { href: "/markets", label: t("nav.newsAndSignals"), featureKey: "news" },
   ];
   const toolsItems: { href: string; label: string; featureKey: LockableFeatureKey }[] = [
-    { href: "/lead-gen/me", label: "Lead Generator", featureKey: "lead_gen" },
-    { href: "/rfp-responder", label: "RFP Responder", featureKey: "rfp" },
-    { href: "/battle-cards", label: "Battle Cards", featureKey: "battle_cards" },
-    { href: "/security", label: "Security Intelligence", featureKey: "cve_intelligence" },
+    { href: "/lead-gen/me", label: t("nav.leadGenerator"), featureKey: "lead_gen" },
+    { href: "/rfp-responder", label: t("nav.rfpResponder"), featureKey: "rfp" },
+    { href: "/battle-cards", label: t("nav.battleCards"), featureKey: "battle_cards" },
+    { href: "/security", label: t("nav.securityIntelligence"), featureKey: "cve_intelligence" },
   ];
 
   const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/lead-gen/me") || location.startsWith("/security");
@@ -161,12 +164,12 @@ export default function Navigation() {
               {vendorOnly && (
                 <>
                   <Link href="/markets">
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>My Markets</span>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>{t("nav.myMarkets")}</span>
                   </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1 select-none ${isIntelligenceActive ? "text-white bg-white/10" : intelligenceAllLocked ? "text-slate-500" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>
-                        Intelligence
+                        {t("nav.intelligence")}
                         {intelligenceAllLocked ? <Lock className="h-3 w-3 text-amber-400/70" /> : <ChevronDown className="h-3 w-3" />}
                       </span>
                     </DropdownMenuTrigger>
@@ -190,7 +193,7 @@ export default function Navigation() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1 select-none ${isToolsActive ? "text-white bg-white/10" : toolsAllLocked ? "text-slate-500" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>
-                        Tools
+                        {t("nav.tools")}
                         {toolsAllLocked ? <Lock className="h-3 w-3 text-amber-400/70" /> : <ChevronDown className="h-3 w-3" />}
                       </span>
                     </DropdownMenuTrigger>
@@ -212,7 +215,7 @@ export default function Navigation() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Link href="/platform">
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/platform" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>Methodology</span>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/platform" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>{t("nav.methodology")}</span>
                   </Link>
                 </>
               )}
@@ -227,13 +230,14 @@ export default function Navigation() {
               {/* Admin link (always shown for admins) */}
               {isAdmin && (
                 <Link href="/admin">
-                  <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
+                  <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">{t("nav.admin")}</span>
                 </Link>
               )}
             </div>
 
             {/* Desktop auth */}
             <div className="hidden md:flex items-center justify-end gap-3">
+              <LanguageSwitcher />
               {canToggleMobileView && (
                 <button
                   onClick={switchToMobile}
@@ -242,7 +246,7 @@ export default function Navigation() {
                   title="Switch to the mobile-optimized view"
                 >
                   <Smartphone className="h-3.5 w-3.5" />
-                  Mobile view
+                  {t("nav.mobileView")}
                 </button>
               )}
               {isAuthenticated ? (
@@ -262,44 +266,44 @@ export default function Navigation() {
                       {isVendorScoped && !isAdmin && (
                         <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500/15 to-violet-600/15 border border-cyan-400/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
                           <Store className="h-3 w-3" />
-                          Vendor seat{vendorSeatName ? ` · ${vendorSeatName}` : ""}
+                          {t("auth.vendorSeat")}{vendorSeatName ? ` · ${vendorSeatName}` : ""}
                         </span>
                       )}
                     </div>
                     <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
-                      <Link href="/me/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                      <Link href="/me/profile"><User className="mr-2 h-4 w-4" />{t("auth.profile")}</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
-                      <Link href="/me/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link>
+                      <Link href="/me/settings"><Settings className="mr-2 h-4 w-4" />{t("auth.settings")}</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     {!buyerOnly && (
                       <DropdownMenuItem asChild className={`cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                        <Link href="/me/reports"><FileText className="mr-2 h-4 w-4" />My Reports</Link>
+                        <Link href="/me/reports"><FileText className="mr-2 h-4 w-4" />{t("auth.myReports")}</Link>
                       </DropdownMenuItem>
                     )}
                     {isVendorScoped && !isAdmin && (
                       <DropdownMenuItem asChild className={`cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                        <Link href="/lead-gen/me/fact-review"><Star className="mr-2 h-4 w-4" />Fact Review</Link>
+                        <Link href="/lead-gen/me/fact-review"><Star className="mr-2 h-4 w-4" />{t("auth.factReview")}</Link>
                       </DropdownMenuItem>
                     )}
                     {isVendorScoped && !isAdmin && hasFeature("rfp") && (
                       <DropdownMenuItem asChild className={`cursor-pointer ${location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                        <Link href="/rfp-responder"><MessageSquare className="mr-2 h-4 w-4" />RFP Responder</Link>
+                        <Link href="/rfp-responder"><MessageSquare className="mr-2 h-4 w-4" />{t("nav.rfpResponder")}</Link>
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator className="bg-white/10" />
-                    <DropdownMenuItem onClick={handleLogout} className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"><LogOut className="mr-2 h-4 w-4" />{t("auth.signOut")}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
                 <>
                   <Link href="/login">
-                    <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10 border border-white/10">Sign In</Button>
+                    <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10 border border-white/10">{t("auth.signIn")}</Button>
                   </Link>
                   <Link href="/register">
                     <Button size="sm" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 font-medium">
-                      Get Started <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                      {t("auth.getStarted")} <ChevronRight className="ml-1 h-3.5 w-3.5" />
                     </Button>
                   </Link>
                 </>
@@ -328,8 +332,8 @@ export default function Navigation() {
             {/* Vendor mobile nav */}
             {vendorOnly && (
               <>
-                <Link href="/markets"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>My Markets</div></Link>
-                <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">Intelligence</div>
+                <Link href="/markets"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{t("nav.myMarkets")}</div></Link>
+                <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">{t("nav.intelligence")}</div>
                 {intelligenceItems.map(({ href, label, featureKey }) => {
                   const locked = !hasFeature(featureKey);
                   return locked ? (
@@ -340,7 +344,7 @@ export default function Navigation() {
                     <Link key={label} href={href}><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith(href) ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{label}</div></Link>
                   );
                 })}
-                <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">Tools</div>
+                <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">{t("nav.tools")}</div>
                 {toolsItems.map(({ href, label, featureKey }) => {
                   const locked = !hasFeature(featureKey);
                   return locked ? (
@@ -351,7 +355,7 @@ export default function Navigation() {
                     <Link key={label} href={href}><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith(href) ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{label}</div></Link>
                   );
                 })}
-                <Link href="/platform"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/platform" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>Methodology</div></Link>
+                <Link href="/platform"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/platform" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{t("nav.methodology")}</div></Link>
               </>
             )}
 
@@ -363,8 +367,12 @@ export default function Navigation() {
             ))}
 
             {isAdmin && (
-              <Link href="/admin"><div className="px-4 py-3 text-sm font-medium rounded-lg cursor-pointer text-amber-400" onClick={() => setMobileOpen(false)}>Admin</div></Link>
+              <Link href="/admin"><div className="px-4 py-3 text-sm font-medium rounded-lg cursor-pointer text-amber-400" onClick={() => setMobileOpen(false)}>{t("nav.admin")}</div></Link>
             )}
+
+            <div className="px-4 py-2">
+              <LanguageSwitcher variant="dark" />
+            </div>
 
             {canToggleMobileView && (
               <button
@@ -372,7 +380,7 @@ export default function Navigation() {
                 className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
                 data-testid="button-switch-mobile-menu"
               >
-                <Smartphone className="h-4 w-4" /> Switch to mobile view
+                <Smartphone className="h-4 w-4" /> {t("nav.switchToMobileView")}
               </button>
             )}
 
@@ -385,7 +393,7 @@ export default function Navigation() {
                       onClick={() => setMobileOpen(false)}
                       data-testid="link-mobile-profile"
                     >
-                      <User className="h-4 w-4" /> Profile
+                      <User className="h-4 w-4" /> {t("auth.profile")}
                     </div>
                   </Link>
                   <Link href="/me/settings">
@@ -394,17 +402,17 @@ export default function Navigation() {
                       onClick={() => setMobileOpen(false)}
                       data-testid="link-mobile-settings"
                     >
-                      <Settings className="h-4 w-4" /> Settings
+                      <Settings className="h-4 w-4" /> {t("auth.settings")}
                     </div>
                   </Link>
                   <Button variant="ghost" onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full justify-start text-slate-400">
-                    <LogOut className="mr-2 h-4 w-4" /> Sign out
+                    <LogOut className="mr-2 h-4 w-4" /> {t("auth.signOut")}
                   </Button>
                 </>
               ) : (
                 <>
-                  <Link href="/login"><Button variant="ghost" className="w-full text-slate-300 border border-white/10" onClick={() => setMobileOpen(false)}>Sign In</Button></Link>
-                  <Link href="/register"><Button className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 text-white" onClick={() => setMobileOpen(false)}>Get Started</Button></Link>
+                  <Link href="/login"><Button variant="ghost" className="w-full text-slate-300 border border-white/10" onClick={() => setMobileOpen(false)}>{t("auth.signIn")}</Button></Link>
+                  <Link href="/register"><Button className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 text-white" onClick={() => setMobileOpen(false)}>{t("auth.getStarted")}</Button></Link>
                 </>
               )}
             </div>

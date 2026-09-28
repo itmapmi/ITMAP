@@ -1,0 +1,127 @@
+{
+  "heading": "Ökosystemunterstützung",
+  "headingEvaluation": "Ökosystembewertung",
+  "description": "Drittanbieter-Integrationen und Ökosystempartnerschaften",
+  "messages": {
+    "success": "Erfolg",
+    "error": "Fehler",
+    "reportGenerated": "ISV-Ökosystembericht erfolgreich erstellt",
+    "generateFailed": "Berichtserstellung fehlgeschlagen"
+  },
+  "selection": {
+    "stepHeading": "01 · Produkte zum Vergleichen",
+    "exactlyTwoTitle": "Wählen Sie genau 2",
+    "deselectOneDescription": "Wählen Sie ein Produkt ab, bevor Sie ein anderes auswählen.",
+    "twoProductsDescription": "Wählen Sie zwei Produkte. Jede Ökosystemzeile hält beide Unterstützungsdatensätze zusammen.",
+    "productsToCompare": "Produkte zum Vergleichen",
+    "productNameUnavailable": "Produktname nicht verfügbar",
+    "productUnavailable": "Produkt nicht verfügbar",
+    "unavailable": "Nicht verfügbar",
+    "compareCount": "Vergleiche {{count}}/2",
+    "noProducts": "Keine Produkte sind für diesen Markt verfügbar.",
+    "chooseVendorsDescription": "Wählen Sie Anbieter aus, um deren Drittanbieter-Integrationen und Ökosystempartnerschaften zu vergleichen",
+    "loadingVendors": "Lade Anbieter...",
+    "chooseVendorsHeading": "Wählen Sie Anbieter zum Vergleichen",
+    "chooseVendorsPrompt": "Wählen Sie einen oder mehrere Anbieter aus, um deren Ökosystemunterstützungsfähigkeiten anzuzeigen",
+    "noVendorsSelected": "Keine Anbieter ausgewählt",
+    "vendorsSelected_one": "{{count}} Anbieter ausgewählt",
+    "vendorsSelected_other": "{{count}} Anbieter ausgewählt",
+    "clearAll": "Alle löschen",
+    "selectAll": "Alle auswählen",
+    "viewEcosystemSupport": "Ökosystemunterstützung anzeigen ({{count}})",
+    "noVendorsAvailable": "Keine Anbieter für diesen Markt verfügbar.",
+    "changeProducts": "Produkte ändern",
+    "vendorCount": "{{selected}} von {{total}} Anbietern",
+    "changeSelection": "Auswahl ändern",
+    "hideFilters": "Filter ausblenden",
+    "filterVendors": "Anbieter filtern",
+    "selectAtLeastOne": "Wählen Sie mindestens einen Anbieter aus, um die Ökosystemunterstützungsmatrix anzuzeigen"
+  },
+  "support": {
+    "levelsHeading": "Unterstützungsstufen",
+    "legendCompact": "○ Keine · ◔ Begrenzt · ◑ Teilweise · ◕ Gut · ● Voll",
+    "tooltip": "{{level}}",
+    "tooltipWithNotes": "{{level}} - Klicken für Notizen",
+    "accessibleLevel": "{{level}} von 4 Unterstützung",
+    "level": {
+      "noSupport": "Keine Unterstützung",
+      "limited": "Begrenzt",
+      "partial": "Teilweise",
+      "good": "Gut",
+      "fullSupport": "Volle Unterstützung",
+      "unknown": "Unbekannt"
+    },
+    "legend": {
+      "full": "Voll",
+      "good": "Gut",
+      "partial": "Teilweise",
+      "limited": "Begrenzt",
+      "none": "Keine"
+    }
+  },
+  "empty": {
+    "supportUnavailableHeading": "Ökosystemunterstützung nicht verfügbar",
+    "noStoredSupportRecords": "Keine gespeicherten Ökosystemunterstützungsdatensätze für diesen Markt verfügbar.",
+    "noSupportData": "Keine Ökosystemunterstützungsdaten für diesen Markt verfügbar.",
+    "noFeaturesStoredHeading": "Keine Ökosystemfunktionen gespeichert",
+    "noStoredFeatureEvaluations": "Dieser Markt enthält derzeit keine gespeicherten Ökosystemfunktionsbewertungen.",
+    "noFeaturesHeading": "Keine Ökosystemfunktionen",
+    "noFeaturesDescription": "Für diesen Markt wurden noch keine Ökosystemfunktionen definiert.",
+    "noVendorsSelectedHeading": "Keine Anbieter ausgewählt",
+    "chooseVendorsDescription": "Wählen Sie Anbieter aus den obigen Filtern aus, um deren Ökosystemunterstützungsfähigkeiten zu vergleichen"
+  },
+  "evaluation": {
+    "stepHeading": "02 · Ökosystemunterstützung & Kommentare",
+    "storedRows_one": "{{count}} gespeicherte Zeile",
+    "storedRows_other": "{{count}} gespeicherte Zeilen",
+    "noCriteriaForFeature": "Keine Bewertungskriterien für diese Funktion gespeichert.",
+    "featureCount_one": "{{count}} Funktion",
+    "featureCount_other": "{{count}} Funktionen",
+    "noCriteriaSpecified": "Keine Bewertungskriterien angegeben"
+  },
+  "table": {
+    "feature": "Funktion",
+    "features": "Funktionen",
+    "evaluationCriteria": "Bewertungskriterien"
+  },
+  "categories": {
+    "expandAll": "Alle erweitern",
+    "collapseAll": "Alle reduzieren"
+  },
+  "scores": {
+    "totalScore": "Gesamtpunktzahl",
+    "maximumPoints": "Maximum: {{count}} Punkte",
+    "ofMaximum": "von {{maximum}} ({{percentage}}%)",
+    "finalEcosystemSupport": "Endgültige Ökosystemunterstützungspunktzahl",
+    "finalScoreDescription": "ISV-Ökosystemkriterium auf der 0–10 Skala, abgeleitet aus der obigen Abdeckung",
+    "outOfTen": "von 10",
+    "coverage": "{{coverage}} Abdeckung",
+    "ecosystemScore": "Ökosystempunktzahl",
+    "notDerived": "Noch nicht abgeleitet",
+    "tooltipNotDerived": "ISV-Ökosystem wurde für diesen Anbieter noch nicht abgeleitet.",
+    "tooltipWithoutCoverage": "ISV-Ökosystem: {{score}} / 10 (gespeicherte Punktzahl; Abdeckungszusammenfassung nicht aufgezeichnet).",
+    "tooltipWithCoverage": "ISV-Ökosystem: gewichtete Funktionsabdeckung {{coverage}}{{features}}, abgebildet auf der 0–10 Skala (0% → 0, 55% → 5, 100% → 10) = {{score}}."
+  },
+  "notes": {
+    "noStoredCommentary": "Kein gespeicherter Kommentar für diesen Unterstützungsdatensatz verfügbar.",
+    "viewNotesFor": "Notizen anzeigen für {{vendor}}, {{feature}}",
+    "viewNotes": "Notizen anzeigen",
+    "evaluationNotes": "Bewertungsnotizen",
+    "vendor": "Anbieter",
+    "product": "Produkt",
+    "support": "Unterstützung",
+    "supportRecordUnavailable": "Unterstützungsdatensatz nicht verfügbar",
+    "supportLevel": "{{level}} / 4 · {{support}}",
+    "storedCommentary": "Gespeicherter Kommentar",
+    "notes": "Notizen",
+    "noAdditionalNotes": "Keine zusätzlichen Notizen für diese Bewertung.",
+    "detailsTitle": "Details zur Ökosystemunterstützung",
+    "supportLevelLabel": "Unterstützungsstufe: {{level}}/4"
+  },
+  "reports": {
+    "pdf": "PDF",
+    "pdfReport": "PDF-Bericht",
+    "generateTitle": "ISV-Ökosystembericht erstellen",
+    "generateDescription": "Wählen Sie Anbieter aus, die im ISV-Ökosystem-PDF-Bericht enthalten sein sollen"
+  }
+}

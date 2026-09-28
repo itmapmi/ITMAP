@@ -1,0 +1,55 @@
+{
+  "seo": {
+    "title": "Contact ITMAP — Talk to the Vendor Intelligence Team",
+    "description": "Get in touch with ITMAP for partnerships, licensing, enterprise access, or media inquiries."
+  },
+  "hero": {
+    "eyebrow": "Get in Touch",
+    "titleLine1": "Let's talk",
+    "titleLine2": "intelligence",
+    "subtitle": "Whether you're exploring the platform, asking about licensing, or want to discuss your organisation's vendor selection challenges — we'd love to hear from you."
+  },
+  "form": {
+    "title": "Send us a message",
+    "responseTime": "We typically respond within 1 business day.",
+    "fields": {
+      "website": "Website",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Work Email",
+      "company": "Company",
+      "subject": "Subject",
+      "message": "Message"
+    },
+    "placeholders": {
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@company.com",
+      "company": "Acme Corp",
+      "subject": "Platform enquiry / Licensing / Research",
+      "message": "Tell us about your technology intelligence needs, or how we can help..."
+    },
+    "sending": "Sending…",
+    "sendMessage": "Send Message",
+    "privacyPrefix": "By sending this message you agree to our",
+    "privacyPolicy": "privacy policy",
+    "success": {
+      "title": "Message sent",
+      "description": "Thank you. Our team will respond within one business day."
+    },
+    "error": {
+      "title": "Message not sent",
+      "description": "Please try again or email sales@itmap.ai."
+    }
+  },
+  "details": {
+    "email": "Email",
+    "office": "Office",
+    "businessHours": "Business Hours"
+  },
+  "partnership": {
+    "title": "Exploring a partnership?",
+    "description": "We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating ITMAP intelligence into your workflow, let's talk.",
+    "button": "Explore Partnership"
+  }
+}

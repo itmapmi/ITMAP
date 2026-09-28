@@ -1,0 +1,174 @@
+{
+  "seo": {
+    "title": "ITMAP — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
+    "description": "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers."
+  },
+  "marketCard": {
+    "inReview": "In Review",
+    "liveData": "Live Data",
+    "explore": "Explore"
+  },
+  "buyerDashboard": {
+    "welcomeBack": "Welcome back{{name}}.",
+    "decisionTools": "Decision tools",
+    "researchWorkflow": "Your research workflow",
+    "markets": "Markets",
+    "evaluateVendors": "Evaluate vendors through live market research, product context and signals.",
+    "rfpBuilder": "RFP Builder",
+    "createVendorRequests": "Create, manage and send vendor requests.",
+    "securityIntelligence": "Security Intelligence",
+    "vulnerabilitiesAlerts": "Vulnerabilities and alerts",
+    "methodology": "Methodology",
+    "howItmapEvaluates": "How ITMAP evaluates",
+    "researchCoverage": "Research coverage",
+    "liveMarkets": "Live markets",
+    "currentMarketIntelligence": "Current market intelligence ready for review.",
+    "viewAll": "View all"
+  },
+  "vendorDashboard": {
+    "notLinked": {
+      "heading": "Account not linked to a vendor",
+      "messageBefore": "Your account is provisioned as a vendor seat but hasn't been linked to a vendor record yet. This is done by a",
+      "administrator": "itmap.ai administrator",
+      "messageAfter": " — please contact your account manager to complete the setup.",
+      "accountLabel": "Your account",
+      "contactSales": "Contact sales@itmap.ai"
+    },
+    "vendorSeat": "Vendor seat",
+    "itVendor": "IT Vendor",
+    "linkedAs": "linked as",
+    "intelligenceHub": "Intelligence Hub",
+    "your": "Your",
+    "vendorHub": "Vendor Hub",
+    "fallbackHubWithName": "{{name}}'s Vendor Hub",
+    "headerDescription": "Market data, competitive signals and vendor tools — locked features require a plan upgrade.",
+    "platformTools": "Platform Tools",
+    "vendorTools": "Vendor Tools",
+    "toolsDescription": "Powerful tools for lead generation, competitive response and market intelligence — plan upgrade required.",
+    "markets": "Markets",
+    "marketsDescription": "Browse all markets and explore vendor evaluations, product comparisons and ecosystem data.",
+    "yourMarkets": "Your Markets",
+    "myMarkets": "My Markets",
+    "marketsWhereCompanyAppears_one": "{{count}} market where {{company}} appears",
+    "marketsWhereCompanyAppears_other": "{{count}} markets where {{company}} appears",
+    "allMarkets": "All markets",
+    "allMarketsHeading": "All Markets",
+    "allMarketsDescription": "Vendor Evaluation, Product Evaluation, Ecosystem Evaluation, News and AI Chat — fully accessible.",
+    "explore": "Explore",
+    "reports": "Reports",
+    "myReports": "My Reports",
+    "myReportsDescription": "Markets you've built through Market Builder.",
+    "openMarketBuilder": "Open Market Builder",
+    "manageCustomReports": "View and manage your custom market reports"
+  },
+  "vendorTools": {
+    "lead_gen": {
+      "label": "Lead Generator",
+      "description": "Capture and qualify inbound buyer interest mapped to your vendor profile."
+    },
+    "rfp": {
+      "label": "RFP Responder",
+      "description": "AI-assisted RFP response generation using your product knowledge base."
+    },
+    "market_builder": {
+      "label": "Market Builder",
+      "description": "Build custom vendor evaluations weighted to your specific criteria."
+    },
+    "forecast_builder": {
+      "label": "Forecast Builder",
+      "description": "AI-native market sizing, multi-scenario projections and sensitivity tables."
+    },
+    "fact_review": {
+      "label": "Fact Review",
+      "description": "Review and approve AI-generated facts about your products across markets."
+    },
+    "battle_cards": {
+      "label": "Battle Cards",
+      "description": "Competitive battle cards for every market where you compete — ready to use in sales."
+    },
+    "cve_intelligence": {
+      "label": "Security Intelligence",
+      "description": "CVE vulnerabilities, CISA KEV alerts and EPSS exploit scores tracked across IT vendors."
+    },
+    "market_trends": {
+      "label": "Market Trends",
+      "description": "Visitor and engagement share across markets, countries and competing vendors — as percentages."
+    }
+  },
+  "stats": {
+    "marketsCovered": "IT Markets Covered",
+    "vendorsEvaluated": "Vendors Evaluated",
+    "independentResearch": "Independent Research",
+    "analysisEngine": "Analysis Engine"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "AI-Powered · Independent · Real-Time",
+      "titleLine1": "See Every Vendor.",
+      "titleLine2": "Know Every Move.",
+      "subtitle": "Independent, AI-powered enterprise IT intelligence for technology buyers. No bias. No guesswork.",
+      "freeMessage": "100% free, forever — no paid plan, no credit card",
+      "features": {
+        "allMarkets": "Access to all markets",
+        "vendorMaps": "Real-time vendor maps",
+        "productComparisons": "In-depth product comparisons",
+        "vendorIntelligence": "Vendor Intelligence",
+        "securityIntelligence": "Security Intelligence",
+        "rfpBuilder": "RFP builder"
+      },
+      "getFreeAccess": "Get free access"
+    },
+    "markets": {
+      "eyebrow": "LIVE MARKETS",
+      "titleLine1": "Coverage that",
+      "titleLine2": "matters",
+      "description": "Deep-dive evaluations across the enterprise infrastructure stack, updated continuously with AI-scored intelligence.",
+      "createBuyerAccount": "Create free buyer account"
+    },
+    "howItWorks": {
+      "eyebrow": "HOW IT WORKS",
+      "titleLine1": "Intelligence without",
+      "titleLine2": "the wait",
+      "description": "From raw data to actionable insight — fully automated, continuously refreshed.",
+      "steps": [
+        {
+          "title": "Data Ingestion",
+          "description": "Our AI continuously ingests public vendor data, news, product releases, financials and analyst commentary across the enterprise IT landscape."
+        },
+        {
+          "title": "AI-Powered Analysis",
+          "description": "Large language models process and score vendors across 40+ capability dimensions — execution, product depth, ecosystem and financial viability."
+        },
+        {
+          "title": "Actionable Intelligence",
+          "description": "Get interactive vendor maps, feature matrices, impact-scored news, and AI-generated research reports — updated continuously, without bias."
+        }
+      ]
+    },
+    "news": {
+      "eyebrow": "LIVE INTELLIGENCE",
+      "titleLine1": "News that",
+      "titleLine2": "moves markets",
+      "description": "Every vendor news event is analysed for its impact on market positioning. Know who it benefits — and who it doesn't.",
+      "impact": "impact",
+      "impactScore": "AI Impact Score",
+      "getBuyerAccess": "Get free buyer access"
+    },
+    "bottomCta": {
+      "heading": "Ready to see clearly?",
+      "description": "Join enterprise IT teams that trust ITMAP for unbiased, AI-powered vendor intelligence.",
+      "buyerAccess": "Get Free Buyer Access",
+      "vendorAccess": "Contact Sales for Vendor Access"
+    },
+    "footer": {
+      "rightsReserved": "All rights reserved.",
+      "platform": "Platform",
+      "about": "About",
+      "licensing": "Licensing",
+      "contact": "Contact",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "linkedinAriaLabel": "Follow ITMAP on LinkedIn"
+    }
+  }
+}

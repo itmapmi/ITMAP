@@ -1,0 +1,141 @@
+{
+  "seo": {
+    "title": "ITMAP | KI-native Anbieterauswahl",
+    "description": "Entdecken Sie die ITMAP-Plattform: Anbieterbewertungen, Funktionsbewertungen, Marktprognosen, Nachrichtenintelligenz und konversationelle KI – alles in einem unternehmensgerechten Arbeitsbereich."
+  },
+  "hero": {
+    "eyebrow": "Die Plattform",
+    "titleLine1": "Intelligenz-Infrastruktur",
+    "titleLine2": "für Käufer entwickelt",
+    "subtitle": "Sechs tief integrierte Funktionen – von Anbieterkarten bis hin zu benutzerdefinierten Bewertungsrahmen – basierend auf einem Prinzip: Geben Sie Unternehmenskäufern die Wahrheit über Technologie.",
+    "exploreMarket": "Einen Markt erkunden",
+    "freeAccess": "Kostenlosen Zugang erhalten"
+  },
+  "methodology": {
+    "eyebrow": "METHODOLOGIE",
+    "title": "Wie wir vertrauenswürdige Forschung produzieren",
+    "description": "Unsere Methodik ist darauf ausgelegt, Vorurteile in jeder Phase zu eliminieren – von der Datenerfassung über die Bewertung bis zur Veröffentlichung. Jede Entscheidung im Prozess ist dokumentiert und prüfbar.",
+    "steps": {
+      "continuousDataIngestion": {
+        "title": "Kontinuierliche Datenerfassung",
+        "description": "Unsere Pipeline überwacht Tausende öffentlicher Quellen: Anbieter-Websites, Pressemitteilungen, GitHub-Repositories, SEC-Einreichungen, Stellenanzeigen, Patentdatenbanken und Nachrichtenfeeds."
+      },
+      "llmPoweredScoring": {
+        "title": "LLM-gestützte Bewertung",
+        "description": "Große Sprachmodelle bewerten jeden Datenpunkt anhand unseres Bewertungsrasters mit über 40 Dimensionen. Bewertungen werden gewichtet, validiert und in Anbieterpositionen aggregiert."
+      },
+      "structuredOutput": {
+        "title": "Strukturiertes Ergebnis",
+        "description": "Ergebnisse werden in ein normalisiertes Datenmodell strukturiert, das Bewertungen, Funktionsunterstützungskennzeichen, Nachrichtenereignisse und narrative Einblicke abdeckt – alles von Benutzern abfragbar."
+      },
+      "expertReviewLayer": {
+        "title": "Expertenprüfungsschicht",
+        "description": "Unser Team von IT-Praktikern überprüft die Modellausgaben auf Genauigkeit, wendet Domänenkorrekturen an und stellt sicher, dass die Forschung die betriebliche Realität widerspiegelt."
+      }
+    }
+  },
+  "comparison": {
+    "eyebrow": "GEGENÜBER TRADITIONELLEN ANALYSTEN",
+    "title": "Die Alternative zum üblichen Analysten",
+    "criteria": "Kriterien",
+    "traditionalAnalysts": "Traditionelle Analysten",
+    "rows": {
+      "vendorInfluence": {
+        "criterion": "Anbietereinfluss",
+        "traditional": "Bezahlte Platzierungen & Sponsoring",
+        "itmap": "Null – niemals"
+      },
+      "updateFrequency": {
+        "criterion": "Aktualisierungshäufigkeit",
+        "traditional": "Vierteljährlich oder jährlich",
+        "itmap": "Kontinuierlich (täglich)"
+      },
+      "sourceTransparency": {
+        "criterion": "Quelltransparenz",
+        "traditional": "Undurchsichtige Methodik",
+        "itmap": "Vollständige Quelloffenlegung"
+      },
+      "researchDepth": {
+        "criterion": "Forschungstiefe",
+        "traditional": "Breite Abdeckung, oberflächliche Daten",
+        "itmap": "Tiefgehende Bewertung mit Drill-Down"
+      },
+      "accessCost": {
+        "criterion": "Zugangskosten",
+        "traditional": "Sechsstellige Beträge / Jahr",
+        "itmap": "Erschwinglicher gestufter Zugang"
+      },
+      "customisation": {
+        "criterion": "Anpassung",
+        "traditional": "Keine",
+        "itmap": "Benutzerdefinierter Markt-Builder"
+      },
+      "newsImpactTracking": {
+        "criterion": "Nachrichten-Impact-Tracking",
+        "traditional": "Manuell, selten",
+        "itmap": "KI-bewertet, in Echtzeit"
+      }
+    }
+  },
+  "buyerTools": {
+    "eyebrow": "FÜR KÄUFER INKLUSIVE",
+    "title": "Jedes Werkzeug, das ein Technologiekäufer benötigt",
+    "description": "All diese Funktionen sind für Technologiekäufer und Endbenutzer freigeschaltet – keine Stufen, keine Bezahlschranken, kein Anbietereinfluss.",
+    "tools": {
+      "vendorEvaluationMaps": {
+        "title": "Anbieterbewertungskarten",
+        "description": "Interaktive Quadrantenvisualisierungen, die Anbieter nach Ausführungs- und Produktstärke positionieren."
+      },
+      "featureSupportMatrix": {
+        "title": "Funktionsunterstützungsmatrix",
+        "description": "Vergleich nebeneinander über Hunderte von Produktfähigkeiten und Dimensionen."
+      },
+      "newsIntelligenceFeed": {
+        "title": "Nachrichten- & Intelligenz-Feed",
+        "description": "KI-bewertete Nachrichten, Finanzierungen, Produkteinführungen und Marktsignale mit Impact-Bewertungen."
+      },
+      "researchReports": {
+        "title": "Forschungsberichte",
+        "description": "Tiefgehende Markt- und Anbieterberichte, kontinuierlich aktualisiert und als PDFs exportierbar."
+      },
+      "marketBuilder": {
+        "title": "Markt-Builder",
+        "description": "Definieren Sie benutzerdefinierte Kriterien und Gewichtungen, um ein auf Ihre Bedürfnisse zugeschnittenes Ranking zu erstellen."
+      },
+      "datasheets": {
+        "title": "Datenblätter",
+        "description": "Vergleichen Sie Anbieter-Datenblätter, Spezifikationen und Funktionsansprüche an einem Ort."
+      },
+      "rfpBuilder": {
+        "title": "RFP-Builder",
+        "description": "Erstellen Sie RFPs aus Marktdaten, Bewertungskriterien und Anbieteranforderungen."
+      },
+      "forecastBuilder": {
+        "title": "Prognose-Builder",
+        "description": "Modellieren Sie Marktverläufe und prognostizieren Sie die Anbieterpositionierung im Laufe der Zeit."
+      },
+      "battleCards": {
+        "title": "Battle Cards",
+        "description": "Wettbewerbspositionierungskarten zum Vergleich von Anbietern für interne Entscheidungsfindung."
+      },
+      "cveIntelligence": {
+        "title": "CVE-Intelligenz",
+        "description": "Überwachung von Sicherheitslücken und Risikosignalen für bewertete Anbieter."
+      },
+      "factReview": {
+        "title": "Faktenprüfung",
+        "description": "Zusammenarbeit bei der Kennzeichnung und Überprüfung von Forschungsfakten mit dem ITMAP-Team."
+      },
+      "aiChat": {
+        "title": "KI-Chat",
+        "description": "Konversationeller Assistent, der Fragen zu jedem Markt oder Anbieter beantwortet."
+      }
+    }
+  },
+  "cta": {
+    "title": "Erleben Sie es selbst",
+    "description": "Kostenloser Zugang zu allen Märkten, Anbieterkarten und Funktionsmatrizen. Keine Kreditkarte erforderlich.",
+    "freeAccess": "Kostenlosen Zugang erhalten",
+    "browseMarkets": "Märkte durchsuchen"
+  }
+}

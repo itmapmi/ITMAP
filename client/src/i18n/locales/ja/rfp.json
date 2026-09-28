@@ -1,0 +1,190 @@
+{
+  "list": {
+    "heading": "RFPビルダー",
+    "subtitle": "会話形式のインタビューを実施し、実際の市場データに基づいた顧客特化のRFPを作成します。",
+    "newRfp": "新規RFP",
+    "loading": "読み込み中…",
+    "loadingProjects": "プロジェクトを読み込み中…",
+    "market": "市場",
+    "updated": "更新日",
+    "open": "開く",
+    "cancel": "キャンセル",
+    "starting": "開始中…",
+    "startInterview": "インタビューを開始",
+    "empty": "まだRFPはありません。市場ページまたは上のボタンから最初のRFPを開始してください。",
+    "startFirst": "最初のRFPを開始",
+    "deleteAria": "{{title}}を削除",
+    "mobile": {
+      "kicker": "バイヤー / RFPビルダー",
+      "heading": "プロジェクト",
+      "subtitle": "証拠を顧客特化の調達概要に変換します。",
+      "empty": "まだRFPはありません。上で最初のプロジェクトを開始してください。"
+    },
+    "limits": {
+      "daily": "日次制限に達しました（24時間で{{count}}/{{limit}} RFP）。明日再試行してください。",
+      "activeMobile": "{{count}} / {{limit}}のアクティブなRFP · 新しいものを開始する前に1つ完了または削除してください。",
+      "active": "{{count}}/{{limit}}のアクティブなRFPがあります。新しいものを開始する前に1つ完了または削除してください。"
+    },
+    "status": {
+      "draft": "下書き",
+      "interviewing": "インタビュー中",
+      "generating": "生成中",
+      "ready": "準備完了"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAIキーが必要です",
+      "openAiKeyDescription": "RFPビルダーを使用するには、設定→LLMキーでOpenAI APIキーを追加してください。",
+      "couldNotStart": "RFPを開始できませんでした",
+      "deleted": "RFPが削除されました"
+    },
+    "dialog": {
+      "title": "新しいRFPを開始",
+      "workingTitle": "作業タイトル",
+      "titlePlaceholder": "Acme Corp — エンドポイントセキュリティRFP",
+      "market": "市場",
+      "pickMarket": "市場を選択"
+    }
+  },
+  "detail": {
+    "activeRfp": "アクティブなRFP",
+    "rfpFallback": "RFP",
+    "loading": "読み込み中",
+    "slots": "{{filled}}/{{total}} スロット",
+    "slotsUpper": "{{filled}} / {{total}} スロット",
+    "statusLabel": "ステータス:",
+    "needCriticalSlots": "必要な重要スロット: {{slots}}",
+    "defaultCriticalSlots": "合計14のうち10",
+    "stepProgress": "ステップ {{current}} / {{total}}: {{step}}",
+    "mobileStepProgress": "ステップ {{current}} / {{total}} · {{step}}",
+    "steps": {
+      "interview": "インタビュー",
+      "requirements": "要件",
+      "preview": "プレビュー",
+      "shortlist": "ショートリスト",
+      "outreach": "アウトリーチ",
+      "export": "エクスポート"
+    },
+    "generating": "生成中…",
+    "generate": "生成",
+    "generateRfp": "RFPを生成",
+    "regenerate": "再生成",
+    "regenerateRfp": "RFPを再生成",
+    "regenerating": "再生成中…",
+    "vendorFallback": "ベンダー",
+    "back": "戻る",
+    "next": "次: {{step}}",
+    "status": {
+      "draft": "下書き",
+      "interviewing": "インタビュー中",
+      "generating": "生成中",
+      "ready": "準備完了"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAIキーが必要です",
+      "openAiKeyDescription": "設定→LLMキーでOpenAI APIキーを追加してください。",
+      "couldNotSend": "送信できませんでした",
+      "generated": "RFPが生成されました",
+      "generatedDescription": "プレビュー、ショートリスト、エクスポートが準備完了です。",
+      "generationFailed": "生成に失敗しました",
+      "sectionRegenerated": "セクションが再生成されました",
+      "regenerationFailed": "再生成に失敗しました",
+      "responseFileUploaded": "応答ファイルがアップロードされました"
+    },
+    "interview": {
+      "heading": "ディスカバリーインタビュー",
+      "you": "あなた",
+      "analyst": "ITMAPアナリスト",
+      "thinking": "考え中…",
+      "complete": "インタビュー完了 · 生成準備完了",
+      "inProgress": "インタビュー進行中 · {{count}}の重要スロットが残っています",
+      "answerPlaceholder": "回答を入力してください…",
+      "send": "送信",
+      "unavailable": "すべての重要スロットが確保されるまでRFPの生成は利用できません。",
+      "completeDesktop": "インタビュー完了 — 上の「RFPを生成」をクリックしてください。",
+      "slotsCaptured": "{{filled}}/{{total}}のインタビュースロットが確保されました"
+    },
+    "requirements": {
+      "heading": "要件",
+      "subtitle": "インタビューと市場カタログから生成されました。",
+      "empty": "RFPを生成して重み付けされた要件をシードします。",
+      "seededDescription": "この市場の機能カタログと必須項目に基づいて、RFPを初めて生成する際に要件が自動的にシードされます。",
+      "deleteAria": "{{label}}を削除",
+      "kindRequirement": "{{kind}} 要件",
+      "priority": {
+        "must": "必須",
+        "should": "推奨",
+        "nice": "望ましい"
+      },
+      "priorityLower": {
+        "must": "必須",
+        "should": "推奨",
+        "nice": "望ましい"
+      },
+      "weight": "重み {{weight}}"
+    },
+    "preview": {
+      "heading": "ドキュメントプレビュー",
+      "subtitle": "生成されたマークダウン · 現在のドキュメント",
+      "empty": "RFPを生成してドキュメントを作成します。",
+      "emptySection": "(空)",
+      "generatePrompt": "上の「RFPを生成」をクリックしてドキュメントを作成します。"
+    },
+    "shortlist": {
+      "heading": "ベンダーショートリスト",
+      "subtitle": "重み付けされた要件に対する決定論的適合。",
+      "empty": "RFPを生成してベンダーをスコアリングします。",
+      "rank": "ランク #{{rank}}",
+      "included": "含まれる",
+      "excluded": "除外される",
+      "desktopHeading": "ベンダーショートリスト（決定論的適合）",
+      "desktopEmpty": "まだショートリストはありません — ベンダーをスコアリングするためにRFPを生成します。"
+    },
+    "outreach": {
+      "heading": "アウトリーチトラッカー",
+      "subtitle": "ベンダーの連絡先情報と応答を記録します。",
+      "status": {
+        "draft": "下書き",
+        "not_started": "下書き",
+        "sent": "送信済み",
+        "invited": "送信済み",
+        "declined": "辞退",
+        "responded": "応答済み",
+        "awarded": "受賞"
+      },
+      "badge": {
+        "draft": "下書き",
+        "not_started": "未開始",
+        "sent": "送信済み",
+        "invited": "送信済み",
+        "declined": "辞退",
+        "responded": "応答済み",
+        "awarded": "受賞"
+      },
+      "sent": "送信済み {{date}}",
+      "replied": "· 応答済み {{date}}",
+      "contactName": "連絡先名",
+      "contactEmail": "連絡先メール",
+      "email": "メール",
+      "notesPlaceholder": "アウトリーチノート…",
+      "responsePlaceholder": "ベンダーの応答テキストをここに貼り付けてください…",
+      "responsePlaceholderDesktop": "ベンダーの応答テキストをここに貼り付けてください…",
+      "uploadResponseLimit": "応答ファイルをアップロード · 1ファイル、最大25MB",
+      "uploadResponse": "応答ファイルをアップロード",
+      "viewUploadedFile": "アップロードされたファイルを見る",
+      "empty": "アウトリーチを追跡するには、ショートリストステップにベンダーを含めます。",
+      "desktopHeading": "ベンダーアウトリーチトラッカー",
+      "desktopEmpty": "アウトリーチを追跡するには、ショートリストタブにベンダーを含めます。",
+      "responseComparison": "応答比較"
+    },
+    "export": {
+      "heading": "RFPをエクスポート",
+      "subtitle": "生成されたドキュメントをお好みの形式でダウンロードします。",
+      "documentReady": "ドキュメント準備完了",
+      "documentSummary": "生成されたマークダウンが利用可能 · {{sections}} セクション · {{requirements}} 要件",
+      "downloadFormat": "{{format}}をダウンロード",
+      "generatedFromCurrent": "現在のRFPから生成",
+      "empty": "エクスポートを有効にするには、まずRFPを生成してください。",
+      "downloadHeading": "ダウンロード"
+    }
+  }
+}

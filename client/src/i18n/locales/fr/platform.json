@@ -1,0 +1,141 @@
+{
+  "seo": {
+    "title": "ITMAP | Sélection de fournisseurs natifs IA",
+    "description": "Explorez la plateforme ITMAP : évaluation des fournisseurs, évaluations des fonctionnalités, prévisions de marché, intelligence des actualités et IA conversationnelle — tout dans un espace de travail de niveau entreprise."
+  },
+  "hero": {
+    "eyebrow": "La Plateforme",
+    "titleLine1": "Infrastructure d'intelligence",
+    "titleLine2": "conçue pour les acheteurs",
+    "subtitle": "Six capacités profondément intégrées — des cartes de fournisseurs aux cadres d'évaluation personnalisés — construites autour d'un principe : donner aux acheteurs d'entreprise la vérité sur la technologie.",
+    "exploreMarket": "Explorer un Marché",
+    "freeAccess": "Accès Gratuit"
+  },
+  "methodology": {
+    "eyebrow": "MÉTHODOLOGIE",
+    "title": "Comment nous produisons des recherches fiables",
+    "description": "Notre méthodologie est conçue pour éliminer les biais à chaque étape — de l'ingestion des données à la publication en passant par l'évaluation. Chaque décision dans le processus est documentée et vérifiable.",
+    "steps": {
+      "continuousDataIngestion": {
+        "title": "Ingestion Continue des Données",
+        "description": "Notre pipeline surveille des milliers de sources publiques : sites web de fournisseurs, communiqués de presse, dépôts GitHub, dépôts SEC, offres d'emploi, bases de données de brevets et flux d'actualités."
+      },
+      "llmPoweredScoring": {
+        "title": "Évaluation Alimentée par LLM",
+        "description": "Les modèles de langage de grande taille évaluent chaque point de données selon notre grille d'évaluation de plus de 40 dimensions. Les scores sont pondérés, validés et agrégés en positions de fournisseurs."
+      },
+      "structuredOutput": {
+        "title": "Sortie Structurée",
+        "description": "Les résultats sont structurés dans un modèle de données normalisé couvrant les scores, les indicateurs de support des fonctionnalités, les événements d'impact des actualités et les insights narratifs — tous interrogeables par les utilisateurs."
+      },
+      "expertReviewLayer": {
+        "title": "Couche de Révision par des Experts",
+        "description": "Notre équipe de praticiens IT examine les résultats des modèles pour en vérifier l'exactitude, applique des corrections de domaine et s'assure que la recherche reflète la réalité opérationnelle."
+      }
+    }
+  },
+  "comparison": {
+    "eyebrow": "VS ANALYSTES TRADITIONNELS",
+    "title": "L'alternative aux analystes traditionnels",
+    "criteria": "Critères",
+    "traditionalAnalysts": "Analystes Traditionnels",
+    "rows": {
+      "vendorInfluence": {
+        "criterion": "Influence des fournisseurs",
+        "traditional": "Placements payants & parrainages",
+        "itmap": "Zéro — jamais"
+      },
+      "updateFrequency": {
+        "criterion": "Fréquence de mise à jour",
+        "traditional": "Trimestrielle ou annuelle",
+        "itmap": "Continue (quotidienne)"
+      },
+      "sourceTransparency": {
+        "criterion": "Transparence des sources",
+        "traditional": "Méthodologie opaque",
+        "itmap": "Divulgation complète des sources"
+      },
+      "researchDepth": {
+        "criterion": "Profondeur de la recherche",
+        "traditional": "Couverture large, données superficielles",
+        "itmap": "Évaluation approfondie avec exploration détaillée"
+      },
+      "accessCost": {
+        "criterion": "Coût d'accès",
+        "traditional": "Six chiffres / an",
+        "itmap": "Accès abordable par paliers"
+      },
+      "customisation": {
+        "criterion": "Personnalisation",
+        "traditional": "Aucune",
+        "itmap": "Créateur de marché personnalisé"
+      },
+      "newsImpactTracking": {
+        "criterion": "Suivi de l'impact des actualités",
+        "traditional": "Manuel, peu fréquent",
+        "itmap": "Évalué par IA, en temps réel"
+      }
+    }
+  },
+  "buyerTools": {
+    "eyebrow": "INCLUS POUR LES ACHETEURS",
+    "title": "Tous les outils dont un Acheteur Technologique a besoin",
+    "description": "Toutes ces capacités sont débloquées pour les Acheteurs Technologiques et les utilisateurs finaux — pas de niveaux, pas de paywalls, pas d'influence des fournisseurs.",
+    "tools": {
+      "vendorEvaluationMaps": {
+        "title": "Cartes d'Évaluation des Fournisseurs",
+        "description": "Visualisations interactives en quadrants positionnant les fournisseurs selon l'exécution et la force du produit."
+      },
+      "featureSupportMatrix": {
+        "title": "Matrice de Support des Fonctionnalités",
+        "description": "Comparaison côte à côte de centaines de capacités et dimensions de produits."
+      },
+      "newsIntelligenceFeed": {
+        "title": "Flux d'Actualités & Intelligence",
+        "description": "Actualités évaluées par IA, financements, lancements de produits et signaux de marché avec évaluations d'impact."
+      },
+      "researchReports": {
+        "title": "Rapports de Recherche",
+        "description": "Rapports de marché et de fournisseurs approfondis, continuellement mis à jour et exportables en PDF."
+      },
+      "marketBuilder": {
+        "title": "Créateur de Marché",
+        "description": "Définissez des critères et des pondérations personnalisés pour générer un classement adapté à vos besoins."
+      },
+      "datasheets": {
+        "title": "Fiches Techniques",
+        "description": "Comparez les fiches techniques, spécifications et revendications de fonctionnalités des fournisseurs en un seul endroit."
+      },
+      "rfpBuilder": {
+        "title": "Créateur de RFP",
+        "description": "Générez des RFP à partir de données de marché, de critères d'évaluation et d'exigences des fournisseurs."
+      },
+      "forecastBuilder": {
+        "title": "Créateur de Prévisions",
+        "description": "Modélisez les trajectoires de marché et prévoyez le positionnement des fournisseurs dans le temps."
+      },
+      "battleCards": {
+        "title": "Cartes de Bataille",
+        "description": "Cartes de positionnement concurrentiel pour comparer les fournisseurs pour la prise de décision interne."
+      },
+      "cveIntelligence": {
+        "title": "Intelligence CVE",
+        "description": "Suivi des vulnérabilités de sécurité et signaux de risque pour les fournisseurs évalués."
+      },
+      "factReview": {
+        "title": "Révision des Faits",
+        "description": "Collaborez pour signaler et vérifier les faits de recherche avec l'équipe ITMAP."
+      },
+      "aiChat": {
+        "title": "Chat IA",
+        "description": "Assistant conversationnel qui répond aux questions sur n'importe quel marché ou fournisseur."
+      }
+    }
+  },
+  "cta": {
+    "title": "Expérimentez-le par vous-même",
+    "description": "Accès gratuit à tous les marchés, cartes de fournisseurs et matrices de fonctionnalités. Aucune carte de crédit requise.",
+    "freeAccess": "Accès Gratuit",
+    "browseMarkets": "Parcourir les Marchés"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "seo": {
+    "title": "À propos d'ITMAP — Intelligence indépendante sur les fournisseurs alimentée par l'IA",
+    "description": "Découvrez la mission d'ITMAP de fournir une intelligence d'entreprise en temps réel et impartiale sur les fournisseurs IT — plus rapide et plus transparente que les cabinets d'analystes traditionnels."
+  },
+  "hero": {
+    "eyebrow": "À propos d'ITMAP",
+    "titleLine1": "Conçu pour couper à travers",
+    "titleLine2": "le bruit des analystes",
+    "subtitle": "ITMAP a été créé par des praticiens IT d'entreprise qui en avaient assez de payer pour des recherches déjà financées par les fournisseurs qu'ils étaient censés évaluer."
+  },
+  "mission": {
+    "eyebrow": "NOTRE MISSION",
+    "heading": "Offrir aux acheteurs d'entreprise l'intelligence qu'ils méritent",
+    "paragraph1": "Trop longtemps, la recherche technologique d'entreprise a été un produit vendu d'abord aux fournisseurs, et ensuite aux acheteurs.",
+    "paragraph2": "ITMAP est différent. Nous croyons que les équipes d'approvisionnement, les DSI et les architectes IT méritent une intelligence prouvablement impartiale — basée sur des données publiques, notée par l'IA, et jamais à vendre aux fournisseurs.",
+    "button": "Voir comment nous analysons",
+    "metrics": {
+      "independence": {
+        "label": "Indépendance",
+        "note": "Aucun financement de fournisseur"
+      },
+      "dataCurrency": {
+        "label": "Actualité des données",
+        "note": "Mise à jour quotidienne"
+      },
+      "sourceTransparency": {
+        "label": "Transparence des sources",
+        "note": "Toutes les sources divulguées"
+      },
+      "coverageBreadth": {
+        "label": "Ampleur de la couverture",
+        "note": "6+ marchés, en croissance"
+      }
+    }
+  },
+  "values": {
+    "eyebrow": "NOS VALEURS",
+    "heading": "Principes que nous ne compromettrons pas",
+    "items": [
+      {
+        "title": "Indépendance radicale",
+        "description": "Nous n'acceptons aucun paiement, parrainage ou placement payant de fournisseurs. Chaque score est déterminé uniquement par les données et la méthodologie."
+      },
+      {
+        "title": "Transparence totale",
+        "description": "Chaque évaluation de fournisseur expose ses sources, critères et pondérations. Rien n'est caché. Tout est vérifiable."
+      },
+      {
+        "title": "Précision en temps réel",
+        "description": "Une intelligence de marché qui reflète aujourd'hui — pas le dernier trimestre. Notre IA traite en continu les actualités, les communiqués et les signaux."
+      },
+      {
+        "title": "Méthodologie native IA",
+        "description": "Conçue dès le départ autour de grands modèles de langage — pas adaptée a posteriori. L'IA est au cœur de chaque analyse que nous produisons."
+      }
+    ]
+  },
+  "team": {
+    "eyebrow": "L'ÉQUIPE",
+    "heading": "Des praticiens construisant pour des praticiens",
+    "description": "ITMAP est construit par une équipe de vétérans IT d'entreprise qui ont dirigé des projets de sélection technologique des deux côtés de la table — en tant que leaders IT prenant des décisions, et en tant que technologues construisant les plateformes évaluées.",
+    "highlights": [
+      "Plus de 40 ans d'expérience combinée en IT d'entreprise",
+      "Anciens analystes de cabinets de recherche de premier plan",
+      "Expertise opérationnelle approfondie en infrastructure, cloud et protection des données",
+      "Technologues ayant vécu le défi de la sélection des fournisseurs de première main"
+    ]
+  },
+  "contact": {
+    "eyebrow": "CONTACTEZ-NOUS",
+    "heading": "Parlons intelligence",
+    "description": "Que vous exploriez la plateforme, posiez des questions sur les licences, ou souhaitiez discuter des défis de sélection de fournisseurs de votre organisation — nous serions ravis de vous entendre.",
+    "form": {
+      "heading": "Envoyez-nous un message",
+      "responseTime": "Nous répondons généralement sous 1 jour ouvrable.",
+      "firstName": "Prénom",
+      "firstNamePlaceholder": "Jane",
+      "lastName": "Nom de famille",
+      "lastNamePlaceholder": "Smith",
+      "workEmail": "Email professionnel",
+      "emailPlaceholder": "jane.smith@company.com",
+      "company": "Entreprise",
+      "companyPlaceholder": "Acme Corp",
+      "subject": "Objet",
+      "subjectPlaceholder": "Demande sur la plateforme / Licence / Recherche",
+      "message": "Message",
+      "messagePlaceholder": "Parlez-nous de vos besoins en intelligence technologique, ou comment nous pouvons vous aider...",
+      "sendMessage": "Envoyer le message",
+      "privacyPrefix": "En envoyant ce message, vous acceptez notre",
+      "privacyPolicy": "politique de confidentialité"
+    },
+    "details": {
+      "labels": [
+        "Email",
+        "Bureau",
+        "Heures d'ouverture"
+      ]
+    },
+    "partnership": {
+      "heading": "Explorer un partenariat ?",
+      "description": "Nous travaillons avec des cabinets de recherche, des cabinets de conseil IT et des plateformes d'approvisionnement. Si vous êtes intéressé par l'intégration de l'intelligence ITMAP dans votre flux de travail, parlons-en.",
+      "button": "Explorer le partenariat"
+    }
+  },
+  "cta": {
+    "heading": "Prêt à voir différemment ?",
+    "description": "Rejoignez le nombre croissant de leaders IT d'entreprise choisissant une intelligence sans agenda.",
+    "getFreeAccess": "Obtenez un accès gratuit",
+    "exploreMarkets": "Explorer les marchés"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "platform": "Plattform",
+    "markets": "Märkte",
+    "myMarkets": "Meine Märkte",
+    "licensing": "Lizenzierung",
+    "pricing": "Preise",
+    "about": "Über uns",
+    "forVendors": "Für Anbieter",
+    "rfpBuilder": "RFP-Builder",
+    "securityIntelligence": "Sicherheitsintelligenz",
+    "methodology": "Methodik",
+    "intelligence": "Intelligenz",
+    "tools": "Werkzeuge",
+    "admin": "Admin",
+    "forecastBuilder": "Prognose-Builder",
+    "marketBuilder": "Markt-Builder",
+    "newsAndSignals": "Nachrichten & Signale",
+    "leadGenerator": "Lead-Generator",
+    "rfpResponder": "RFP-Responder",
+    "battleCards": "Battle Cards",
+    "mobileView": "Mobile Ansicht",
+    "desktopSite": "Desktop-Seite",
+    "switchToMobileView": "Zur mobilen Ansicht wechseln"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "getStarted": "Erste Schritte",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "myReports": "Meine Berichte",
+    "factReview": "Faktenprüfung",
+    "vendorSeat": "Anbietersitz",
+    "signedOutSuccess": "Erfolgreich abgemeldet",
+    "signOutFailed": "Abmeldung fehlgeschlagen"
+  },
+  "language": {
+    "label": "Sprache",
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch",
+    "pt-BR": "Português (Brasil)",
+    "ja": "日本語",
+    "ko": "한국어"
+  },
+  "common": {
+    "loading": "Laden...",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "close": "Schließen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "continue": "Fortfahren",
+    "submit": "Einreichen",
+    "search": "Suche",
+    "filter": "Filter",
+    "all": "Alle",
+    "none": "Keine",
+    "yes": "Ja",
+    "no": "Nein",
+    "error": "Etwas ist schiefgelaufen",
+    "retry": "Erneut versuchen",
+    "noResults": "Keine Ergebnisse gefunden"
+  },
+  "criteria": {
+    "revenue": "Umsatz",
+    "innovation": "Innovation",
+    "pricingStrategy": "Preisstrategie",
+    "productCapabilities": "Produktfunktionen",
+    "businessModel": "Geschäftsmodell",
+    "customerExperience": "Kundenerfahrung",
+    "partnerEcosystem": "Partner-Ökosystem",
+    "isvEcosystem": "ISV-Ökosystem"
+  },
+  "teaser": {
+    "freePreviewSecondsLeft": "Kostenlose Vorschau: noch {{seconds}} s"
+  }
+}

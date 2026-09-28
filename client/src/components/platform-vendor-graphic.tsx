@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Activity, MousePointer2, Newspaper, TrendingUp, TrendingDown, Minus, Calendar } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const WIDTH = 600;
 const HEIGHT = 600;
@@ -148,6 +149,7 @@ function Zone({
 }
 
 export default function PlatformVendorGraphic() {
+  const { t } = useTranslation("magicQuadrant");
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [tick, setTick] = useState(0);
 
@@ -419,7 +421,7 @@ export default function PlatformVendorGraphic() {
               fontWeight={500}
               textAnchor="end"
             >
-              Powered by itmap.ai
+              {t("chart.poweredBy")}
             </text>
 
             {/* Vendor dots */}

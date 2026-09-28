@@ -1,0 +1,26 @@
+{
+  "locked": {
+    "feature": "インテリジェンスフィード"
+  },
+  "heading": "インテリジェンスフィード",
+  "description": "Hacker News、Reddit、GitHub、Layoffs.fyi、CVE脆弱性データからのリアルタイムシグナル。",
+  "filters": {
+    "allVendors": "すべてのベンダー",
+    "sources": {
+      "all": "すべて",
+      "hn": "HN",
+      "reddit": "Reddit",
+      "github": "GitHub",
+      "layoffs": "Layoffs",
+      "cve": "CVE"
+    }
+  },
+  "empty": {
+    "noCveSignals": "まだCVEシグナルはありません。CVEイベントは、確認されたクロスウォークマッピングが設定された後にここに表示されます。",
+    "noMarketSignals": "この市場のシグナルはまだ収集されていません。",
+    "noVendorSignals": "このベンダーのシグナルはまだ収集されていません。"
+  },
+  "pagination": {
+    "showing": "{{shown}} 件中 {{total}} 件のシグナルを表示"
+  }
+}

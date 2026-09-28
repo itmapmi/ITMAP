@@ -1,0 +1,64 @@
+{
+  "seo": {
+    "title": "Licensing & Reprints — ITMAP",
+    "description": "License ITMAP vendor evaluations, market reports, and forecasts for internal use, marketing, sales enablement, or analyst-style reprint rights."
+  },
+  "hero": {
+    "eyebrow": "Licensing & Reprints",
+    "titleLine1": "Third-party use of",
+    "titleLine2": "ITMAP research",
+    "subtitle": "Our research and graphics are protected intellectual property. Here's what requires a licence and how to get one."
+  },
+  "requirements": {
+    "requiredTitle": "What requires a licence?",
+    "requiredDescription": "The following always require a ITMAP reprint licence when used by vendors or for promotional / marketing purposes:",
+    "requiredItems": [
+      "Charts, diagrams, matrices, market maps or other graphics created by ITMAP",
+      "Research content: report excerpts, key takeaways, ratings, quotes, summaries or narrative text",
+      "Data points or findings unique to ITMAP (even if paraphrased) when used to endorse products or services",
+      "Translations of any ITMAP content",
+      "Thumbnails or screengrabs of our graphics",
+      "Use of ITMAP logos, product marks or badges"
+    ],
+    "notRequiredTitle": "What does not require a licence?",
+    "notRequiredItems": [
+      "Linking to public ITMAP pages using article or report titles",
+      "Short, purely editorial citations in neutral journalistic contexts (vendors must still obtain a license)"
+    ]
+  },
+  "process": {
+    "title": "How the licensing process works",
+    "emailUs": "Email us",
+    "steps": {
+      "submitRequest": {
+        "title": "Submit a request",
+        "description": "Email support@itmap.ai with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach."
+      },
+      "scopeAndQuote": {
+        "title": "We scope and quote",
+        "description": "Fees depend on asset type, distribution geography, channels, duration and exclusivity. We'll respond within 2 business days."
+      },
+      "agreementInvoice": {
+        "title": "Agreement & invoice",
+        "description": "We issue a short reprint licence agreement. Once executed and paid, you'll receive approved files and attribution copy."
+      },
+      "implementAttribute": {
+        "title": "Implement & attribute",
+        "description": "Publish using our supplied assets, attribution line and optional Licensed Reprint badge."
+      },
+      "complianceReview": {
+        "title": "Compliance review",
+        "description": "For high-visibility placements, we can pre-review to ensure brand and research integrity before go-live."
+      },
+      "renewOrRetire": {
+        "title": "Renew or retire",
+        "description": "Licences expire at the end of the agreed term. You may renew or remove the content."
+      }
+    }
+  },
+  "contact": {
+    "title": "Questions about licensing?",
+    "description": "Our team typically responds within 2 business days.",
+    "button": "Contact support@itmap.ai"
+  }
+}

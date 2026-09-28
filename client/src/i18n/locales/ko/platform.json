@@ -1,0 +1,141 @@
+{
+  "seo": {
+    "title": "ITMAP | AI-기반 벤더 선택",
+    "description": "ITMAP 플랫폼 탐색: 벤더 점수, 기능 평가, 시장 예측, 뉴스 인텔리전스, 대화형 AI — 모든 것을 하나의 엔터프라이즈급 작업 공간에서."
+  },
+  "hero": {
+    "eyebrow": "플랫폼",
+    "titleLine1": "구매자를 위한",
+    "titleLine2": "지능형 인프라",
+    "subtitle": "벤더 맵부터 맞춤 평가 프레임워크까지, 여섯 가지 깊이 있는 통합 기능 — 엔터프라이즈 구매자에게 기술에 대한 진실을 제공하는 한 가지 원칙을 중심으로 구축되었습니다.",
+    "exploreMarket": "시장 탐색",
+    "freeAccess": "무료 액세스 받기"
+  },
+  "methodology": {
+    "eyebrow": "방법론",
+    "title": "신뢰할 수 있는 연구를 생산하는 방법",
+    "description": "우리의 방법론은 데이터 수집부터 점수화, 출판에 이르기까지 모든 단계에서 편향을 제거하도록 설계되었습니다. 파이프라인의 모든 결정은 문서화되고 감사 가능합니다.",
+    "steps": {
+      "continuousDataIngestion": {
+        "title": "지속적인 데이터 수집",
+        "description": "우리의 파이프라인은 벤더 웹사이트, 보도 자료, GitHub 저장소, SEC 제출 문서, 구인 공고, 특허 데이터베이스 및 뉴스 피드를 포함한 수천 개의 공개 소스를 모니터링합니다."
+      },
+      "llmPoweredScoring": {
+        "title": "LLM 기반 점수화",
+        "description": "대형 언어 모델이 40개 이상의 차원 점수 기준에 따라 각 데이터 포인트를 평가합니다. 점수는 가중치가 부여되고, 검증되며, 벤더 위치로 집계됩니다."
+      },
+      "structuredOutput": {
+        "title": "구조화된 출력",
+        "description": "결과는 점수, 기능 지원 플래그, 뉴스 영향 이벤트 및 내러티브 인사이트를 포함하는 정규화된 데이터 모델로 구조화되어 사용자 쿼리에 응답할 수 있습니다."
+      },
+      "expertReviewLayer": {
+        "title": "전문가 검토 레이어",
+        "description": "IT 전문가 팀이 모델 출력을 정확하게 검토하고, 도메인 수정을 적용하며, 연구가 실제 운영 현실을 반영하도록 보장합니다."
+      }
+    }
+  },
+  "comparison": {
+    "eyebrow": "전통적 분석가와 비교",
+    "title": "일반적인 분석가의 대안",
+    "criteria": "기준",
+    "traditionalAnalysts": "전통적 분석가",
+    "rows": {
+      "vendorInfluence": {
+        "criterion": "벤더 영향력",
+        "traditional": "유료 배치 및 스폰서십",
+        "itmap": "제로 — 절대 없음"
+      },
+      "updateFrequency": {
+        "criterion": "업데이트 빈도",
+        "traditional": "분기별 또는 연간",
+        "itmap": "지속적 (일일)"
+      },
+      "sourceTransparency": {
+        "criterion": "출처 투명성",
+        "traditional": "불투명한 방법론",
+        "itmap": "전체 출처 공개"
+      },
+      "researchDepth": {
+        "criterion": "연구 깊이",
+        "traditional": "광범위한 커버리지, 얕은 데이터",
+        "itmap": "깊이 있는 점수화 및 심층 분석"
+      },
+      "accessCost": {
+        "criterion": "접근 비용",
+        "traditional": "연간 6자리 수",
+        "itmap": "합리적인 계층형 접근"
+      },
+      "customisation": {
+        "criterion": "맞춤화",
+        "traditional": "없음",
+        "itmap": "맞춤 시장 빌더"
+      },
+      "newsImpactTracking": {
+        "criterion": "뉴스 영향 추적",
+        "traditional": "수동, 드문",
+        "itmap": "AI 점수화, 실시간"
+      }
+    }
+  },
+  "buyerTools": {
+    "eyebrow": "구매자를 위한 포함된 도구",
+    "title": "기술 구매자가 필요한 모든 도구",
+    "description": "이 모든 기능은 기술 구매자와 최종 사용자에게 잠금 해제됩니다 — 계층 없음, 유료 장벽 없음, 벤더 영향력 없음.",
+    "tools": {
+      "vendorEvaluationMaps": {
+        "title": "벤더 평가 맵",
+        "description": "실행력과 제품 강도를 기준으로 벤더를 위치시키는 인터랙티브 사분면 시각화."
+      },
+      "featureSupportMatrix": {
+        "title": "기능 지원 매트릭스",
+        "description": "수백 가지 제품 기능과 차원을 나란히 비교."
+      },
+      "newsIntelligenceFeed": {
+        "title": "뉴스 및 인텔리전스 피드",
+        "description": "AI 점수화된 뉴스, 자금 조달, 제품 출시 및 시장 신호와 영향 평가."
+      },
+      "researchReports": {
+        "title": "연구 보고서",
+        "description": "심층 시장 및 벤더 보고서, 지속적으로 업데이트되며 PDF로 내보낼 수 있음."
+      },
+      "marketBuilder": {
+        "title": "시장 빌더",
+        "description": "맞춤 기준과 가중치를 정의하여 필요에 맞춘 순위를 생성."
+      },
+      "datasheets": {
+        "title": "데이터 시트",
+        "description": "한 곳에서 벤더 데이터 시트, 사양 및 기능 주장을 비교."
+      },
+      "rfpBuilder": {
+        "title": "RFP 빌더",
+        "description": "시장 데이터, 점수 기준 및 벤더 요구 사항에서 RFP 생성."
+      },
+      "forecastBuilder": {
+        "title": "예측 빌더",
+        "description": "시장 경로를 모델링하고 시간에 따른 벤더 위치를 예측."
+      },
+      "battleCards": {
+        "title": "배틀 카드",
+        "description": "내부 의사 결정을 위한 벤더 비교 경쟁 포지셔닝 카드."
+      },
+      "cveIntelligence": {
+        "title": "CVE 인텔리전스",
+        "description": "평가된 벤더의 보안 취약성 추적 및 위험 신호."
+      },
+      "factReview": {
+        "title": "사실 검토",
+        "description": "ITMAP 팀과 함께 연구 사실을 플래그하고 검증하는 협업."
+      },
+      "aiChat": {
+        "title": "AI 채팅",
+        "description": "어떤 시장이나 벤더에 대한 질문에 답하는 대화형 도우미."
+      }
+    }
+  },
+  "cta": {
+    "title": "직접 경험해 보세요",
+    "description": "모든 시장, 벤더 맵 및 기능 매트릭스에 무료로 액세스. 신용카드 필요 없음.",
+    "freeAccess": "무료 액세스 받기",
+    "browseMarkets": "시장 둘러보기"
+  }
+}

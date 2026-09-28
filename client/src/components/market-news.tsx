@@ -23,27 +23,28 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag, ChevronDown, ChevronUp, BookOpen, Download, Loader2 } from "lucide-react";
-import { format } from "date-fns";
 import type { NewsArticle, Vendor } from "@shared/schema";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTranslation } from "react-i18next";
+import { formatDate } from "@/lib/i18n-format";
 
 const EXPORT_RANGES = [
-  { value: "30", label: "Past 30 days" },
-  { value: "90", label: "Past 90 days" },
-  { value: "180", label: "Past 180 days" },
-  { value: "365", label: "Past 12 months" },
+  { value: "30", key: "ranges.past30Days" },
+  { value: "90", key: "ranges.past90Days" },
+  { value: "180", key: "ranges.past180Days" },
+  { value: "365", key: "ranges.past12Months" },
 ] as const;
 
 const LIVE_RANGES = [
-  { value: "all", label: "All time" },
-  { value: "30", label: "Past 30 days" },
-  { value: "90", label: "Past 90 days" },
-  { value: "180", label: "Past 180 days" },
-  { value: "365", label: "Past 12 months" },
+  { value: "all", key: "ranges.allTime" },
+  { value: "30", key: "ranges.past30Days" },
+  { value: "90", key: "ranges.past90Days" },
+  { value: "180", key: "ranges.past180Days" },
+  { value: "365", key: "ranges.past12Months" },
 ] as const;
 
 function sinceFromRange(range: string): string | undefined {
@@ -68,16 +69,17 @@ interface MarketNewsProps {
 
 // Fixed set of tagging categories the news pipeline assigns to each article.
 const NEWS_CATEGORIES = [
-  "Product Announcement",
-  "M&A",
-  "Financial Results",
-  "Partnership",
-  "Customer Success",
-  "Leadership Changes",
-  "General",
+  { value: "Product Announcement", key: "categories.productAnnouncement" },
+  { value: "M&A", key: "categories.ma" },
+  { value: "Financial Results", key: "categories.financialResults" },
+  { value: "Partnership", key: "categories.partnership" },
+  { value: "Customer Success", key: "categories.customerSuccess" },
+  { value: "Leadership Changes", key: "categories.leadershipChanges" },
+  { value: "General", key: "categories.general" },
 ] as const;
 
 export function MarketNews({ marketId }: MarketNewsProps) {
+  const { t } = useTranslation("marketNews");
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -118,7 +120,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to export news');
+        throw new Error(err.error || t("toast.exportFailedFallback"));
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -131,11 +133,11 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       setExportOpen(false);
-      toast({ title: 'Export ready', description: 'Your news PDF has been downloaded.' });
+      toast({ title: t("toast.exportReady"), description: t("toast.exportDownloaded") });
     } catch (e) {
       toast({
-        title: 'Export failed',
-        description: e instanceof Error ? e.message : 'Could not generate the PDF.',
+        title: t("toast.exportFailed"),
+        description: e instanceof Error ? e.message : t("toast.exportCouldNotGenerate"),
         variant: 'destructive',
       });
     } finally {
@@ -194,7 +196,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
   });
 
   if (isCompanyEmailRequiredError(newsError)) {
-    return <CompanyProfileLockedPanel feature="Market news" />;
+    return <CompanyProfileLockedPanel feature={t("locked.feature")} />;
   }
 
   const toggleExpanded = (articleId: string) => {
@@ -229,7 +231,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
     return (
       <Badge variant="outline" className={`${variant.className} flex items-center gap-1`}>
         {variant.icon}
-        <span className="capitalize">{label.toLowerCase()}</span>
+        <span className="capitalize">{["HIGH", "MEDIUM", "LOW"].includes(normalized) ? t(`impact.${normalized.toLowerCase()}`) : label.toLowerCase()}</span>
       </Badge>
     );
   };
@@ -250,21 +252,21 @@ export function MarketNews({ marketId }: MarketNewsProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Newspaper className="h-5 w-5" />
-                Market News & Updates
+                {t("heading")}
               </CardTitle>
               <CardDescription>
-                Latest news and announcements from market vendors, with AI-powered analysis
+                {t("description")}
               </CardDescription>
             </div>
             <div className={isMobile ? "grid grid-cols-2 gap-2" : "flex gap-2 flex-wrap"}>
               <Select value={selectedRange} onValueChange={setSelectedRange}>
                 <SelectTrigger className={isMobile ? "w-full" : "w-40"} data-testid="select-timeline-filter">
-                  <SelectValue placeholder="All time" />
+                  <SelectValue placeholder={t("ranges.allTime")} />
                 </SelectTrigger>
                 <SelectContent>
                   {LIVE_RANGES.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
-                      {r.label}
+                      {t(r.key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -272,10 +274,10 @@ export function MarketNews({ marketId }: MarketNewsProps) {
 
               <Select value={selectedVendor} onValueChange={setSelectedVendor}>
                 <SelectTrigger className={isMobile ? "w-full" : "w-48"} data-testid="select-vendor-filter">
-                  <SelectValue placeholder="All Vendors" />
+                  <SelectValue placeholder={t("filters.allVendors")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Vendors</SelectItem>
+                  <SelectItem value="all">{t("filters.allVendors")}</SelectItem>
                   {vendors?.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id}>
                       {vendor.name}
@@ -286,25 +288,25 @@ export function MarketNews({ marketId }: MarketNewsProps) {
 
               <Select value={selectedImpact} onValueChange={setSelectedImpact}>
                 <SelectTrigger className={isMobile ? "w-full" : "w-40"} data-testid="select-impact-filter">
-                  <SelectValue placeholder="All Impact" />
+                  <SelectValue placeholder={t("filters.allImpact")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Impact</SelectItem>
-                  <SelectItem value="HIGH">High Impact</SelectItem>
-                  <SelectItem value="MEDIUM">Medium Impact</SelectItem>
-                  <SelectItem value="LOW">Low Impact</SelectItem>
+                  <SelectItem value="all">{t("filters.allImpact")}</SelectItem>
+                  <SelectItem value="HIGH">{t("filters.highImpact")}</SelectItem>
+                  <SelectItem value="MEDIUM">{t("filters.mediumImpact")}</SelectItem>
+                  <SelectItem value="LOW">{t("filters.lowImpact")}</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className={isMobile ? "w-full" : "w-48"} data-testid="select-category-filter">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder={t("filters.allCategories")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">{t("filters.allCategories")}</SelectItem>
                   {NEWS_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                    <SelectItem key={category.value} value={category.value}>
+                      {t(category.key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -314,21 +316,20 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                 <DialogTrigger asChild>
                   <Button variant="outline" className={isMobile ? "gap-2 col-span-2" : "gap-2"} data-testid="button-export-news">
                     <Download className="h-4 w-4" />
-                    Export PDF
+                    {t("export.openButton")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Export News to PDF</DialogTitle>
+                    <DialogTitle>{t("export.title")}</DialogTitle>
                     <DialogDescription>
-                      Choose vendors, an announcement category, and a time range. Leave vendors
-                      unchecked to include all vendors in this market.
+                      {t("export.description")}
                     </DialogDescription>
                   </DialogHeader>
 
                   <div className="space-y-4 py-2">
                     <div className="space-y-2">
-                      <Label>Time range</Label>
+                      <Label>{t("export.timeRange")}</Label>
                       <Select value={exportDays} onValueChange={setExportDays}>
                         <SelectTrigger data-testid="select-export-range">
                           <SelectValue />
@@ -336,7 +337,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                         <SelectContent>
                           {EXPORT_RANGES.map((r) => (
                             <SelectItem key={r.value} value={r.value}>
-                              {r.label}
+                              {t(r.key)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -344,16 +345,16 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Category</Label>
+                      <Label>{t("export.category")}</Label>
                       <Select value={exportCategory} onValueChange={setExportCategory}>
                         <SelectTrigger data-testid="select-export-category">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
+                          <SelectItem value="all">{t("filters.allCategories")}</SelectItem>
                           {NEWS_CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
+                            <SelectItem key={category.value} value={category.value}>
+                              {t(category.key)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -362,14 +363,14 @@ export function MarketNews({ marketId }: MarketNewsProps) {
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Vendors</Label>
+                        <Label>{t("export.vendors")}</Label>
                         {exportVendorIds.length > 0 && (
                           <button
                             type="button"
                             className="text-xs text-muted-foreground hover:underline"
                             onClick={() => setExportVendorIds([])}
                           >
-                            Clear ({exportVendorIds.length})
+                            {t("export.clear", { count: exportVendorIds.length })}
                           </button>
                         )}
                       </div>
@@ -389,31 +390,31 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                             </label>
                           ))
                         ) : (
-                          <p className="text-sm text-muted-foreground">No vendors available.</p>
+                          <p className="text-sm text-muted-foreground">{t("export.noVendorsAvailable")}</p>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {exportVendorIds.length === 0
-                          ? "All vendors will be included."
-                          : `${exportVendorIds.length} vendor${exportVendorIds.length > 1 ? "s" : ""} selected.`}
+                          ? t("export.allVendorsIncluded")
+                          : t("export.selectionSelected", { count: exportVendorIds.length })}
                       </p>
                     </div>
                   </div>
 
                   <DialogFooter>
                     <Button variant="ghost" onClick={() => setExportOpen(false)} disabled={exporting}>
-                      Cancel
+                      {t("export.cancel")}
                     </Button>
                     <Button onClick={handleExport} disabled={exporting} className="gap-2" data-testid="button-confirm-export">
                       {exporting ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Generating…
+                          {t("export.generating")}
                         </>
                       ) : (
                         <>
                           <Download className="h-4 w-4" />
-                          Download PDF
+                          {t("export.downloadPdf")}
                         </>
                       )}
                     </Button>
@@ -425,13 +426,13 @@ export function MarketNews({ marketId }: MarketNewsProps) {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading news...</div>
+            <div className="text-center py-8 text-gray-500">{t("loading")}</div>
           ) : articles?.length === 0 ? (
             <div className="text-center py-12">
               <Newspaper className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No news articles found</p>
+              <p className="text-gray-500">{t("empty.title")}</p>
               <p className="text-sm text-gray-400 mt-2">
-                Add newsroom URLs to vendors in the admin panel to start tracking news
+                {t("empty.description")}
               </p>
             </div>
           ) : (
@@ -473,7 +474,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                           {article.publishedAt && (
                             <div className="flex items-center gap-1 text-gray-500">
                               <Calendar className="h-3 w-3" />
-                              {format(new Date(article.publishedAt), 'MMM d, yyyy')}
+                              {formatDate(article.publishedAt)}
                             </div>
                           )}
 
@@ -482,7 +483,9 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                           {article.category && (
                             <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 flex items-center gap-1">
                               <Tag className="h-3 w-3" />
-                              {article.category}
+                              {NEWS_CATEGORIES.find((category) => category.value === article.category)
+                                ? t(NEWS_CATEGORIES.find((category) => category.value === article.category)!.key)
+                                : article.category}
                             </Badge>
                           )}
                         </div>
@@ -510,9 +513,9 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                               data-testid={`button-expand-${article.id}`}
                             >
                               {isExpanded ? (
-                                <><ChevronUp className="h-4 w-4 mr-1" />Hide Analysis</>
+                                <><ChevronUp className="h-4 w-4 mr-1" />{t("article.hideAnalysis")}</>
                               ) : (
-                                <><ChevronDown className="h-4 w-4 mr-1" />Read Analysis</>
+                                <><ChevronDown className="h-4 w-4 mr-1" />{t("article.readAnalysis")}</>
                               )}
                             </Button>
 
@@ -522,7 +525,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                                   <div>
                                     <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                                       <BookOpen className="h-4 w-4 text-blue-500" />
-                                      Editorial Analysis
+                                      {t("article.editorialAnalysis")}
                                     </h4>
                                     <div className="prose prose-sm prose-gray max-w-none text-gray-700 leading-relaxed
                                       [&>p]:mb-3 [&>p:last-child]:mb-0
@@ -544,7 +547,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                                   <div>
                                     <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                                       <TrendingUp className="h-4 w-4 text-purple-500" />
-                                      Competitive Context
+                                      {t("article.competitiveContext")}
                                     </h4>
                                     <div className="bg-gray-50 rounded-md p-4 prose prose-sm prose-gray max-w-none text-gray-700 leading-relaxed
                                       [&>p]:mb-3 [&>p:last-child]:mb-0

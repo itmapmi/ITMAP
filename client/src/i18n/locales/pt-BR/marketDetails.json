@@ -1,0 +1,127 @@
+{
+  "seo": {
+    "title": "{{marketName}} — Inteligência de Fornecedores | ITMAP.ai",
+    "description": "Classificações independentes de fornecedores, avaliações de recursos e análise de mercado para {{marketName}}. Compare fornecedores no ITMAP.ai.",
+    "defaultTitle": "ITMAP.ai — Inteligência de Fornecedores de TI Empresarial"
+  },
+  "tabs": {
+    "marketSections": "Seções de Mercado",
+    "vendorEvaluation": {
+      "mobile": "Avaliação de Forn.",
+      "desktop": "Avaliação de Fornecedores"
+    },
+    "compareProducts": {
+      "mobile": "Comparar",
+      "desktop": "Comparar Produtos"
+    },
+    "supportMatrix": {
+      "mobile": "Suporte",
+      "desktop": "Matriz de Suporte"
+    },
+    "methodology": {
+      "mobile": "Método",
+      "desktop": "Metodologia"
+    },
+    "mobile": {
+      "vendor-evaluation": {
+        "label": "Avaliação de Forn.",
+        "fullLabel": "Avaliação de Fornecedores"
+      },
+      "support-matrix": {
+        "label": "Comparar",
+        "fullLabel": "Comparar Produtos"
+      },
+      "ecosystem-support": {
+        "label": "Interop",
+        "fullLabel": "Interop"
+      },
+      "vendor-intelligence": {
+        "label": "Inteligência",
+        "fullLabel": "Inteligência de Fornecedores"
+      },
+      "research-reports": {
+        "label": "Relatórios",
+        "fullLabel": "Relatórios de Pesquisa"
+      }
+    },
+    "intelligence": "Inteligência",
+    "intelligenceWithActive": "Inteligência: {{active}}",
+    "news": "Notícias",
+    "intelligenceFeed": "Feed de Inteligência",
+    "newPlayers": "Novos Participantes",
+    "vendorNewsroomUrls": "URLs da Sala de Imprensa dos Fornecedores",
+    "reports": "Relatórios",
+    "aiChat": "Chat AI"
+  },
+  "states": {
+    "errorLoadingMarket": "Erro ao Carregar o Mercado",
+    "unableToFetchMarket": "Não foi possível buscar os detalhes do mercado. Por favor, tente novamente mais tarde.",
+    "marketNotFound": "Mercado Não Encontrado",
+    "requestedMarketNotFound": "O mercado solicitado não pôde ser encontrado.",
+    "noStoredDefinition": "Nenhuma definição de mercado armazenada está disponível."
+  },
+  "buttons": {
+    "backToMarkets": "Voltar aos Mercados",
+    "allMarkets": "Todos os Mercados",
+    "back": "Voltar",
+    "getFreeAccess": "Obter Acesso Gratuito",
+    "signIn": "Entrar",
+    "toggleFullDefinition": "Alternar definição completa do mercado",
+    "hideDefinition": "Ocultar definição",
+    "readFullDefinition": "Ler definição completa",
+    "starting": "Iniciando…",
+    "rfp": "RFP",
+    "generateRfp": "Gerar RFP",
+    "cancel": "Cancelar",
+    "saving": "Salvando…",
+    "savePositions": "Salvar Posições",
+    "editLabelPositions": "Editar Posições dos Rótulos",
+    "openAiChat": "Abrir Chat AI"
+  },
+  "preview": {
+    "vendorsTracked": "Fornecedores monitorados neste mercado",
+    "signInDescription": "Entre para acessar pontuações de fornecedores, matrizes de recursos, posicionamento em quadrantes e relatórios de pesquisa.",
+    "fullAccessFree": "Acesso completo é gratuito",
+    "createAccountDescription": "Crie uma conta gratuita para desbloquear pontuações de fornecedores, matrizes de avaliação de recursos, gráficos de quadrantes, análise de notícias e relatórios em PDF para download."
+  },
+  "owner": {
+    "phases": {
+      "product": "Produto",
+      "ecosystem": "Ecossistema"
+    },
+    "phaseNotAdded": "Fase {{phase}} ainda não adicionada",
+    "phaseDescription": "Este mercado foi publicado sem a fase {{phase}}. Adicione-a no Construtor de Mercado para preencher esta seção.",
+    "addPhase": "Adicionar fase {{phase}}"
+  },
+  "toasts": {
+    "openAiKeyRequired": "Chave OpenAI necessária",
+    "addOpenAiKey": "Adicione sua chave API OpenAI em Configurações → Chaves LLM.",
+    "couldNotStartRfp": "Não foi possível iniciar o RFP",
+    "saved": "Salvo",
+    "labelPositionsUpdated": "Posição de {{count}} rótulo(s) atualizada(s).",
+    "saveFailed": "Falha ao salvar",
+    "couldNotSaveLabelPositions": "Não foi possível salvar as posições dos rótulos.",
+    "success": "Sucesso",
+    "fullReportGenerated": "Relatório completo do mercado gerado com sucesso",
+    "error": "Erro",
+    "fullReportFailed": "Falha ao gerar relatório completo",
+    "summaryReportGenerated": "Relatório resumido gerado com sucesso",
+    "summaryReportFailed": "Falha ao gerar relatório resumido"
+  },
+  "labels": {
+    "dragVendorToReposition": "Arraste o nome de qualquer fornecedor para reposicioná-lo.",
+    "unsavedChanges": "{{count}} alteração(ões) não salva(s)",
+    "adjustClutteredLabels": "Os rótulos estão confusos? Ajuste-os."
+  },
+  "vendorNewsroom": {
+    "heading": "URLs da Sala de Imprensa dos Fornecedores",
+    "description": "Adicione uma página de imprensa/sala de imprensa para cada fornecedor — a ingestão diária às 7:00 AM UTC puxará suas notícias automaticamente.",
+    "openDedicatedPage": "Abrir página dedicada"
+  },
+  "reports": {
+    "generateFullTitle": "Gerar Relatório Completo do Mercado",
+    "generateFullDescription": "Selecione fornecedores para incluir no relatório completo do mercado (todas as seções combinadas)",
+    "downloadSummaryTitle": "Baixar Relatório Resumido",
+    "downloadSummaryDescription": "Selecione fornecedores para um resumo curto gerado por AI (~2-3 páginas por fornecedor). Isso pode levar um momento enquanto a AI condensa cada seção."
+  }
+}

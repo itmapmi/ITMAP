@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,51 +18,33 @@ const fadeUp = {
 const VALUES = [
   {
     icon: <Shield className="h-6 w-6 text-cyan-400" />,
-    title: "Radical Independence",
-    desc: "We accept zero vendor payments, sponsorships or paid placements. Every score is determined purely by data and methodology.",
   },
   {
     icon: <Eye className="h-6 w-6 text-violet-400" />,
-    title: "Total Transparency",
-    desc: "Every vendor evaluation exposes its sources, criteria and weights. Nothing is hidden. Everything is verifiable.",
   },
   {
     icon: <Zap className="h-6 w-6 text-cyan-400" />,
-    title: "Real-Time Precision",
-    desc: "Market intelligence that reflects today — not last quarter. Our AI processes news, releases and signals continuously.",
   },
   {
     icon: <Brain className="h-6 w-6 text-violet-400" />,
-    title: "AI-Native Methodology",
-    desc: "Built from the ground up around large language models — not retrofitted. AI is at the core of every analysis we produce.",
   },
-];
-
-const TEAM_VALUES = [
-  "40+ years of combined enterprise IT experience",
-  "Former analysts from leading research firms",
-  "Deep operational expertise in infrastructure, cloud and data protection",
-  "Technologists who've lived the vendor selection challenge firsthand",
 ];
 
 const CONTACT_DETAILS = [
   {
     icon: <Mail className="h-5 w-5 text-cyan-400" />,
-    label: "Email",
     value: "sales@itmap.ai",
     href: "mailto:sales@itmap.ai",
     color: "from-cyan-500/15 to-cyan-400/5",
   },
   {
     icon: <MapPin className="h-5 w-5 text-cyan-400" />,
-    label: "Office",
     value: "Jewellery & Gemplex 3, DMCC, Dubai, UAE",
     href: null,
     color: "from-cyan-500/15 to-cyan-400/5",
   },
   {
     icon: <Clock className="h-5 w-5 text-violet-400" />,
-    label: "Business Hours",
     value: "Mon – Fri: 9:00 AM – 6:00 PM GST",
     href: null,
     color: "from-violet-500/15 to-violet-400/5",
@@ -69,9 +52,10 @@ const CONTACT_DETAILS = [
 ];
 
 export default function About() {
+  const { t } = useTranslation("about");
   useSeo({
-    title: "About ITMAP — Independent AI-Powered Vendor Intelligence",
-    description: "Learn about ITMAP's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms.",
+    title: t("seo.title"),
+    description: t("seo.description"),
     path: "/about",
   });
   return (
@@ -87,15 +71,15 @@ export default function About() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <Globe2 className="h-4 w-4" /> About ITMAP
+              <Globe2 className="h-4 w-4" /> {t("hero.eyebrow")}
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-8">
-              Built to cut through
+              {t("hero.titleLine1")}
               <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">the analyst noise</span>
+              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("hero.titleLine2")}</span>
             </h1>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              ITMAP was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating.
+              {t("hero.subtitle")}
             </p>
           </motion.div>
         </div>
@@ -107,20 +91,20 @@ export default function About() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <motion.div {...fadeUp}>
               <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-                <div className="h-px w-8 bg-cyan-400" /> OUR MISSION
+                <div className="h-px w-8 bg-cyan-400" /> {t("mission.eyebrow")}
               </div>
               <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-                Giving enterprise buyers the intelligence they deserve
+                {t("mission.heading")}
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-6">
-                For too long, enterprise technology research has been a product sold to vendors first, and to buyers second.
+                {t("mission.paragraph1")}
               </p>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                ITMAP is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
+                {t("mission.paragraph2")}
               </p>
               <Link href="/platform">
                 <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                  See How We Analyze <ArrowRight className="ml-2 h-4 w-4" />
+                  {t("mission.button")} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </motion.div>
@@ -133,10 +117,10 @@ export default function About() {
               className="space-y-4"
             >
               {[
-                { label: "Independence", pct: 100, color: "from-cyan-500 to-cyan-400", note: "Zero vendor funding" },
-                { label: "Data Currency", pct: 97, color: "from-cyan-500 to-violet-500", note: "Updated daily" },
-                { label: "Source Transparency", pct: 100, color: "from-violet-500 to-violet-400", note: "All sources disclosed" },
-                { label: "Coverage Breadth", pct: 85, color: "from-cyan-400 to-violet-500", note: "6+ markets, growing" },
+                { label: t("mission.metrics.independence.label"), pct: 100, color: "from-cyan-500 to-cyan-400", note: t("mission.metrics.independence.note") },
+                { label: t("mission.metrics.dataCurrency.label"), pct: 97, color: "from-cyan-500 to-violet-500", note: t("mission.metrics.dataCurrency.note") },
+                { label: t("mission.metrics.sourceTransparency.label"), pct: 100, color: "from-violet-500 to-violet-400", note: t("mission.metrics.sourceTransparency.note") },
+                { label: t("mission.metrics.coverageBreadth.label"), pct: 85, color: "from-cyan-400 to-violet-500", note: t("mission.metrics.coverageBreadth.note") },
               ].map((item) => (
                 <div key={item.label} className="bg-slate-900 border border-white/5 rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-3">
@@ -167,10 +151,10 @@ export default function About() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-16">
             <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4">
-              <div className="h-px w-8 bg-violet-400" /> OUR VALUES
+              <div className="h-px w-8 bg-violet-400" /> {t("values.eyebrow")}
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-white">
-              Principles we won't compromise
+              {t("values.heading")}
             </h2>
           </motion.div>
 
@@ -185,8 +169,8 @@ export default function About() {
                 className="bg-slate-900 border border-white/5 hover:border-white/10 rounded-2xl p-8 transition-all"
               >
                 <div className="p-3 bg-slate-800 rounded-xl w-fit mb-5">{v.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-3">{v.title}</h3>
-                <p className="text-slate-400 leading-relaxed">{v.desc}</p>
+                <h3 className="text-xl font-bold text-white mb-3">{t(`values.items.${i}.title`)}</h3>
+                <p className="text-slate-400 leading-relaxed">{t(`values.items.${i}.description`)}</p>
               </motion.div>
             ))}
           </div>
@@ -198,19 +182,19 @@ export default function About() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="max-w-2xl">
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <div className="h-px w-8 bg-cyan-400" /> THE TEAM
+              <div className="h-px w-8 bg-cyan-400" /> {t("team.eyebrow")}
             </div>
             <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-              Practitioners building for practitioners
+              {t("team.heading")}
             </h2>
             <p className="text-slate-400 text-lg leading-relaxed mb-8">
-              ITMAP is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
+              {t("team.description")}
             </p>
             <ul className="space-y-3">
-              {TEAM_VALUES.map((t) => (
-                <li key={t} className="flex items-start gap-3 text-slate-300">
+              {(t("team.highlights", { returnObjects: true }) as string[]).map((highlight) => (
+                <li key={highlight} className="flex items-start gap-3 text-slate-300">
                   <CheckCircle2 className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                  <span>{t}</span>
+                  <span>{highlight}</span>
                 </li>
               ))}
             </ul>
@@ -223,13 +207,13 @@ export default function About() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-16">
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
-              <MessageSquare className="h-4 w-4" /> GET IN TOUCH
+              <MessageSquare className="h-4 w-4" /> {t("contact.eyebrow")}
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-              Let's talk intelligence
+              {t("contact.heading")}
             </h2>
             <p className="text-slate-400 max-w-xl mx-auto">
-              Whether you're exploring the platform, asking about licensing, or want to discuss your organisation's vendor selection challenges — we'd love to hear from you.
+              {t("contact.description")}
             </p>
           </motion.div>
 
@@ -237,42 +221,42 @@ export default function About() {
             {/* Form */}
             <motion.div {...fadeUp}>
               <div className="bg-slate-900 border border-white/5 rounded-2xl p-8">
-                <h3 className="text-2xl font-bold text-white mb-2">Send us a message</h3>
-                <p className="text-slate-500 text-sm mb-8">We typically respond within 1 business day.</p>
+                <h3 className="text-2xl font-bold text-white mb-2">{t("contact.form.heading")}</h3>
+                <p className="text-slate-500 text-sm mb-8">{t("contact.form.responseTime")}</p>
                 <div className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="firstName" className="text-slate-400 text-sm">First Name</Label>
-                      <Input id="firstName" placeholder="Jane" className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
+                      <Label htmlFor="firstName" className="text-slate-400 text-sm">{t("contact.form.firstName")}</Label>
+                      <Input id="firstName" placeholder={t("contact.form.firstNamePlaceholder")} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="lastName" className="text-slate-400 text-sm">Last Name</Label>
-                      <Input id="lastName" placeholder="Smith" className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
+                      <Label htmlFor="lastName" className="text-slate-400 text-sm">{t("contact.form.lastName")}</Label>
+                      <Input id="lastName" placeholder={t("contact.form.lastNamePlaceholder")} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-slate-400 text-sm">Work Email</Label>
-                    <Input id="email" type="email" placeholder="jane.smith@company.com" className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
+                    <Label htmlFor="email" className="text-slate-400 text-sm">{t("contact.form.workEmail")}</Label>
+                    <Input id="email" type="email" placeholder={t("contact.form.emailPlaceholder")} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="company" className="text-slate-400 text-sm">Company</Label>
-                    <Input id="company" placeholder="Acme Corp" className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
+                    <Label htmlFor="company" className="text-slate-400 text-sm">{t("contact.form.company")}</Label>
+                    <Input id="company" placeholder={t("contact.form.companyPlaceholder")} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="subject" className="text-slate-400 text-sm">Subject</Label>
-                    <Input id="subject" placeholder="Platform enquiry / Licensing / Research" className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
+                    <Label htmlFor="subject" className="text-slate-400 text-sm">{t("contact.form.subject")}</Label>
+                    <Input id="subject" placeholder={t("contact.form.subjectPlaceholder")} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="message" className="text-slate-400 text-sm">Message</Label>
-                    <Textarea id="message" placeholder="Tell us about your technology intelligence needs, or how we can help..." rows={5} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl resize-none" />
+                    <Label htmlFor="message" className="text-slate-400 text-sm">{t("contact.form.message")}</Label>
+                    <Textarea id="message" placeholder={t("contact.form.messagePlaceholder")} rows={5} className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl resize-none" />
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 py-6 text-base font-semibold"
                     onClick={() => window.location.href = "mailto:sales@itmap.ai"}
                   >
-                    Send Message <ArrowRight className="ml-2 h-4 w-4" />
+                    {t("contact.form.sendMessage")} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                  <p className="text-xs text-slate-600 text-center">By sending this message you agree to our <Link href="/privacy-policy" className="text-cyan-500 hover:text-cyan-400">privacy policy</Link>.</p>
+                  <p className="text-xs text-slate-600 text-center">{t("contact.form.privacyPrefix")} <Link href="/privacy-policy" className="text-cyan-500 hover:text-cyan-400">{t("contact.form.privacyPolicy")}</Link>.</p>
                 </div>
               </div>
             </motion.div>
@@ -292,7 +276,7 @@ export default function About() {
                     {detail.icon}
                   </div>
                   <div>
-                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">{detail.label}</p>
+                <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">{t(`contact.details.labels.${i}`)}</p>
                     {detail.href ? (
                       <a href={detail.href} className="text-white font-medium hover:text-cyan-300 transition-colors">{detail.value}</a>
                     ) : (
@@ -311,13 +295,13 @@ export default function About() {
               >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(14,165,233,0.07)_0%,transparent_60%)]" />
                 <div className="relative">
-                  <h3 className="text-lg font-bold text-white mb-3">Exploring a partnership?</h3>
+                  <h3 className="text-lg font-bold text-white mb-3">{t("contact.partnership.heading")}</h3>
                   <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating ITMAP intelligence into your workflow, let's talk.
+                    {t("contact.partnership.description")}
                   </p>
                   <a href="mailto:sales@itmap.ai?subject=Partnership Enquiry">
                     <Button variant="outline" size="sm" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 bg-transparent">
-                      Explore Partnership <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                      {t("contact.partnership.button")} <ArrowRight className="ml-2 h-3.5 w-3.5" />
                     </Button>
                   </a>
                 </div>
@@ -332,20 +316,20 @@ export default function About() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div {...fadeUp}>
             <h2 className="text-4xl font-bold text-white mb-6">
-              Ready to see differently?
+              {t("cta.heading")}
             </h2>
             <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-              Join the growing number of enterprise IT leaders choosing intelligence without an agenda.
+              {t("cta.description")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register">
                 <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-10">
-                  Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
+                  {t("cta.getFreeAccess")} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/markets">
                 <Button variant="outline" size="lg" className="border-white/10 text-slate-300 hover:text-white bg-transparent px-10">
-                  Explore Markets
+                  {t("cta.exploreMarkets")}
                 </Button>
               </Link>
             </div>

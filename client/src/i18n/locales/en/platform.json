@@ -1,0 +1,141 @@
+{
+  "seo": {
+    "title": "ITMAP | AI-native vendor selection",
+    "description": "Explore the ITMAP platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace."
+  },
+  "hero": {
+    "eyebrow": "The Platform",
+    "titleLine1": "Intelligence infrastructure",
+    "titleLine2": "built for buyers",
+    "subtitle": "Six deeply integrated capabilities — from vendor maps to custom evaluation frameworks — built around one principle: give enterprise buyers the truth about technology.",
+    "exploreMarket": "Explore a Market",
+    "freeAccess": "Get Free Access"
+  },
+  "methodology": {
+    "eyebrow": "METHODOLOGY",
+    "title": "How we produce research you can trust",
+    "description": "Our methodology is designed to eliminate bias at every stage — from data ingestion through scoring to publication. Every decision in the pipeline is documented and auditable.",
+    "steps": {
+      "continuousDataIngestion": {
+        "title": "Continuous Data Ingestion",
+        "description": "Our pipeline monitors thousands of public sources: vendor websites, press releases, GitHub repositories, SEC filings, job postings, patent databases and news feeds."
+      },
+      "llmPoweredScoring": {
+        "title": "LLM-Powered Scoring",
+        "description": "Large language models evaluate each data point against our 40+ dimension scoring rubric. Scores are weighted, validated and aggregated into vendor positions."
+      },
+      "structuredOutput": {
+        "title": "Structured Output",
+        "description": "Results are structured into a normalised data model covering scores, feature support flags, news impact events and narrative insights — all queryable by users."
+      },
+      "expertReviewLayer": {
+        "title": "Expert Review Layer",
+        "description": "Our team of IT practitioners reviews model outputs for accuracy, applies domain corrections and ensures the research reflects real-world operational reality."
+      }
+    }
+  },
+  "comparison": {
+    "eyebrow": "VS TRADITIONAL ANALYSTS",
+    "title": "The alternative to analyst-as-usual",
+    "criteria": "Criteria",
+    "traditionalAnalysts": "Traditional Analysts",
+    "rows": {
+      "vendorInfluence": {
+        "criterion": "Vendor influence",
+        "traditional": "Paid placements & sponsorships",
+        "itmap": "Zero — never"
+      },
+      "updateFrequency": {
+        "criterion": "Update frequency",
+        "traditional": "Quarterly or annual",
+        "itmap": "Continuous (daily)"
+      },
+      "sourceTransparency": {
+        "criterion": "Source transparency",
+        "traditional": "Opaque methodology",
+        "itmap": "Full source disclosure"
+      },
+      "researchDepth": {
+        "criterion": "Research depth",
+        "traditional": "Broad coverage, shallow data",
+        "itmap": "Deep scoring with drill-down"
+      },
+      "accessCost": {
+        "criterion": "Access cost",
+        "traditional": "Six figures / year",
+        "itmap": "Affordable tiered access"
+      },
+      "customisation": {
+        "criterion": "Customisation",
+        "traditional": "None",
+        "itmap": "Custom market builder"
+      },
+      "newsImpactTracking": {
+        "criterion": "News impact tracking",
+        "traditional": "Manual, infrequent",
+        "itmap": "AI-scored, real-time"
+      }
+    }
+  },
+  "buyerTools": {
+    "eyebrow": "INCLUDED FOR BUYERS",
+    "title": "Every tool a Technology Buyer needs",
+    "description": "All of these capabilities are unlocked for Technology Buyers and end users — no tiers, no paywalls, no vendor influence.",
+    "tools": {
+      "vendorEvaluationMaps": {
+        "title": "Vendor Evaluation Maps",
+        "description": "Interactive quadrant visualizations positioning vendors across execution and product strength."
+      },
+      "featureSupportMatrix": {
+        "title": "Feature Support Matrix",
+        "description": "Side-by-side comparison across hundreds of product capabilities and dimensions."
+      },
+      "newsIntelligenceFeed": {
+        "title": "News & Intelligence Feed",
+        "description": "AI-scored news, funding, product launches, and market signals with impact ratings."
+      },
+      "researchReports": {
+        "title": "Research Reports",
+        "description": "Deep-dive market and vendor reports, continuously updated and exportable as PDFs."
+      },
+      "marketBuilder": {
+        "title": "Market Builder",
+        "description": "Define custom criteria and weights to generate a ranking tailored to your needs."
+      },
+      "datasheets": {
+        "title": "Datasheets",
+        "description": "Compare vendor datasheets, specifications, and feature claims in one place."
+      },
+      "rfpBuilder": {
+        "title": "RFP Builder",
+        "description": "Generate RFPs from market data, scoring criteria, and vendor requirements."
+      },
+      "forecastBuilder": {
+        "title": "Forecast Builder",
+        "description": "Model market trajectories and forecast vendor positioning over time."
+      },
+      "battleCards": {
+        "title": "Battle Cards",
+        "description": "Competitive positioning cards to compare vendors for internal decision-making."
+      },
+      "cveIntelligence": {
+        "title": "CVE Intelligence",
+        "description": "Security vulnerability tracking and risk signals for evaluated vendors."
+      },
+      "factReview": {
+        "title": "Fact Review",
+        "description": "Collaborate on flagging and verifying research facts with the ITMAP team."
+      },
+      "aiChat": {
+        "title": "AI Chat",
+        "description": "Conversational assistant that answers questions about any market or vendor."
+      }
+    }
+  },
+  "cta": {
+    "title": "Experience it for yourself",
+    "description": "Free access to all markets, vendor maps and feature matrices. No credit card required.",
+    "freeAccess": "Get Free Access",
+    "browseMarkets": "Browse Markets"
+  }
+}

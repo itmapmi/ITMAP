@@ -1,0 +1,142 @@
+{
+  "heading": {
+    "productEvaluation": "Product Evaluation",
+    "vendorCount": "{{selected}} of {{total}} vendors",
+    "capabilitiesOnly": "Product capabilities only (ecosystem support excluded)"
+  },
+  "loading": {
+    "description": "Harvey ball indicators showing vendor product evaluation levels",
+    "capabilitiesDescription": "Harvey ball indicators showing vendor product capabilities (excluding ecosystem features)"
+  },
+  "selection": {
+    "description": "Select vendors to compare their product features and capabilities",
+    "chooseVendors": "Choose Vendors to Evaluate",
+    "chooseVendorsDescription": "Select one or more vendors to compare their product capabilities in detail",
+    "noVendorsSelected": "No vendors selected",
+    "vendorsSelected_one": "{{count}} vendor selected",
+    "vendorsSelected_other": "{{count}} vendors selected",
+    "noVendorsAvailable": "No vendors available for this market.",
+    "chooseVendorsToCompare": "Choose Vendors to Compare",
+    "selectAtLeastOne": "Select at least one vendor to view the comparison matrix"
+  },
+  "buttons": {
+    "updating": "Updating...",
+    "updateVendorEvaluation": "Update Vendor Evaluation",
+    "clearAll": "Clear All",
+    "selectAll": "Select All",
+    "compareProducts": "Compare {{count}}/2",
+    "viewProductEvaluation": "View Product Evaluation ({{count}})",
+    "pdf": "PDF",
+    "pdfReport": "PDF Report",
+    "change": "Change",
+    "changeSelection": "Change Selection",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All",
+    "hideFilters": "Hide Filters",
+    "filterVendors": "Filter Vendors",
+    "viewNotes": "View notes",
+    "closeNotes": "Close notes"
+  },
+  "mobile": {
+    "eyebrow": "Product evaluation",
+    "title": "Compare product support",
+    "description": "Compare two stored product-support records feature by feature.",
+    "productsToCompare": "Products to compare",
+    "chooseExactlyTwo": "Choose exactly 2",
+    "twoProductsSelected": "Two products selected. Both columns remain visible below.",
+    "moreProducts_one": "Select {{count}} more product to view the comparison.",
+    "moreProducts_other": "Select {{count}} more products to view the comparison.",
+    "noProducts": "No products are available for this market.",
+    "featureSupportCommentary": "Feature support & commentary",
+    "comparisonUnavailable": "Comparison unavailable",
+    "chooseExactlyTwoAbove": "Choose exactly two products above.",
+    "noCapabilityFeatures": "No product capability features are available for this market.",
+    "storedRows_one": "{{count}} stored row",
+    "storedRows_other": "{{count}} stored rows"
+  },
+  "supportLevels": {
+    "none": "No Support",
+    "limited": "Limited",
+    "partial": "Partial",
+    "good": "Good",
+    "full": "Full Support",
+    "unknown": "Unknown",
+    "legendNone": "None",
+    "legendLimited": "Limited",
+    "legendPartial": "Partial",
+    "legendGood": "Good",
+    "legendFull": "Full",
+    "unavailable": "Unavailable",
+    "scoreUnavailable": "Support score unavailable",
+    "levelOfFour": "{{level}} of 4 support",
+    "tooltipWithNotes": "{{support}} - Click for notes"
+  },
+  "matrix": {
+    "feature": "Feature",
+    "features": "Features",
+    "evaluationCriteria": "Evaluation Criteria",
+    "featureCount_one": "{{count}} feature",
+    "featureCount_other": "{{count}} features",
+    "noCapabilityFeatures": "No product capability features available for this market.",
+    "noVendorsSelected": "No Vendors Selected",
+    "chooseVendorsToCompare": "Choose vendors from the filters above to compare their feature support capabilities"
+  },
+  "scores": {
+    "totalScore": "Total Score",
+    "maximumPoints": "Maximum: {{maxScore}} points",
+    "ofMaximum": "of {{maxScore}}",
+    "productCapabilitiesScore": "Product Capabilities Score",
+    "criterionDescription": "Vendor Evaluation criterion on the 0–10 rubric, derived from the coverage above",
+    "outOfTen": "out of 10",
+    "coverage": "{{coverage}} coverage",
+    "productScore": "Product Score",
+    "notDerivedYet": "Not derived yet"
+  },
+  "notes": {
+    "evaluationNotes": "Evaluation notes",
+    "vendor": "Vendor",
+    "product": "Product",
+    "support": "Support",
+    "storedCommentary": "Stored commentary",
+    "featureSupportDetails": "Feature Support Details",
+    "feature": "Feature",
+    "supportLevel": "Support Level: {{level}}/4",
+    "notes": "Notes"
+  },
+  "fallbacks": {
+    "productNameUnavailable": "Product name unavailable",
+    "productUnavailable": "Product unavailable",
+    "featureDescriptionUnavailable": "Feature description unavailable.",
+    "noSupportRecord": "No support record is available for this vendor, product, and feature.",
+    "noStoredCommentary": "No stored commentary is available for this support record.",
+    "noEvaluationCriteria": "No evaluation criteria specified",
+    "noAdditionalNotes": "No additional notes for this rating."
+  },
+  "reports": {
+    "title": "Generate Product Evaluation Report",
+    "description": "Select vendors to include in the Product Evaluation PDF report"
+  },
+  "toasts": {
+    "scoresUpdated": {
+      "title": "Scores Updated Successfully",
+      "description_one": "Updated Product Capabilities scores for {{count}} vendors",
+      "description_other": "Updated Product Capabilities scores for {{count}} vendors"
+    },
+    "updateFailed": {
+      "title": "Update Failed",
+      "description": "Failed to update vendor evaluation scores"
+    },
+    "reportSuccess": {
+      "title": "Success",
+      "description": "Product Evaluation report generated successfully"
+    },
+    "reportFailed": {
+      "title": "Error",
+      "description": "Failed to generate report"
+    },
+    "chooseTwoProducts": {
+      "title": "Choose exactly 2 products",
+      "description": "Deselect one product before selecting another."
+    }
+  }
+}

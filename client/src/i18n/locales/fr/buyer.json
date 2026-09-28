@@ -1,0 +1,67 @@
+{
+  "seo": {
+    "title": "Acheteurs de Technologie — ITMAP | Intelligence Gratuite sur les Fournisseurs IT Pour Toujours",
+    "description": "Intelligence gratuite sur les fournisseurs IT pour les acheteurs de technologie. Évaluez les fournisseurs, comparez les produits, créez des RFP, surveillez la sécurité — toujours gratuit, pas de plan payant, pas de carte de crédit."
+  },
+  "hero": {
+    "eyebrow": "POUR LES ACHETEURS DE TECHNOLOGIE",
+    "titleLine1": "Intelligence IT d'entreprise,",
+    "titleLine2": "entièrement gratuite",
+    "description": "Classements indépendants des fournisseurs, comparaisons de fonctionnalités, surveillance de la sécurité et outils RFP — tout est gratuit pour les acheteurs. Pas de parrainages, pas de paywalls, pas de projet de vous facturer. Jamais.",
+    "createAccount": "Créer un Compte Gratuit",
+    "exploreMarkets": "Explorer les Marchés en Direct",
+    "stats": {
+      "scoringDimensions": "Dimensions de notation",
+      "independentResearch": "Recherche indépendante",
+      "freeForever": "Gratuit Pour Toujours",
+      "noCreditCard": "Pas de carte de crédit · Pas de plan payant"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "CAPACITÉS",
+    "title": "Tout ce dont vous avez besoin pour évaluer les fournisseurs",
+    "description": "Une plateforme pour les cartes de marché, les comparaisons de produits, la surveillance de la sécurité et la création de RFP — tout inclus, toujours gratuit.",
+    "items": {
+      "vendorEvaluation": {
+        "title": "Évaluation des Fournisseurs ITMAP",
+        "description": "Des cartes interactives exécution-vs-produit positionnent chaque fournisseur dans votre marché. Examinez la logique des scores, comparez les mouvements historiques et identifiez les leaders par rapport aux challengers en un coup d'œil."
+      },
+      "productEvaluation": {
+        "title": "Évaluation des Produits",
+        "description": "Matrices de support de fonctionnalités côte à côte à travers des centaines de capacités. Voyez quels fournisseurs offrent les fonctionnalités qui vous importent et où se trouvent les lacunes."
+      },
+      "ecosystemEvaluation": {
+        "title": "Évaluation de l'Écosystème",
+        "description": "Cartographiez les réseaux de partenaires, les intégrations et les alliances pour comprendre l'ensemble du paysage concurrentiel au-delà des listes de contrôle des produits."
+      },
+      "conversationPlatform": {
+        "title": "Plateforme de Conversation",
+        "description": "Posez des questions en langage naturel sur n'importe quel marché ou fournisseur. Notre analyste IA synthétise les scores, les actualités, les fonctionnalités et les rapports en réponses sourcées."
+      },
+      "securityIntelligence": {
+        "title": "Intelligence de Sécurité",
+        "description": "Surveillez les CVE, les alertes CISA KEV et les scores d'exploitation EPSS pour les fournisseurs de votre pile. Recevez une alerte précoce lorsqu'un fournisseur change de posture de sécurité."
+      },
+      "createRfps": {
+        "title": "Créer des RFP",
+        "description": "Générez des RFP indépendants des fournisseurs à partir de l'ensemble des fonctionnalités d'un marché, puis effectuez des évaluations structurées et des listes restreintes en un seul flux de travail."
+      }
+    }
+  },
+  "freePromise": {
+    "eyebrow": "GRATUIT POUR LES ACHETEURS — AUCUNE EXCEPTION",
+    "title": "Pas de paywalls. Pas de ventes incitatives. Pas de petites lignes.",
+    "description": "ITMAP est gratuit pour les acheteurs de technologie car notre mission est de rendre la sélection IT d'entreprise transparente. Nous ne facturerons jamais les acheteurs pour l'accès à l'intelligence sur les fournisseurs, les évaluations ou les outils RFP."
+  },
+  "registration": {
+    "eyebrow": "COMMENCER",
+    "title": "Commencez à évaluer gratuitement dès aujourd'hui",
+    "description": "L'inscription est gratuite et l'accès est gratuit — aujourd'hui et toujours. Créez votre compte acheteur avec n'importe quelle adresse e-mail et débloquez toutes les fonctionnalités.",
+    "benefits": {
+      "noCreditCard": "Aucune carte de crédit requise",
+      "noSponsorships": "Aucun parrainage de fournisseur ou placement payant",
+      "allFeatures": "Toutes les fonctionnalités pour acheteurs incluses sans coût",
+      "anyEmail": "E-mail personnel ou d'entreprise — les deux fonctionnent"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "seo": {
+    "title": "Kontakt ITMAP — Sprechen Sie mit dem Vendor Intelligence Team",
+    "description": "Kontaktieren Sie ITMAP für Partnerschaften, Lizenzen, Unternehmenszugang oder Medienanfragen."
+  },
+  "hero": {
+    "eyebrow": "Kontakt aufnehmen",
+    "titleLine1": "Lassen Sie uns sprechen",
+    "titleLine2": "Intelligenz",
+    "subtitle": "Ob Sie die Plattform erkunden, Fragen zu Lizenzen haben oder die Herausforderungen Ihrer Organisation bei der Anbieterauswahl besprechen möchten – wir freuen uns, von Ihnen zu hören."
+  },
+  "form": {
+    "title": "Senden Sie uns eine Nachricht",
+    "responseTime": "Wir antworten in der Regel innerhalb eines Geschäftstages.",
+    "fields": {
+      "website": "Webseite",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "email": "Geschäftliche E-Mail",
+      "company": "Unternehmen",
+      "subject": "Betreff",
+      "message": "Nachricht"
+    },
+    "placeholders": {
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@company.com",
+      "company": "Acme Corp",
+      "subject": "Plattformanfrage / Lizenzierung / Forschung",
+      "message": "Erzählen Sie uns von Ihren Technologie-Intelligenz-Bedürfnissen oder wie wir helfen können..."
+    },
+    "sending": "Senden…",
+    "sendMessage": "Nachricht senden",
+    "privacyPrefix": "Mit dem Senden dieser Nachricht stimmen Sie unserer",
+    "privacyPolicy": "Datenschutzrichtlinie",
+    "success": {
+      "title": "Nachricht gesendet",
+      "description": "Vielen Dank. Unser Team wird innerhalb eines Geschäftstages antworten."
+    },
+    "error": {
+      "title": "Nachricht nicht gesendet",
+      "description": "Bitte versuchen Sie es erneut oder senden Sie eine E-Mail an sales@itmap.ai."
+    }
+  },
+  "details": {
+    "email": "E-Mail",
+    "office": "Büro",
+    "businessHours": "Geschäftszeiten"
+  },
+  "partnership": {
+    "title": "Eine Partnerschaft erkunden?",
+    "description": "Wir arbeiten mit Forschungsfirmen, IT-Beratungen und Beschaffungsplattformen zusammen. Wenn Sie daran interessiert sind, ITMAP-Intelligenz in Ihren Workflow zu integrieren, lassen Sie uns sprechen.",
+    "button": "Partnerschaft erkunden"
+  }
+}

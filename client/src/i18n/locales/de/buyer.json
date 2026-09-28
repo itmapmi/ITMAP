@@ -1,0 +1,67 @@
+{
+  "seo": {
+    "title": "Technologieeinkäufer — ITMAP | Kostenlose IT-Anbieter-Intelligenz für immer",
+    "description": "Kostenlose IT-Anbieter-Intelligenz für Technologieeinkäufer. Bewerten Sie Anbieter, vergleichen Sie Produkte, erstellen Sie RFPs, überwachen Sie die Sicherheit — immer kostenlos, kein kostenpflichtiger Plan, keine Kreditkarte."
+  },
+  "hero": {
+    "eyebrow": "FÜR TECHNOLOGIEEINKÄUFER",
+    "titleLine1": "Enterprise-IT-Intelligenz,",
+    "titleLine2": "völlig kostenlos",
+    "description": "Unabhängige Anbieterrankings, Funktionsvergleiche, Sicherheitsüberwachung und RFP-Tools — alles kostenlos für Käufer. Keine Sponsoren, keine Bezahlschranken, kein Plan, Ihnen jemals etwas zu berechnen.",
+    "createAccount": "Kostenloses Konto erstellen",
+    "exploreMarkets": "Live-Märkte erkunden",
+    "stats": {
+      "scoringDimensions": "Bewertungsdimensionen",
+      "independentResearch": "Unabhängige Forschung",
+      "freeForever": "Für immer kostenlos",
+      "noCreditCard": "Keine Kreditkarte · Kein kostenpflichtiger Plan"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "FÄHIGKEITEN",
+    "title": "Alles, was Sie zur Bewertung von Anbietern benötigen",
+    "description": "Eine Plattform für Marktübersichten, Produktvergleiche, Sicherheitsüberwachung und RFP-Erstellung — alles inklusive, immer kostenlos.",
+    "items": {
+      "vendorEvaluation": {
+        "title": "ITMAP Anbieterbewertung",
+        "description": "Interaktive Ausführungs-vs-Produkt-Karten positionieren jeden Anbieter in Ihrem Markt. Vertiefen Sie sich in die Bewertungsbegründung, vergleichen Sie historische Bewegungen und identifizieren Sie auf einen Blick Führer vs Herausforderer."
+      },
+      "productEvaluation": {
+        "title": "Produktbewertung",
+        "description": "Nebeneinanderliegende Funktionsunterstützungsmatrizen über Hunderte von Fähigkeiten. Sehen Sie, welche Anbieter die für Sie wichtigen Funktionen liefern und wo Lücken bestehen."
+      },
+      "ecosystemEvaluation": {
+        "title": "Ökosystembewertung",
+        "description": "Kartieren Sie Partnernetzwerke, Integrationen und Allianzen, um das vollständige Wettbewerbsumfeld über Produktchecklisten hinaus zu verstehen."
+      },
+      "conversationPlatform": {
+        "title": "Konversationsplattform",
+        "description": "Stellen Sie Fragen in natürlicher Sprache zu jedem Markt oder Anbieter. Unser KI-Analyst synthetisiert Bewertungen, Nachrichten, Funktionen und Berichte in fundierte Antworten."
+      },
+      "securityIntelligence": {
+        "title": "Sicherheitsintelligenz",
+        "description": "Überwachen Sie CVEs, CISA KEV-Warnungen und EPSS-Exploit-Bewertungen für die Anbieter in Ihrem Stack. Erhalten Sie frühzeitige Warnungen, wenn sich die Sicherheitslage eines Lieferanten ändert."
+      },
+      "createRfps": {
+        "title": "RFPs erstellen",
+        "description": "Erstellen Sie anbieterneutrale RFPs aus dem Funktionsumfang eines jeden Marktes und führen Sie dann strukturierte Bewertungen und Shortlists in einem Workflow durch."
+      }
+    }
+  },
+  "freePromise": {
+    "eyebrow": "KOSTENLOS FÜR KÄUFER — KEINE AUSNAHMEN",
+    "title": "Keine Bezahlschranken. Keine Upsells. Kein Kleingedrucktes.",
+    "description": "ITMAP ist kostenlos für Technologieeinkäufer, weil unsere Mission darin besteht, die Auswahl von Enterprise-IT transparent zu machen. Wir werden Käufern niemals den Zugang zu Anbieterintelligenz, Bewertungen oder RFP-Tools in Rechnung stellen."
+  },
+  "registration": {
+    "eyebrow": "LOSLEGEN",
+    "title": "Beginnen Sie noch heute kostenlos mit der Bewertung",
+    "description": "Die Registrierung ist kostenlos und der Zugang ist kostenlos — heute und immer. Erstellen Sie Ihr Käuferkonto mit jeder E-Mail-Adresse und schalten Sie alle Funktionen frei.",
+    "benefits": {
+      "noCreditCard": "Keine Kreditkarte erforderlich",
+      "noSponsorships": "Keine Anbietersponsoren oder bezahlte Platzierungen",
+      "allFeatures": "Alle Käuferfunktionen ohne Kosten enthalten",
+      "anyEmail": "Persönliche oder Firmen-E-Mail — beides funktioniert"
+    }
+  }
+}

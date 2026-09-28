@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "platform": "플랫폼",
+    "markets": "시장",
+    "myMarkets": "내 시장",
+    "licensing": "라이선스",
+    "pricing": "가격",
+    "about": "회사 소개",
+    "forVendors": "벤더용",
+    "rfpBuilder": "RFP 빌더",
+    "securityIntelligence": "보안 인텔리전스",
+    "methodology": "방법론",
+    "intelligence": "인텔리전스",
+    "tools": "도구",
+    "admin": "관리자",
+    "forecastBuilder": "예측 빌더",
+    "marketBuilder": "시장 빌더",
+    "newsAndSignals": "뉴스 및 신호",
+    "leadGenerator": "리드 생성기",
+    "rfpResponder": "RFP 응답자",
+    "battleCards": "배틀 카드",
+    "mobileView": "모바일 보기",
+    "desktopSite": "데스크톱 사이트",
+    "switchToMobileView": "모바일 보기로 전환"
+  },
+  "auth": {
+    "signIn": "로그인",
+    "signOut": "로그아웃",
+    "getStarted": "시작하기",
+    "profile": "프로필",
+    "settings": "설정",
+    "myReports": "내 보고서",
+    "factReview": "사실 검토",
+    "vendorSeat": "벤더 좌석",
+    "signedOutSuccess": "성공적으로 로그아웃되었습니다",
+    "signOutFailed": "로그아웃에 실패했습니다"
+  },
+  "language": {
+    "label": "언어",
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch",
+    "pt-BR": "Português (Brasil)",
+    "ja": "日本語",
+    "ko": "한국어"
+  },
+  "common": {
+    "loading": "로딩 중...",
+    "cancel": "취소",
+    "save": "저장",
+    "close": "닫기",
+    "back": "뒤로",
+    "next": "다음",
+    "continue": "계속",
+    "submit": "제출",
+    "search": "검색",
+    "filter": "필터",
+    "all": "모두",
+    "none": "없음",
+    "yes": "예",
+    "no": "아니요",
+    "error": "문제가 발생했습니다",
+    "retry": "재시도",
+    "noResults": "결과가 없습니다"
+  },
+  "criteria": {
+    "revenue": "매출",
+    "innovation": "혁신",
+    "pricingStrategy": "가격 전략",
+    "productCapabilities": "제품 역량",
+    "businessModel": "비즈니스 모델",
+    "customerExperience": "고객 경험",
+    "partnerEcosystem": "파트너 생태계",
+    "isvEcosystem": "ISV 생태계"
+  },
+  "teaser": {
+    "freePreviewSecondsLeft": "무료 미리보기: {{seconds}}초 남음"
+  }
+}

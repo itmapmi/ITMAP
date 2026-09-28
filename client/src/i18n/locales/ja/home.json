@@ -1,0 +1,174 @@
+{
+  "seo": {
+    "title": "ITMAP — エンタープライズITベンダーインテリジェンス | すべてのベンダーを見て、すべての動きを知る。",
+    "description": "AIネイティブのエンタープライズITベンダーインテリジェンス — 独立したベンダーランキング、機能評価、AI駆動の市場予測、ニュース影響分析、技術購入者向けの調査レポート。"
+  },
+  "marketCard": {
+    "inReview": "レビュー中",
+    "liveData": "ライブデータ",
+    "explore": "探索"
+  },
+  "buyerDashboard": {
+    "welcomeBack": "お帰りなさい{{name}}。",
+    "decisionTools": "意思決定ツール",
+    "researchWorkflow": "あなたの調査ワークフロー",
+    "markets": "市場",
+    "evaluateVendors": "ライブ市場調査、製品コンテキスト、シグナルを通じてベンダーを評価。",
+    "rfpBuilder": "RFPビルダー",
+    "createVendorRequests": "ベンダーリクエストの作成、管理、送信。",
+    "securityIntelligence": "セキュリティインテリジェンス",
+    "vulnerabilitiesAlerts": "脆弱性とアラート",
+    "methodology": "方法論",
+    "howItmapEvaluates": "ITMAPの評価方法",
+    "researchCoverage": "調査範囲",
+    "liveMarkets": "ライブ市場",
+    "currentMarketIntelligence": "レビュー準備が整った現在の市場インテリジェンス。",
+    "viewAll": "すべて表示"
+  },
+  "vendorDashboard": {
+    "notLinked": {
+      "heading": "アカウントがベンダーにリンクされていません",
+      "messageBefore": "あなたのアカウントはベンダーシートとしてプロビジョニングされていますが、まだベンダーレコードにリンクされていません。これは",
+      "administrator": "itmap.ai管理者",
+      "messageAfter": "によって行われます — セットアップを完了するにはアカウントマネージャーに連絡してください。",
+      "accountLabel": "あなたのアカウント",
+      "contactSales": "sales@itmap.aiに連絡"
+    },
+    "vendorSeat": "ベンダーシート",
+    "itVendor": "ITベンダー",
+    "linkedAs": "としてリンク",
+    "intelligenceHub": "インテリジェンスハブ",
+    "your": "あなたの",
+    "vendorHub": "ベンダーハブ",
+    "fallbackHubWithName": "{{name}}のベンダーハブ",
+    "headerDescription": "市場データ、競争シグナル、ベンダーツール — ロックされた機能はプランのアップグレードが必要です。",
+    "platformTools": "プラットフォームツール",
+    "vendorTools": "ベンダーツール",
+    "toolsDescription": "リード生成、競争対応、市場インテリジェンスのための強力なツール — プランのアップグレードが必要です。",
+    "markets": "市場",
+    "marketsDescription": "すべての市場を閲覧し、ベンダー評価、製品比較、エコシステムデータを探索。",
+    "yourMarkets": "あなたの市場",
+    "myMarkets": "私の市場",
+    "marketsWhereCompanyAppears_one": "{{company}}が出現する{{count}}市場",
+    "marketsWhereCompanyAppears_other": "{{company}}が出現する{{count}}市場",
+    "allMarkets": "すべての市場",
+    "allMarketsHeading": "すべての市場",
+    "allMarketsDescription": "ベンダー評価、製品評価、エコシステム評価、ニュース、AIチャット — 完全にアクセス可能。",
+    "explore": "探索",
+    "reports": "レポート",
+    "myReports": "私のレポート",
+    "myReportsDescription": "マーケットビルダーで構築した市場。",
+    "openMarketBuilder": "マーケットビルダーを開く",
+    "manageCustomReports": "カスタム市場レポートを表示および管理"
+  },
+  "vendorTools": {
+    "lead_gen": {
+      "label": "リードジェネレーター",
+      "description": "あなたのベンダープロファイルにマッピングされたインバウンドバイヤーの関心をキャプチャし、資格を確認。"
+    },
+    "rfp": {
+      "label": "RFPレスポンダー",
+      "description": "あなたの製品知識ベースを使用したAI支援のRFP応答生成。"
+    },
+    "market_builder": {
+      "label": "マーケットビルダー",
+      "description": "特定の基準に重み付けされたカスタムベンダー評価を構築。"
+    },
+    "forecast_builder": {
+      "label": "フォーキャストビルダー",
+      "description": "AIネイティブの市場規模、複数シナリオの予測、感度テーブル。"
+    },
+    "fact_review": {
+      "label": "ファクトレビュー",
+      "description": "市場全体であなたの製品に関するAI生成の事実をレビューし、承認。"
+    },
+    "battle_cards": {
+      "label": "バトルカード",
+      "description": "競争市場で使用可能なバトルカード — 販売にすぐに使用可能。"
+    },
+    "cve_intelligence": {
+      "label": "セキュリティインテリジェンス",
+      "description": "ITベンダー全体で追跡されるCVE脆弱性、CISA KEVアラート、EPSSエクスプロイトスコア。"
+    },
+    "market_trends": {
+      "label": "市場動向",
+      "description": "市場、国、競合ベンダー全体の訪問者とエンゲージメントシェア — パーセンテージで。"
+    }
+  },
+  "stats": {
+    "marketsCovered": "カバーされたIT市場",
+    "vendorsEvaluated": "評価されたベンダー",
+    "independentResearch": "独立した調査",
+    "analysisEngine": "分析エンジン"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "AI駆動 · 独立 · リアルタイム",
+      "titleLine1": "すべてのベンダーを見て。",
+      "titleLine2": "すべての動きを知る。",
+      "subtitle": "独立したAI駆動のエンタープライズITインテリジェンス — 技術購入者向け。偏見なし。推測なし。",
+      "freeMessage": "100%無料、永遠に — 有料プランなし、クレジットカード不要",
+      "features": {
+        "allMarkets": "すべての市場へのアクセス",
+        "vendorMaps": "リアルタイムベンダーマップ",
+        "productComparisons": "詳細な製品比較",
+        "vendorIntelligence": "ベンダーインテリジェンス",
+        "securityIntelligence": "セキュリティインテリジェンス",
+        "rfpBuilder": "RFPビルダー"
+      },
+      "getFreeAccess": "無料アクセスを取得"
+    },
+    "markets": {
+      "eyebrow": "ライブ市場",
+      "titleLine1": "重要なカバレッジ",
+      "titleLine2": "を提供",
+      "description": "エンタープライズインフラストラクチャスタック全体の詳細な評価を、AIスコアリングされたインテリジェンスで継続的に更新。",
+      "createBuyerAccount": "無料のバイヤーアカウントを作成"
+    },
+    "howItWorks": {
+      "eyebrow": "仕組み",
+      "titleLine1": "待たずにインテリジェンス",
+      "titleLine2": "を提供",
+      "description": "生データから実用的な洞察へ — 完全自動化、継続的に更新。",
+      "steps": [
+        {
+          "title": "データ取り込み",
+          "description": "当社のAIは、エンタープライズITの風景全体で公開ベンダーデータ、ニュース、製品リリース、財務、アナリストのコメントを継続的に取り込みます。"
+        },
+        {
+          "title": "AI駆動の分析",
+          "description": "大規模言語モデルが40以上の能力次元でベンダーを処理し、スコアリング — 実行、製品の深さ、エコシステム、財務の実行可能性。"
+        },
+        {
+          "title": "実用的なインテリジェンス",
+          "description": "インタラクティブなベンダーマップ、機能マトリックス、影響スコア付きニュース、AI生成の調査レポートを入手 — 偏見なしで継続的に更新。"
+        }
+      ]
+    },
+    "news": {
+      "eyebrow": "ライブインテリジェンス",
+      "titleLine1": "市場を動かす",
+      "titleLine2": "ニュース",
+      "description": "すべてのベンダーニュースイベントは、市場ポジショニングへの影響を分析されます。誰に利益があるのか、ないのかを知る。",
+      "impact": "影響",
+      "impactScore": "AI影響スコア",
+      "getBuyerAccess": "無料バイヤーアクセスを取得"
+    },
+    "bottomCta": {
+      "heading": "明確に見る準備はできましたか？",
+      "description": "ITMAPを信頼するエンタープライズITチームに参加し、偏見のないAI駆動のベンダーインテリジェンスを手に入れましょう。",
+      "buyerAccess": "無料バイヤーアクセスを取得",
+      "vendorAccess": "ベンダーアクセスのために営業に連絡"
+    },
+    "footer": {
+      "rightsReserved": "全著作権所有。",
+      "platform": "プラットフォーム",
+      "about": "について",
+      "licensing": "ライセンス",
+      "contact": "連絡先",
+      "privacy": "プライバシー",
+      "terms": "利用規約",
+      "linkedinAriaLabel": "LinkedInでITMAPをフォロー"
+    }
+  }
+}

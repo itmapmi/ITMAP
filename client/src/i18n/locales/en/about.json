@@ -1,0 +1,112 @@
+{
+  "seo": {
+    "title": "About ITMAP — Independent AI-Powered Vendor Intelligence",
+    "description": "Learn about ITMAP's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms."
+  },
+  "hero": {
+    "eyebrow": "About ITMAP",
+    "titleLine1": "Built to cut through",
+    "titleLine2": "the analyst noise",
+    "subtitle": "ITMAP was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating."
+  },
+  "mission": {
+    "eyebrow": "OUR MISSION",
+    "heading": "Giving enterprise buyers the intelligence they deserve",
+    "paragraph1": "For too long, enterprise technology research has been a product sold to vendors first, and to buyers second.",
+    "paragraph2": "ITMAP is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.",
+    "button": "See How We Analyze",
+    "metrics": {
+      "independence": {
+        "label": "Independence",
+        "note": "Zero vendor funding"
+      },
+      "dataCurrency": {
+        "label": "Data Currency",
+        "note": "Updated daily"
+      },
+      "sourceTransparency": {
+        "label": "Source Transparency",
+        "note": "All sources disclosed"
+      },
+      "coverageBreadth": {
+        "label": "Coverage Breadth",
+        "note": "6+ markets, growing"
+      }
+    }
+  },
+  "values": {
+    "eyebrow": "OUR VALUES",
+    "heading": "Principles we won't compromise",
+    "items": [
+      {
+        "title": "Radical Independence",
+        "description": "We accept zero vendor payments, sponsorships or paid placements. Every score is determined purely by data and methodology."
+      },
+      {
+        "title": "Total Transparency",
+        "description": "Every vendor evaluation exposes its sources, criteria and weights. Nothing is hidden. Everything is verifiable."
+      },
+      {
+        "title": "Real-Time Precision",
+        "description": "Market intelligence that reflects today — not last quarter. Our AI processes news, releases and signals continuously."
+      },
+      {
+        "title": "AI-Native Methodology",
+        "description": "Built from the ground up around large language models — not retrofitted. AI is at the core of every analysis we produce."
+      }
+    ]
+  },
+  "team": {
+    "eyebrow": "THE TEAM",
+    "heading": "Practitioners building for practitioners",
+    "description": "ITMAP is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.",
+    "highlights": [
+      "40+ years of combined enterprise IT experience",
+      "Former analysts from leading research firms",
+      "Deep operational expertise in infrastructure, cloud and data protection",
+      "Technologists who've lived the vendor selection challenge firsthand"
+    ]
+  },
+  "contact": {
+    "eyebrow": "GET IN TOUCH",
+    "heading": "Let's talk intelligence",
+    "description": "Whether you're exploring the platform, asking about licensing, or want to discuss your organisation's vendor selection challenges — we'd love to hear from you.",
+    "form": {
+      "heading": "Send us a message",
+      "responseTime": "We typically respond within 1 business day.",
+      "firstName": "First Name",
+      "firstNamePlaceholder": "Jane",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Smith",
+      "workEmail": "Work Email",
+      "emailPlaceholder": "jane.smith@company.com",
+      "company": "Company",
+      "companyPlaceholder": "Acme Corp",
+      "subject": "Subject",
+      "subjectPlaceholder": "Platform enquiry / Licensing / Research",
+      "message": "Message",
+      "messagePlaceholder": "Tell us about your technology intelligence needs, or how we can help...",
+      "sendMessage": "Send Message",
+      "privacyPrefix": "By sending this message you agree to our",
+      "privacyPolicy": "privacy policy"
+    },
+    "details": {
+      "labels": [
+        "Email",
+        "Office",
+        "Business Hours"
+      ]
+    },
+    "partnership": {
+      "heading": "Exploring a partnership?",
+      "description": "We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating ITMAP intelligence into your workflow, let's talk.",
+      "button": "Explore Partnership"
+    }
+  },
+  "cta": {
+    "heading": "Ready to see differently?",
+    "description": "Join the growing number of enterprise IT leaders choosing intelligence without an agenda.",
+    "getFreeAccess": "Get Free Access",
+    "exploreMarkets": "Explore Markets"
+  }
+}

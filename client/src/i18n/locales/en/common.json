@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "platform": "Platform",
+    "markets": "Markets",
+    "myMarkets": "My Markets",
+    "licensing": "Licensing",
+    "pricing": "Pricing",
+    "about": "About Us",
+    "forVendors": "For Vendors",
+    "rfpBuilder": "RFP Builder",
+    "securityIntelligence": "Security Intelligence",
+    "methodology": "Methodology",
+    "intelligence": "Intelligence",
+    "tools": "Tools",
+    "admin": "Admin",
+    "forecastBuilder": "Forecast Builder",
+    "marketBuilder": "Market Builder",
+    "newsAndSignals": "News & Signals",
+    "leadGenerator": "Lead Generator",
+    "rfpResponder": "RFP Responder",
+    "battleCards": "Battle Cards",
+    "mobileView": "Mobile view",
+    "desktopSite": "Desktop site",
+    "switchToMobileView": "Switch to mobile view"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign out",
+    "getStarted": "Get Started",
+    "profile": "Profile",
+    "settings": "Settings",
+    "myReports": "My Reports",
+    "factReview": "Fact Review",
+    "vendorSeat": "Vendor seat",
+    "signedOutSuccess": "Signed out successfully",
+    "signOutFailed": "Failed to sign out"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch",
+    "pt-BR": "Português (Brasil)",
+    "ja": "日本語",
+    "ko": "한국어"
+  },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "noResults": "No results found"
+  },
+  "criteria": {
+    "revenue": "Revenue",
+    "innovation": "Innovation",
+    "pricingStrategy": "Pricing Strategy",
+    "productCapabilities": "Product Capabilities",
+    "businessModel": "Business Model",
+    "customerExperience": "Customer Experience",
+    "partnerEcosystem": "Partner Ecosystem",
+    "isvEcosystem": "ISV Ecosystem"
+  },
+  "teaser": {
+    "freePreviewSecondsLeft": "Free preview: {{seconds}}s left"
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "chart": {
+    "axes": {
+      "execution": "製品戦略と実行 →",
+      "executionCompact": "実行 →",
+      "executionHeading": "製品戦略と実行",
+      "viability": "ベンダーの存続可能性 →",
+      "viabilityCompact": "存続可能性 →",
+      "viabilityHeading": "ベンダーの存続可能性"
+    },
+    "poweredBy": "Powered by itmap.ai",
+    "vendorPositioning": "ベンダーの位置付け",
+    "fixedScoreDomain": "固定スコア領域 · 0–100",
+    "whatIfTooltip": "ドットはスライダーの重みで配置されています。スライダーをリセットして公開されたチャートを確認してください。",
+    "whatIfWeights": "仮想重み",
+    "exportTooltip": "チャートをPDFとしてエクスポート",
+    "exporting": "エクスポート中…",
+    "exportPdf": "PDFをエクスポート",
+    "mobileZoomHint": "ピンチまたはコントロールを使用してズーム · ドラッグしてパン",
+    "zoomOut": "ズームアウト",
+    "zoomIn": "ズームイン",
+    "resetChartToFit": "チャートをリセットしてフィット",
+    "fit": "フィット",
+    "mobileExecutionAxis": "実行 / 製品戦略"
+  },
+  "quadrants": {
+    "custodians": "管理者",
+    "contenders": "競争者",
+    "leaders": "リーダー",
+    "emergingCompact": "新興",
+    "emergingPlayers": "新興プレイヤー",
+    "emerging_players": "新興プレイヤー",
+    "specialists": "専門家",
+    "catalysts": "触媒"
+  },
+  "evidence": {
+    "label": "証拠",
+    "latestNews": "最新のニュースイベント",
+    "empty": "このベンダーに関する最近のニュースイベントはありません。",
+    "viewVendorDetails": "ベンダーの詳細を表示 →"
+  },
+  "timeline": {
+    "now": "現在",
+    "current": "現在",
+    "historicalView": "履歴ビュー",
+    "weeksAgoShort": "{{weeks}}週間前",
+    "weekAgo": "{{weeks}}週間前",
+    "weeksAgo": "{{weeks}}週間前",
+    "ariaLabel": "過去6か月間の履歴ビュータイムライン"
+  },
+  "criteriaWeights": {
+    "title": "基準の重み",
+    "mobileTitle": "基準の重み",
+    "whatIfDescription": "仮想ビューを表示しています。公開されたチャートはこの市場の保存された重みを使用しています。",
+    "description": "スライダーを動かして独自の仮想ビューを作成します。公開されたチャートはこの市場の保存された重みを使用しています。",
+    "reset": "公開された状態にリセット",
+    "hide": "非表示",
+    "show": "表示",
+    "axisPersistedWeight": "{{category}} 軸 · 保存された重み"
+  },
+  "vendorDetails": {
+    "tabs": {
+      "overview": "概要",
+      "scores": "スコア",
+      "notes": "ノート"
+    },
+    "financialPerformance": "財務パフォーマンス",
+    "revenue": "収益:",
+    "notAvailable": "N/A",
+    "website": "ウェブサイト:",
+    "quadrantPosition": "象限の位置",
+    "executionComposite": "実行の合成:",
+    "viabilityComposite": "存続可能性の合成:",
+    "box": "ボックス:",
+    "chartPosition": "チャートの位置:",
+    "whatIfPosition": "仮想スライダーの重みで計算されており、公開された重みではありません。",
+    "individualCriteriaScores": "個別基準スコア",
+    "productCapabilitiesAutoCalculated": "製品能力（自動計算）",
+    "criteriaNotes": "基準ノート",
+    "productCapabilitiesScore": "製品能力 - 自動計算（スコア: {{score}}/10）",
+    "productCapabilitiesNotesPlaceholder": "このベンダーの製品能力に関するノートを追加...",
+    "criterionScore": "{{criterion}}（スコア: {{score}}/10）",
+    "criterionNotesPlaceholder": "{{criterion}}に関するノートを追加...",
+    "saving": "保存中...",
+    "saveNotes": "ノートを保存"
+  },
+  "compare": {
+    "title": "ベンダーを比較",
+    "criteria": "評価基準",
+    "notes": "メモ",
+    "viewNotes": "メモを表示",
+    "hideNotes": "メモを非表示",
+    "viewDetailedReport": "詳細レポートを表示",
+    "selectAtLeastTwo": "スコアを比較するには2社以上のベンダーを選択してください",
+    "productNameUnavailable": "製品名が利用できません",
+    "noStoredCommentary": "このスコアに関する保存されたコメントはありません。",
+    "mobileTitle": "製品を比較",
+    "mobileScoresTitle": "スコアとコメント",
+    "mobileSelectedCount": "{{count}}件選択済み · 最大3件",
+    "mobileSelectPrompt": "最大3つの製品を選択すると、下にスコアとコメントが表示されます。",
+    "mobileMaxSelected": "最大3つの製品が選択されています。入れ替えるには1つのチェックを外してください。",
+    "mobileSelectHint": "最大3つの製品を選択してください。チェックした製品は下に表示されます。",
+    "mobileViewNotes": "メモを表示",
+    "vendor": "ベンダー",
+    "score": "スコア",
+    "product": "製品"
+  },
+  "reportModal": {
+    "title": "ベンダー評価レポートを生成",
+    "description": "ベンダー評価PDFレポートに含めるベンダーを選択"
+  },
+  "toasts": {
+    "notesSaved": {
+      "title": "ノートが保存されました",
+      "description": "ノートが正常に保存されました。"
+    },
+    "saveNotesError": {
+      "title": "エラー",
+      "description": "ノートの保存に失敗しました。もう一度お試しください。"
+    },
+    "reportGenerated": {
+      "title": "成功",
+      "description": "ベンダー評価レポートが正常に生成されました"
+    },
+    "reportError": {
+      "title": "エラー",
+      "description": "レポートの生成に失敗しました"
+    },
+    "exportError": {
+      "title": "エクスポート失敗",
+      "description": "PDFを生成できませんでした。もう一度お試しください。"
+    }
+  }
+}

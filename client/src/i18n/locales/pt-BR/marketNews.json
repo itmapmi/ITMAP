@@ -1,0 +1,71 @@
+{
+  "locked": {
+    "feature": "Notícias do mercado"
+  },
+  "heading": "Notícias e Atualizações do Mercado",
+  "description": "Últimas notícias e anúncios de fornecedores do mercado, com análise impulsionada por IA",
+  "ranges": {
+    "allTime": "Todo o período",
+    "past30Days": "Últimos 30 dias",
+    "past90Days": "Últimos 90 dias",
+    "past180Days": "Últimos 180 dias",
+    "past12Months": "Últimos 12 meses"
+  },
+  "filters": {
+    "allVendors": "Todos os Fornecedores",
+    "allImpact": "Todo Impacto",
+    "highImpact": "Alto Impacto",
+    "mediumImpact": "Médio Impacto",
+    "lowImpact": "Baixo Impacto",
+    "allCategories": "Todas as Categorias"
+  },
+  "categories": {
+    "productAnnouncement": "Anúncio de Produto",
+    "ma": "Fusões e Aquisições",
+    "financialResults": "Resultados Financeiros",
+    "partnership": "Parceria",
+    "customerSuccess": "Sucesso do Cliente",
+    "leadershipChanges": "Mudanças na Liderança",
+    "general": "Geral"
+  },
+  "impact": {
+    "high": "alto",
+    "medium": "médio",
+    "low": "baixo"
+  },
+  "export": {
+    "openButton": "Exportar PDF",
+    "title": "Exportar Notícias para PDF",
+    "description": "Escolha fornecedores, uma categoria de anúncio e um período de tempo. Deixe os fornecedores desmarcados para incluir todos os fornecedores neste mercado.",
+    "timeRange": "Período de tempo",
+    "category": "Categoria",
+    "vendors": "Fornecedores",
+    "clear_one": "Limpar ({{count}})",
+    "clear_other": "Limpar ({{count}})",
+    "noVendorsAvailable": "Nenhum fornecedor disponível.",
+    "allVendorsIncluded": "Todos os fornecedores serão incluídos.",
+    "selectionSelected_one": "{{count}} fornecedor selecionado.",
+    "selectionSelected_other": "{{count}} fornecedores selecionados.",
+    "cancel": "Cancelar",
+    "generating": "Gerando…",
+    "downloadPdf": "Baixar PDF"
+  },
+  "toast": {
+    "exportFailedFallback": "Falha ao exportar notícias",
+    "exportReady": "Exportação pronta",
+    "exportDownloaded": "Seu PDF de notícias foi baixado.",
+    "exportFailed": "Falha na exportação",
+    "exportCouldNotGenerate": "Não foi possível gerar o PDF."
+  },
+  "loading": "Carregando notícias...",
+  "empty": {
+    "title": "Nenhum artigo de notícias encontrado",
+    "description": "Adicione URLs de salas de imprensa aos fornecedores no painel de administração para começar a rastrear notícias"
+  },
+  "article": {
+    "hideAnalysis": "Ocultar Análise",
+    "readAnalysis": "Ler Análise",
+    "editorialAnalysis": "Análise Editorial",
+    "competitiveContext": "Contexto Competitivo"
+  }
+}

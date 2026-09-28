@@ -1,0 +1,26 @@
+{
+  "locked": {
+    "feature": "Der Intelligence-Feed"
+  },
+  "heading": "Intelligence-Feed",
+  "description": "Echtzeit-Signale von Hacker News, Reddit, GitHub, Layoffs.fyi und CVE-Sicherheitslücken-Daten.",
+  "filters": {
+    "allVendors": "Alle Anbieter",
+    "sources": {
+      "all": "Alle",
+      "hn": "HN",
+      "reddit": "Reddit",
+      "github": "GitHub",
+      "layoffs": "Entlassungen",
+      "cve": "CVE"
+    }
+  },
+  "empty": {
+    "noCveSignals": "Noch keine CVE-Signale. CVE-Ereignisse erscheinen hier, nachdem bestätigte Crosswalk-Zuordnungen eingerichtet wurden.",
+    "noMarketSignals": "Noch keine Signale für diesen Markt gesammelt.",
+    "noVendorSignals": "Noch keine Signale für diesen Anbieter gesammelt."
+  },
+  "pagination": {
+    "showing": "Zeige {{shown}} von {{total}} Signalen"
+  }
+}

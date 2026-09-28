@@ -1,0 +1,55 @@
+{
+  "seo": {
+    "title": "ITMAP에 문의 — 벤더 인텔리전스 팀과 상담",
+    "description": "파트너십, 라이선스, 기업 접근, 또는 미디어 문의를 위해 ITMAP에 연락하세요."
+  },
+  "hero": {
+    "eyebrow": "문의하기",
+    "titleLine1": "대화합시다",
+    "titleLine2": "인텔리전스",
+    "subtitle": "플랫폼 탐색, 라이선스 문의, 또는 조직의 벤더 선택 문제에 대해 논의하고 싶다면 — 언제든지 연락 주십시오."
+  },
+  "form": {
+    "title": "메시지 보내기",
+    "responseTime": "보통 영업일 기준 1일 이내에 응답합니다.",
+    "fields": {
+      "website": "웹사이트",
+      "firstName": "이름",
+      "lastName": "성",
+      "email": "업무 이메일",
+      "company": "회사",
+      "subject": "제목",
+      "message": "메시지"
+    },
+    "placeholders": {
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@company.com",
+      "company": "Acme Corp",
+      "subject": "플랫폼 문의 / 라이선스 / 연구",
+      "message": "기술 인텔리전스 필요 사항이나 저희가 도울 수 있는 방법을 알려주세요..."
+    },
+    "sending": "보내는 중…",
+    "sendMessage": "메시지 보내기",
+    "privacyPrefix": "이 메시지를 보냄으로써 귀하는 당사의",
+    "privacyPolicy": "개인정보 보호정책",
+    "success": {
+      "title": "메시지가 전송되었습니다",
+      "description": "감사합니다. 저희 팀이 영업일 기준 1일 이내에 응답할 것입니다."
+    },
+    "error": {
+      "title": "메시지가 전송되지 않았습니다",
+      "description": "다시 시도하시거나 sales@itmap.ai로 이메일을 보내주세요."
+    }
+  },
+  "details": {
+    "email": "이메일",
+    "office": "사무실",
+    "businessHours": "영업 시간"
+  },
+  "partnership": {
+    "title": "파트너십을 탐색 중이신가요?",
+    "description": "저희는 연구 기관, IT 컨설팅 회사 및 조달 플랫폼과 협력합니다. ITMAP 인텔리전스를 워크플로에 통합하는 데 관심이 있다면, 대화합시다.",
+    "button": "파트너십 탐색"
+  }
+}

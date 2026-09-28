@@ -1,0 +1,64 @@
+{
+  "seo": {
+    "title": "Licenciamento & Reimpressões — ITMAP",
+    "description": "Licencie avaliações de fornecedores, relatórios de mercado e previsões do ITMAP para uso interno, marketing, capacitação de vendas ou direitos de reimpressão ao estilo de analista."
+  },
+  "hero": {
+    "eyebrow": "Licenciamento & Reimpressões",
+    "titleLine1": "Uso por terceiros da",
+    "titleLine2": "pesquisa ITMAP",
+    "subtitle": "Nossas pesquisas e gráficos são propriedade intelectual protegida. Veja o que requer uma licença e como obtê-la."
+  },
+  "requirements": {
+    "requiredTitle": "O que requer uma licença?",
+    "requiredDescription": "Os seguintes itens sempre requerem uma licença de reimpressão ITMAP quando usados por fornecedores ou para fins promocionais/marketing:",
+    "requiredItems": [
+      "Gráficos, diagramas, matrizes, mapas de mercado ou outros gráficos criados pelo ITMAP",
+      "Conteúdo de pesquisa: trechos de relatórios, principais conclusões, classificações, citações, resumos ou texto narrativo",
+      "Pontos de dados ou descobertas exclusivas do ITMAP (mesmo que parafraseadas) quando usadas para endossar produtos ou serviços",
+      "Traduções de qualquer conteúdo do ITMAP",
+      "Miniaturas ou capturas de tela de nossos gráficos",
+      "Uso de logotipos, marcas de produtos ou emblemas do ITMAP"
+    ],
+    "notRequiredTitle": "O que não requer uma licença?",
+    "notRequiredItems": [
+      "Link para páginas públicas do ITMAP usando títulos de artigos ou relatórios",
+      "Citações curtas, puramente editoriais em contextos jornalísticos neutros (fornecedores ainda devem obter uma licença)"
+    ]
+  },
+  "process": {
+    "title": "Como funciona o processo de licenciamento",
+    "emailUs": "Envie-nos um e-mail",
+    "steps": {
+      "submitRequest": {
+        "title": "Envie uma solicitação",
+        "description": "Envie um e-mail para support@itmap.ai com o(s) ativo(s) que deseja usar, o contexto completo (páginas, URLs, canais, idiomas) e o alcance pretendido do público."
+      },
+      "scopeAndQuote": {
+        "title": "Nós avaliamos e cotamos",
+        "description": "As taxas dependem do tipo de ativo, geografia de distribuição, canais, duração e exclusividade. Responderemos em até 2 dias úteis."
+      },
+      "agreementInvoice": {
+        "title": "Acordo & fatura",
+        "description": "Emitimos um curto acordo de licença de reimpressão. Uma vez executado e pago, você receberá os arquivos aprovados e a cópia de atribuição."
+      },
+      "implementAttribute": {
+        "title": "Implemente & atribua",
+        "description": "Publique usando nossos ativos fornecidos, linha de atribuição e opcionalmente o emblema de Reimpressão Licenciada."
+      },
+      "complianceReview": {
+        "title": "Revisão de conformidade",
+        "description": "Para colocações de alta visibilidade, podemos revisar previamente para garantir a integridade da marca e da pesquisa antes do lançamento."
+      },
+      "renewOrRetire": {
+        "title": "Renovar ou retirar",
+        "description": "As licenças expiram no final do prazo acordado. Você pode renovar ou remover o conteúdo."
+      }
+    }
+  },
+  "contact": {
+    "title": "Dúvidas sobre licenciamento?",
+    "description": "Nossa equipe geralmente responde em até 2 dias úteis.",
+    "button": "Contate support@itmap.ai"
+  }
+}

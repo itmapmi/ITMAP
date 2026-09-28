@@ -1,0 +1,51 @@
+{
+  "seo": {
+    "title": "Tarification — itmap.ai",
+    "description": "Tarification itmap.ai pour les acheteurs et vendeurs IT d'entreprise. Accès Acheteur Technologique gratuit, accès Vendeur à partir de 2 500 $/utilisateur/mois. Contactez les ventes pour plus de détails."
+  },
+  "hero": {
+    "eyebrow": "Tarification",
+    "titleLine1": "Plans pour les acheteurs",
+    "titleLine2": "et les vendeurs",
+    "subtitle": "Que vous évaluiez des vendeurs ou que vous vendiez dans l'IT d'entreprise, itmap.ai vous fournit les outils d'intelligence pour aller plus vite."
+  },
+  "plans": {
+    "endUser": {
+      "name": "Acheteur Technologique",
+      "audience": "Pour les acheteurs IT d'entreprise évaluant des vendeurs",
+      "price": "Gratuit",
+      "unit": "",
+      "badge": "",
+      "features": [
+        "Accès à tous les marchés et rapports",
+        "Constructeur de RFP",
+        "Fiches techniques",
+        "Intelligence de sécurité"
+      ]
+    },
+    "vendor": {
+      "name": "Accès Vendeur",
+      "audience": "Pour les vendeurs dans l'IT d'entreprise",
+      "price": "2 500 $",
+      "unit": "/ utilisateur / mois",
+      "badge": "Pour les Vendeurs",
+      "features": [
+        "Accès à tous les marchés et rapports",
+        "Générateur de leads",
+        "Constructeur de marché",
+        "Constructeur de prévisions",
+        "Intelligence des vendeurs",
+        "Fiches de bataille",
+        "Répondeur de RFP",
+        "Fiches techniques",
+        "Intelligence de sécurité"
+      ]
+    }
+  },
+  "contactSales": "Contacter les Ventes",
+  "cta": {
+    "heading": "Des questions sur la tarification ?",
+    "body": "Contactez notre équipe commerciale — nous vous aiderons à trouver le bon plan.",
+    "buttonPrefix": "Contacter"
+  }
+}

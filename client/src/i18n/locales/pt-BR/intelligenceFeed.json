@@ -1,0 +1,26 @@
+{
+  "locked": {
+    "feature": "O feed de inteligência"
+  },
+  "heading": "Feed de Inteligência",
+  "description": "Sinais em tempo real do Hacker News, Reddit, GitHub, Layoffs.fyi e dados de vulnerabilidade CVE.",
+  "filters": {
+    "allVendors": "Todos os fornecedores",
+    "sources": {
+      "all": "Todos",
+      "hn": "HN",
+      "reddit": "Reddit",
+      "github": "GitHub",
+      "layoffs": "Layoffs",
+      "cve": "CVE"
+    }
+  },
+  "empty": {
+    "noCveSignals": "Ainda não há sinais de CVE. Eventos de CVE aparecerão aqui após a configuração de mapeamentos confirmados.",
+    "noMarketSignals": "Ainda não foram coletados sinais para este mercado.",
+    "noVendorSignals": "Ainda não foram coletados sinais para este fornecedor."
+  },
+  "pagination": {
+    "showing": "Mostrando {{shown}} de {{total}} sinais"
+  }
+}

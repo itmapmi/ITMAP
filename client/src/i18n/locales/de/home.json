@@ -1,0 +1,174 @@
+{
+  "seo": {
+    "title": "ITMAP — Enterprise IT-Anbieter-Intelligenz | Jeden Anbieter sehen. Jede Bewegung kennen.",
+    "description": "AI-native Enterprise IT-Anbieter-Intelligenz — unabhängige Anbieterrankings, Funktionsbewertungen, KI-gestützte Marktprognosen, Nachrichtenwirkungsanalysen und Forschungsberichte für Technologiekäufer."
+  },
+  "marketCard": {
+    "inReview": "In Überprüfung",
+    "liveData": "Live-Daten",
+    "explore": "Erkunden"
+  },
+  "buyerDashboard": {
+    "welcomeBack": "Willkommen zurück{{name}}.",
+    "decisionTools": "Entscheidungswerkzeuge",
+    "researchWorkflow": "Ihr Forschungsworkflow",
+    "markets": "Märkte",
+    "evaluateVendors": "Bewerten Sie Anbieter durch Live-Marktforschung, Produktkontext und Signale.",
+    "rfpBuilder": "RFP-Builder",
+    "createVendorRequests": "Erstellen, verwalten und senden Sie Anbieteranfragen.",
+    "securityIntelligence": "Sicherheitsintelligenz",
+    "vulnerabilitiesAlerts": "Schwachstellen und Warnungen",
+    "methodology": "Methodik",
+    "howItmapEvaluates": "Wie ITMAP bewertet",
+    "researchCoverage": "Forschungsabdeckung",
+    "liveMarkets": "Live-Märkte",
+    "currentMarketIntelligence": "Aktuelle Marktintelligenz bereit zur Überprüfung.",
+    "viewAll": "Alle anzeigen"
+  },
+  "vendorDashboard": {
+    "notLinked": {
+      "heading": "Konto nicht mit einem Anbieter verknüpft",
+      "messageBefore": "Ihr Konto ist als Anbieterplatz vorgesehen, wurde aber noch nicht mit einem Anbieter-Datensatz verknüpft. Dies wird von einem",
+      "administrator": "itmap.ai-Administrator",
+      "messageAfter": " durchgeführt — bitte kontaktieren Sie Ihren Account Manager, um die Einrichtung abzuschließen.",
+      "accountLabel": "Ihr Konto",
+      "contactSales": "Kontaktieren Sie sales@itmap.ai"
+    },
+    "vendorSeat": "Anbieterplatz",
+    "itVendor": "IT-Anbieter",
+    "linkedAs": "verknüpft als",
+    "intelligenceHub": "Intelligence Hub",
+    "your": "Ihr",
+    "vendorHub": "Anbieter-Hub",
+    "fallbackHubWithName": "{{name}}'s Anbieter-Hub",
+    "headerDescription": "Marktdaten, Wettbewerbssignale und Anbieterwerkzeuge — gesperrte Funktionen erfordern ein Plan-Upgrade.",
+    "platformTools": "Plattform-Werkzeuge",
+    "vendorTools": "Anbieter-Werkzeuge",
+    "toolsDescription": "Leistungsstarke Werkzeuge für Lead-Generierung, Wettbewerbsreaktion und Marktintelligenz — Plan-Upgrade erforderlich.",
+    "markets": "Märkte",
+    "marketsDescription": "Durchsuchen Sie alle Märkte und erkunden Sie Anbieterauswertungen, Produktvergleiche und Ecosystem-Daten.",
+    "yourMarkets": "Ihre Märkte",
+    "myMarkets": "Meine Märkte",
+    "marketsWhereCompanyAppears_one": "{{count}} Markt, in dem {{company}} erscheint",
+    "marketsWhereCompanyAppears_other": "{{count}} Märkte, in denen {{company}} erscheint",
+    "allMarkets": "Alle Märkte",
+    "allMarketsHeading": "Alle Märkte",
+    "allMarketsDescription": "Anbieterauswertung, Produktauswertung, Ecosystem-Auswertung, Nachrichten und AI-Chat — vollständig zugänglich.",
+    "explore": "Erkunden",
+    "reports": "Berichte",
+    "myReports": "Meine Berichte",
+    "myReportsDescription": "Märkte, die Sie mit dem Market Builder erstellt haben.",
+    "openMarketBuilder": "Market Builder öffnen",
+    "manageCustomReports": "Verwalten und anzeigen Ihrer benutzerdefinierten Marktberichte"
+  },
+  "vendorTools": {
+    "lead_gen": {
+      "label": "Lead-Generator",
+      "description": "Erfassen und qualifizieren Sie eingehendes Käuferinteresse, das Ihrem Anbieterprofil zugeordnet ist."
+    },
+    "rfp": {
+      "label": "RFP-Antwortgeber",
+      "description": "KI-unterstützte RFP-Antwortgenerierung unter Verwendung Ihrer Produktwissensbasis."
+    },
+    "market_builder": {
+      "label": "Market Builder",
+      "description": "Erstellen Sie benutzerdefinierte Anbieterauswertungen, die nach Ihren spezifischen Kriterien gewichtet sind."
+    },
+    "forecast_builder": {
+      "label": "Forecast Builder",
+      "description": "AI-native Marktgrößenbestimmung, Mehrszenario-Projektionen und Sensitivitätstabellen."
+    },
+    "fact_review": {
+      "label": "Faktenprüfung",
+      "description": "Überprüfen und genehmigen Sie AI-generierte Fakten zu Ihren Produkten über Märkte hinweg."
+    },
+    "battle_cards": {
+      "label": "Battle Cards",
+      "description": "Wettbewerbs-Battle-Cards für jeden Markt, in dem Sie konkurrieren — einsatzbereit im Vertrieb."
+    },
+    "cve_intelligence": {
+      "label": "Sicherheitsintelligenz",
+      "description": "CVE-Schwachstellen, CISA KEV-Warnungen und EPSS-Exploit-Scores, die über IT-Anbieter hinweg verfolgt werden."
+    },
+    "market_trends": {
+      "label": "Markttrends",
+      "description": "Besucher- und Engagement-Anteile über Märkte, Länder und konkurrierende Anbieter hinweg — als Prozentsätze."
+    }
+  },
+  "stats": {
+    "marketsCovered": "Abgedeckte IT-Märkte",
+    "vendorsEvaluated": "Bewertete Anbieter",
+    "independentResearch": "Unabhängige Forschung",
+    "analysisEngine": "Analyse-Engine"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "KI-gestützt · Unabhängig · Echtzeit",
+      "titleLine1": "Jeden Anbieter sehen.",
+      "titleLine2": "Jede Bewegung kennen.",
+      "subtitle": "Unabhängige, KI-gestützte Enterprise IT-Intelligenz für Technologiekäufer. Ohne Voreingenommenheit. Ohne Vermutungen.",
+      "freeMessage": "100% kostenlos, für immer — kein kostenpflichtiger Plan, keine Kreditkarte",
+      "features": {
+        "allMarkets": "Zugang zu allen Märkten",
+        "vendorMaps": "Echtzeit-Anbieterkarten",
+        "productComparisons": "Detaillierte Produktvergleiche",
+        "vendorIntelligence": "Anbieterintelligenz",
+        "securityIntelligence": "Sicherheitsintelligenz",
+        "rfpBuilder": "RFP-Builder"
+      },
+      "getFreeAccess": "Kostenlosen Zugang erhalten"
+    },
+    "markets": {
+      "eyebrow": "LIVE-MÄRKTE",
+      "titleLine1": "Abdeckung, die",
+      "titleLine2": "zählt",
+      "description": "Tiefgehende Bewertungen über den gesamten Enterprise-Infrastruktur-Stack, kontinuierlich aktualisiert mit KI-bewerteter Intelligenz.",
+      "createBuyerAccount": "Kostenloses Käuferkonto erstellen"
+    },
+    "howItWorks": {
+      "eyebrow": "WIE ES FUNKTIONIERT",
+      "titleLine1": "Intelligenz ohne",
+      "titleLine2": "Wartezeit",
+      "description": "Von Rohdaten zu umsetzbaren Erkenntnissen — vollautomatisiert, kontinuierlich aktualisiert.",
+      "steps": [
+        {
+          "title": "Datenaufnahme",
+          "description": "Unsere KI nimmt kontinuierlich öffentliche Anbieterdaten, Nachrichten, Produktveröffentlichungen, Finanzdaten und Analystenkommentare über die Enterprise-IT-Landschaft auf."
+        },
+        {
+          "title": "KI-gestützte Analyse",
+          "description": "Große Sprachmodelle verarbeiten und bewerten Anbieter über 40+ Fähigkeitsdimensionen — Ausführung, Produkttiefe, Ecosystem und finanzielle Tragfähigkeit."
+        },
+        {
+          "title": "Umsetzbare Intelligenz",
+          "description": "Erhalten Sie interaktive Anbieterkarten, Funktionsmatrizen, wirkungsbewertete Nachrichten und AI-generierte Forschungsberichte — kontinuierlich aktualisiert, ohne Voreingenommenheit."
+        }
+      ]
+    },
+    "news": {
+      "eyebrow": "LIVE-INTELLIGENZ",
+      "titleLine1": "Nachrichten, die",
+      "titleLine2": "Märkte bewegen",
+      "description": "Jedes Anbieternachrichtenereignis wird auf seine Auswirkungen auf die Marktpositionierung analysiert. Wissen, wem es nützt — und wem nicht.",
+      "impact": "Auswirkung",
+      "impactScore": "KI-Auswirkungsbewertung",
+      "getBuyerAccess": "Kostenlosen Käuferzugang erhalten"
+    },
+    "bottomCta": {
+      "heading": "Bereit, klar zu sehen?",
+      "description": "Schließen Sie sich Enterprise-IT-Teams an, die ITMAP für unvoreingenommene, KI-gestützte Anbieterintelligenz vertrauen.",
+      "buyerAccess": "Kostenlosen Käuferzugang erhalten",
+      "vendorAccess": "Vertrieb für Anbieterzugang kontaktieren"
+    },
+    "footer": {
+      "rightsReserved": "Alle Rechte vorbehalten.",
+      "platform": "Plattform",
+      "about": "Über",
+      "licensing": "Lizenzierung",
+      "contact": "Kontakt",
+      "privacy": "Datenschutz",
+      "terms": "Bedingungen",
+      "linkedinAriaLabel": "Folgen Sie ITMAP auf LinkedIn"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "locked": {
+    "feature": "Actualités du marché"
+  },
+  "heading": "Actualités et mises à jour du marché",
+  "description": "Dernières nouvelles et annonces des fournisseurs du marché, avec analyse alimentée par l'IA",
+  "ranges": {
+    "allTime": "Tout le temps",
+    "past30Days": "Les 30 derniers jours",
+    "past90Days": "Les 90 derniers jours",
+    "past180Days": "Les 180 derniers jours",
+    "past12Months": "Les 12 derniers mois"
+  },
+  "filters": {
+    "allVendors": "Tous les fournisseurs",
+    "allImpact": "Tous les impacts",
+    "highImpact": "Fort impact",
+    "mediumImpact": "Impact moyen",
+    "lowImpact": "Faible impact",
+    "allCategories": "Toutes les catégories"
+  },
+  "categories": {
+    "productAnnouncement": "Annonce de produit",
+    "ma": "Fusions & Acquisitions",
+    "financialResults": "Résultats financiers",
+    "partnership": "Partenariat",
+    "customerSuccess": "Succès client",
+    "leadershipChanges": "Changements de direction",
+    "general": "Général"
+  },
+  "impact": {
+    "high": "fort",
+    "medium": "moyen",
+    "low": "faible"
+  },
+  "export": {
+    "openButton": "Exporter en PDF",
+    "title": "Exporter les actualités en PDF",
+    "description": "Choisissez des fournisseurs, une catégorie d'annonce et une période. Laissez les fournisseurs décochés pour inclure tous les fournisseurs de ce marché.",
+    "timeRange": "Période",
+    "category": "Catégorie",
+    "vendors": "Fournisseurs",
+    "clear_one": "Effacer ({{count}})",
+    "clear_other": "Effacer ({{count}})",
+    "noVendorsAvailable": "Aucun fournisseur disponible.",
+    "allVendorsIncluded": "Tous les fournisseurs seront inclus.",
+    "selectionSelected_one": "{{count}} fournisseur sélectionné.",
+    "selectionSelected_other": "{{count}} fournisseurs sélectionnés.",
+    "cancel": "Annuler",
+    "generating": "Génération…",
+    "downloadPdf": "Télécharger le PDF"
+  },
+  "toast": {
+    "exportFailedFallback": "Échec de l'exportation des actualités",
+    "exportReady": "Exportation prête",
+    "exportDownloaded": "Votre PDF d'actualités a été téléchargé.",
+    "exportFailed": "Échec de l'exportation",
+    "exportCouldNotGenerate": "Impossible de générer le PDF."
+  },
+  "loading": "Chargement des actualités...",
+  "empty": {
+    "title": "Aucun article d'actualité trouvé",
+    "description": "Ajoutez des URL de salle de presse aux fournisseurs dans le panneau d'administration pour commencer à suivre les actualités"
+  },
+  "article": {
+    "hideAnalysis": "Masquer l'analyse",
+    "readAnalysis": "Lire l'analyse",
+    "editorialAnalysis": "Analyse éditoriale",
+    "competitiveContext": "Contexte concurrentiel"
+  }
+}

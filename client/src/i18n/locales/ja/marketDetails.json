@@ -1,0 +1,127 @@
+{
+  "seo": {
+    "title": "{{marketName}} — ベンダーインテリジェンス | ITMAP.ai",
+    "description": "{{marketName}}の独立したベンダーランキング、機能評価、市場分析。ITMAP.aiでベンダーを比較。",
+    "defaultTitle": "ITMAP.ai — エンタープライズITベンダーインテリジェンス"
+  },
+  "tabs": {
+    "marketSections": "市場セクション",
+    "vendorEvaluation": {
+      "mobile": "ベンダー評価",
+      "desktop": "ベンダー評価"
+    },
+    "compareProducts": {
+      "mobile": "比較",
+      "desktop": "製品比較"
+    },
+    "supportMatrix": {
+      "mobile": "サポート",
+      "desktop": "サポートマトリックス"
+    },
+    "methodology": {
+      "mobile": "方法",
+      "desktop": "方法論"
+    },
+    "mobile": {
+      "vendor-evaluation": {
+        "label": "ベンダー評価",
+        "fullLabel": "ベンダー評価"
+      },
+      "support-matrix": {
+        "label": "比較",
+        "fullLabel": "製品比較"
+      },
+      "ecosystem-support": {
+        "label": "相互運用性",
+        "fullLabel": "相互運用性"
+      },
+      "vendor-intelligence": {
+        "label": "インテリジェンス",
+        "fullLabel": "ベンダーインテリジェンス"
+      },
+      "research-reports": {
+        "label": "レポート",
+        "fullLabel": "調査レポート"
+      }
+    },
+    "intelligence": "インテリジェンス",
+    "intelligenceWithActive": "インテリジェンス: {{active}}",
+    "news": "ニュース",
+    "intelligenceFeed": "インテリジェンスフィード",
+    "newPlayers": "新規参入者",
+    "vendorNewsroomUrls": "ベンダーニュースルームURL",
+    "reports": "レポート",
+    "aiChat": "AIチャット"
+  },
+  "states": {
+    "errorLoadingMarket": "市場の読み込みエラー",
+    "unableToFetchMarket": "市場の詳細を取得できません。後でもう一度お試しください。",
+    "marketNotFound": "市場が見つかりません",
+    "requestedMarketNotFound": "要求された市場が見つかりませんでした。",
+    "noStoredDefinition": "保存された市場定義は利用できません。"
+  },
+  "buttons": {
+    "backToMarkets": "市場に戻る",
+    "allMarkets": "すべての市場",
+    "back": "戻る",
+    "getFreeAccess": "無料アクセスを取得",
+    "signIn": "サインイン",
+    "toggleFullDefinition": "完全な市場定義を切り替える",
+    "hideDefinition": "定義を隠す",
+    "readFullDefinition": "完全な定義を読む",
+    "starting": "開始中…",
+    "rfp": "RFP",
+    "generateRfp": "RFPを生成",
+    "cancel": "キャンセル",
+    "saving": "保存中…",
+    "savePositions": "位置を保存",
+    "editLabelPositions": "ラベル位置を編集",
+    "openAiChat": "AIチャットを開く"
+  },
+  "preview": {
+    "vendorsTracked": "この市場で追跡されているベンダー",
+    "signInDescription": "ベンダースコア、機能マトリックス、クアドラントポジショニング、調査レポートのためにサインインしてください。",
+    "fullAccessFree": "フルアクセスは無料です",
+    "createAccountDescription": "無料アカウントを作成して、ベンダースコア、機能評価マトリックス、クアドラントチャート、ニュース分析、ダウンロード可能なPDFレポートを解放します。"
+  },
+  "owner": {
+    "phases": {
+      "product": "製品",
+      "ecosystem": "エコシステム"
+    },
+    "phaseNotAdded": "{{phase}}フェーズはまだ追加されていません",
+    "phaseDescription": "この市場は{{phase}}フェーズなしで公開されました。マーケットビルダーで追加してこのセクションを埋めてください。",
+    "addPhase": "{{phase}}フェーズを追加"
+  },
+  "toasts": {
+    "openAiKeyRequired": "OpenAIキーが必要です",
+    "addOpenAiKey": "設定 → LLMキーでOpenAI APIキーを追加してください。",
+    "couldNotStartRfp": "RFPを開始できませんでした",
+    "saved": "保存されました",
+    "labelPositionsUpdated": "{{count}}ラベル位置が更新されました。",
+    "saveFailed": "保存に失敗しました",
+    "couldNotSaveLabelPositions": "ラベル位置を保存できませんでした。",
+    "success": "成功",
+    "fullReportGenerated": "完全な市場レポートが正常に生成されました",
+    "error": "エラー",
+    "fullReportFailed": "完全なレポートの生成に失敗しました",
+    "summaryReportGenerated": "要約レポートが正常に生成されました",
+    "summaryReportFailed": "要約レポートの生成に失敗しました"
+  },
+  "labels": {
+    "dragVendorToReposition": "ベンダー名をドラッグして位置を変更します。",
+    "unsavedChanges": "{{count}}件の未保存の変更",
+    "adjustClutteredLabels": "ラベルが混雑していますか？調整してください。"
+  },
+  "vendorNewsroom": {
+    "heading": "ベンダーニュースルームURL",
+    "description": "各ベンダーのプレス/ニュースルームページを追加してください。毎日午前7時UTCに自動的にニュースを取得します。",
+    "openDedicatedPage": "専用ページを開く"
+  },
+  "reports": {
+    "generateFullTitle": "完全な市場レポートを生成",
+    "generateFullDescription": "完全な市場レポートに含めるベンダーを選択します（すべてのセクションを結合）",
+    "downloadSummaryTitle": "要約レポートをダウンロード",
+    "downloadSummaryDescription": "短いAI生成の要約（ベンダーごとに約2〜3ページ）用のベンダーを選択します。AIが各セクションを要約するのに少し時間がかかる場合があります。"
+  }
+}

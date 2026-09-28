@@ -1,0 +1,190 @@
+{
+  "list": {
+    "heading": "RFP 작성기",
+    "subtitle": "대화형 인터뷰를 진행하고 실제 시장 데이터를 기반으로 고객 맞춤형 RFP를 생성합니다.",
+    "newRfp": "새 RFP",
+    "loading": "로딩 중…",
+    "loadingProjects": "프로젝트 로딩 중…",
+    "market": "시장",
+    "updated": "업데이트됨",
+    "open": "열기",
+    "cancel": "취소",
+    "starting": "시작 중…",
+    "startInterview": "인터뷰 시작",
+    "empty": "아직 RFP가 없습니다. 시장 페이지나 위의 버튼에서 첫 번째 RFP를 시작하세요.",
+    "startFirst": "첫 번째 RFP 시작",
+    "deleteAria": "{{title}} 삭제",
+    "mobile": {
+      "kicker": "구매자 / RFP 작성기",
+      "heading": "프로젝트",
+      "subtitle": "증거를 고객 맞춤형 조달 브리프로 전환합니다.",
+      "empty": "아직 RFP가 없습니다. 위에서 첫 번째 프로젝트를 시작하세요."
+    },
+    "limits": {
+      "daily": "일일 한도 도달 (24시간 내 {{count}}/{{limit}} RFP). 내일 다시 시도하세요.",
+      "activeMobile": "{{count}} / {{limit}} 활성 RFP · 다른 하나를 완료하거나 삭제한 후 새로 시작하세요.",
+      "active": "{{count}}/{{limit}} 활성 RFP가 있습니다. 다른 하나를 완료하거나 삭제한 후 새로 시작하세요."
+    },
+    "status": {
+      "draft": "초안",
+      "interviewing": "인터뷰 중",
+      "generating": "생성 중",
+      "ready": "준비 완료"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAI 키 필요",
+      "openAiKeyDescription": "RFP 작성기를 사용하려면 설정 → LLM 키에서 OpenAI API 키를 추가하세요.",
+      "couldNotStart": "RFP를 시작할 수 없습니다",
+      "deleted": "RFP 삭제됨"
+    },
+    "dialog": {
+      "title": "새 RFP 시작",
+      "workingTitle": "작업 제목",
+      "titlePlaceholder": "Acme Corp — 엔드포인트 보안 RFP",
+      "market": "시장",
+      "pickMarket": "시장을 선택하세요"
+    }
+  },
+  "detail": {
+    "activeRfp": "활성 RFP",
+    "rfpFallback": "RFP",
+    "loading": "로딩 중",
+    "slots": "{{filled}}/{{total}} 슬롯",
+    "slotsUpper": "{{filled}} / {{total}} 슬롯",
+    "statusLabel": "상태:",
+    "needCriticalSlots": "필요한 중요 슬롯: {{slots}}",
+    "defaultCriticalSlots": "총 14개 중 10개",
+    "stepProgress": "단계 {{current}} / {{total}}: {{step}}",
+    "mobileStepProgress": "단계 {{current}} / {{total}} · {{step}}",
+    "steps": {
+      "interview": "인터뷰",
+      "requirements": "요구사항",
+      "preview": "미리보기",
+      "shortlist": "단축 목록",
+      "outreach": "접촉",
+      "export": "내보내기"
+    },
+    "generating": "생성 중…",
+    "generate": "생성",
+    "generateRfp": "RFP 생성",
+    "regenerate": "재생성",
+    "regenerateRfp": "RFP 재생성",
+    "regenerating": "재생성 중…",
+    "vendorFallback": "공급업체",
+    "back": "뒤로",
+    "next": "다음: {{step}}",
+    "status": {
+      "draft": "초안",
+      "interviewing": "인터뷰 중",
+      "generating": "생성 중",
+      "ready": "준비 완료"
+    },
+    "toast": {
+      "openAiKeyRequired": "OpenAI 키 필요",
+      "openAiKeyDescription": "설정 → LLM 키에서 OpenAI API 키를 추가하세요.",
+      "couldNotSend": "보낼 수 없습니다",
+      "generated": "RFP 생성됨",
+      "generatedDescription": "미리보기, 단축 목록 및 내보내기가 준비되었습니다.",
+      "generationFailed": "생성 실패",
+      "sectionRegenerated": "섹션 재생성됨",
+      "regenerationFailed": "재생성 실패",
+      "responseFileUploaded": "응답 파일 업로드됨"
+    },
+    "interview": {
+      "heading": "발견 인터뷰",
+      "you": "당신",
+      "analyst": "ITMAP 분석가",
+      "thinking": "생각 중…",
+      "complete": "인터뷰 완료 · 생성 준비 완료",
+      "inProgress": "인터뷰 진행 중 · {{count}}개의 중요 슬롯 남음",
+      "answerPlaceholder": "답변을 입력하세요…",
+      "send": "보내기",
+      "unavailable": "모든 중요 슬롯이 캡처될 때까지 RFP 생성이 불가능합니다.",
+      "completeDesktop": "인터뷰 완료 — 위의 RFP 생성 클릭.",
+      "slotsCaptured": "{{filled}}/{{total}} 인터뷰 슬롯 캡처됨"
+    },
+    "requirements": {
+      "heading": "요구사항",
+      "subtitle": "인터뷰와 시장 카탈로그에서 생성됨.",
+      "empty": "RFP를 생성하여 가중 요구사항을 시드하세요.",
+      "seededDescription": "이 시장의 기능 카탈로그와 필수 항목을 기반으로 RFP를 처음 생성할 때 요구사항이 자동으로 시드됩니다.",
+      "deleteAria": "{{label}} 삭제",
+      "kindRequirement": "{{kind}} 요구사항",
+      "priority": {
+        "must": "필수",
+        "should": "권장",
+        "nice": "선호"
+      },
+      "priorityLower": {
+        "must": "필수",
+        "should": "권장",
+        "nice": "선호"
+      },
+      "weight": "가중치 {{weight}}"
+    },
+    "preview": {
+      "heading": "문서 미리보기",
+      "subtitle": "생성된 마크다운 · 현재 문서",
+      "empty": "문서를 생성하려면 RFP를 생성하세요.",
+      "emptySection": "(비어 있음)",
+      "generatePrompt": "위의 RFP 생성 클릭하여 문서를 생성하세요."
+    },
+    "shortlist": {
+      "heading": "공급업체 단축 목록",
+      "subtitle": "가중 요구사항에 대한 결정적 적합성.",
+      "empty": "공급업체를 평가하려면 RFP를 생성하세요.",
+      "rank": "순위 #{{rank}}",
+      "included": "포함됨",
+      "excluded": "제외됨",
+      "desktopHeading": "공급업체 단축 목록 (결정적 적합성)",
+      "desktopEmpty": "아직 단축 목록이 없습니다 — 공급업체를 평가하려면 RFP를 생성하세요."
+    },
+    "outreach": {
+      "heading": "접촉 추적기",
+      "subtitle": "공급업체 연락처 정보와 응답을 캡처합니다.",
+      "status": {
+        "draft": "초안",
+        "not_started": "초안",
+        "sent": "보냄",
+        "invited": "보냄",
+        "declined": "거절됨",
+        "responded": "응답됨",
+        "awarded": "수상됨"
+      },
+      "badge": {
+        "draft": "초안",
+        "not_started": "시작 안됨",
+        "sent": "보냄",
+        "invited": "보냄",
+        "declined": "거절됨",
+        "responded": "응답됨",
+        "awarded": "수상됨"
+      },
+      "sent": "보냄 {{date}}",
+      "replied": "· 응답됨 {{date}}",
+      "contactName": "연락처 이름",
+      "contactEmail": "연락처 이메일",
+      "email": "이메일",
+      "notesPlaceholder": "접촉 노트…",
+      "responsePlaceholder": "공급업체 응답 텍스트를 여기에 붙여넣으세요…",
+      "responsePlaceholderDesktop": "공급업체의 응답 텍스트를 여기에 붙여넣으세요…",
+      "uploadResponseLimit": "응답 파일 업로드 · 최대 25MB의 파일 하나",
+      "uploadResponse": "응답 파일 업로드",
+      "viewUploadedFile": "업로드된 파일 보기",
+      "empty": "접촉을 추적하려면 단축 목록 단계에 공급업체를 포함하세요.",
+      "desktopHeading": "공급업체 접촉 추적기",
+      "desktopEmpty": "접촉을 추적하려면 단축 목록 탭에 공급업체를 포함하세요.",
+      "responseComparison": "응답 비교"
+    },
+    "export": {
+      "heading": "RFP 내보내기",
+      "subtitle": "생성된 문서를 원하는 형식으로 다운로드하세요.",
+      "documentReady": "문서 준비 완료",
+      "documentSummary": "생성된 마크다운 사용 가능 · {{sections}} 섹션 · {{requirements}} 요구사항",
+      "downloadFormat": "{{format}} 다운로드",
+      "generatedFromCurrent": "현재 RFP에서 생성됨",
+      "empty": "내보내기를 활성화하려면 먼저 RFP를 생성하세요.",
+      "downloadHeading": "다운로드"
+    }
+  }
+}

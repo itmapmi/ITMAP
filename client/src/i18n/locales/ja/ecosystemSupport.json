@@ -1,0 +1,127 @@
+{
+  "heading": "エコシステムサポート",
+  "headingEvaluation": "エコシステム評価",
+  "description": "サードパーティ統合とエコシステムパートナーシップ",
+  "messages": {
+    "success": "成功",
+    "error": "エラー",
+    "reportGenerated": "ISVエコシステムレポートが正常に生成されました",
+    "generateFailed": "レポートの生成に失敗しました"
+  },
+  "selection": {
+    "stepHeading": "01 · 比較する製品",
+    "exactlyTwoTitle": "ちょうど2つ選択",
+    "deselectOneDescription": "別の製品を選択する前に1つの製品を選択解除してください。",
+    "twoProductsDescription": "2つの製品を選択してください。各エコシステム行は両方のサポート記録を一緒に保持します。",
+    "productsToCompare": "比較する製品",
+    "productNameUnavailable": "製品名が利用できません",
+    "productUnavailable": "製品が利用できません",
+    "unavailable": "利用不可",
+    "compareCount": "{{count}}/2 比較",
+    "noProducts": "この市場には利用可能な製品がありません。",
+    "chooseVendorsDescription": "サードパーティ統合とエコシステムパートナーシップを比較するためにベンダーを選択してください",
+    "loadingVendors": "ベンダーを読み込み中...",
+    "chooseVendorsHeading": "比較するベンダーを選択",
+    "chooseVendorsPrompt": "エコシステムサポート能力を表示するために1つ以上のベンダーを選択してください",
+    "noVendorsSelected": "選択されたベンダーはありません",
+    "vendorsSelected_one": "{{count}} ベンダーが選択されました",
+    "vendorsSelected_other": "{{count}} ベンダーが選択されました",
+    "clearAll": "すべてクリア",
+    "selectAll": "すべて選択",
+    "viewEcosystemSupport": "エコシステムサポートを表示 ({{count}})",
+    "noVendorsAvailable": "この市場には利用可能なベンダーがありません。",
+    "changeProducts": "製品を変更",
+    "vendorCount": "{{selected}} / {{total}} ベンダー",
+    "changeSelection": "選択を変更",
+    "hideFilters": "フィルターを隠す",
+    "filterVendors": "ベンダーをフィルター",
+    "selectAtLeastOne": "エコシステムサポートマトリックスを表示するには少なくとも1つのベンダーを選択してください"
+  },
+  "support": {
+    "levelsHeading": "サポートレベル",
+    "legendCompact": "○ なし · ◔ 限定 · ◑ 部分的 · ◕ 良好 · ● 完全",
+    "tooltip": "{{level}}",
+    "tooltipWithNotes": "{{level}} - メモをクリック",
+    "accessibleLevel": "4段階中の{{level}}サポート",
+    "level": {
+      "noSupport": "サポートなし",
+      "limited": "限定",
+      "partial": "部分的",
+      "good": "良好",
+      "fullSupport": "完全サポート",
+      "unknown": "不明"
+    },
+    "legend": {
+      "full": "完全",
+      "good": "良好",
+      "partial": "部分的",
+      "limited": "限定",
+      "none": "なし"
+    }
+  },
+  "empty": {
+    "supportUnavailableHeading": "エコシステムサポートが利用できません",
+    "noStoredSupportRecords": "この市場には保存されたエコシステムサポート記録がありません。",
+    "noSupportData": "この市場にはエコシステムサポートデータがありません。",
+    "noFeaturesStoredHeading": "保存されたエコシステム機能がありません",
+    "noStoredFeatureEvaluations": "この市場には現在保存されたエコシステム機能評価が含まれていません。",
+    "noFeaturesHeading": "エコシステム機能がありません",
+    "noFeaturesDescription": "この市場にはまだエコシステム機能が定義されていません。",
+    "noVendorsSelectedHeading": "選択されたベンダーがありません",
+    "chooseVendorsDescription": "上記のフィルターからベンダーを選択して、エコシステムサポート能力を比較してください"
+  },
+  "evaluation": {
+    "stepHeading": "02 · エコシステムサポートとコメント",
+    "storedRows_one": "{{count}} 行が保存されました",
+    "storedRows_other": "{{count}} 行が保存されました",
+    "noCriteriaForFeature": "この機能の評価基準は保存されていません。",
+    "featureCount_one": "{{count}} 機能",
+    "featureCount_other": "{{count}} 機能",
+    "noCriteriaSpecified": "評価基準が指定されていません"
+  },
+  "table": {
+    "feature": "機能",
+    "features": "機能",
+    "evaluationCriteria": "評価基準"
+  },
+  "categories": {
+    "expandAll": "すべて展開",
+    "collapseAll": "すべて折りたたむ"
+  },
+  "scores": {
+    "totalScore": "総合スコア",
+    "maximumPoints": "最大: {{count}} ポイント",
+    "ofMaximum": "{{maximum}} のうち ({{percentage}}%)",
+    "finalEcosystemSupport": "最終エコシステムサポートスコア",
+    "finalScoreDescription": "ISVエコシステム基準は上記のカバレッジから導き出された0–10のルーブリック",
+    "outOfTen": "10点中",
+    "coverage": "{{coverage}} カバレッジ",
+    "ecosystemScore": "エコシステムスコア",
+    "notDerived": "まだ導出されていません",
+    "tooltipNotDerived": "このベンダーのISVエコシステムはまだ導出されていません。",
+    "tooltipWithoutCoverage": "ISVエコシステム: {{score}} / 10 (保存されたスコア; カバレッジの集計は記録されていません)。",
+    "tooltipWithCoverage": "ISVエコシステム: 重み付けされた機能カバレッジ {{coverage}}{{features}}、0–10のルーブリックにマッピング (0% → 0, 55% → 5, 100% → 10) = {{score}}。"
+  },
+  "notes": {
+    "noStoredCommentary": "このサポート記録には保存されたコメントがありません。",
+    "viewNotesFor": "{{vendor}}, {{feature}} のメモを表示",
+    "viewNotes": "メモを表示",
+    "evaluationNotes": "評価メモ",
+    "vendor": "ベンダー",
+    "product": "製品",
+    "support": "サポート",
+    "supportRecordUnavailable": "サポート記録が利用できません",
+    "supportLevel": "{{level}} / 4 · {{support}}",
+    "storedCommentary": "保存されたコメント",
+    "notes": "メモ",
+    "noAdditionalNotes": "この評価には追加のメモがありません。",
+    "detailsTitle": "エコシステムサポートの詳細",
+    "supportLevelLabel": "サポートレベル: {{level}}/4"
+  },
+  "reports": {
+    "pdf": "PDF",
+    "pdfReport": "PDFレポート",
+    "generateTitle": "ISVエコシステムレポートを生成",
+    "generateDescription": "ISVエコシステムPDFレポートに含めるベンダーを選択"
+  }
+}

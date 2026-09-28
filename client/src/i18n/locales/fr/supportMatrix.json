@@ -1,0 +1,142 @@
+{
+  "heading": {
+    "productEvaluation": "Évaluation du produit",
+    "vendorCount": "{{selected}} sur {{total}} fournisseurs",
+    "capabilitiesOnly": "Capacités du produit uniquement (soutien de l'écosystème exclu)"
+  },
+  "loading": {
+    "description": "Indicateurs Harvey ball montrant les niveaux d'évaluation des produits des fournisseurs",
+    "capabilitiesDescription": "Indicateurs Harvey ball montrant les capacités des produits des fournisseurs (excluant les caractéristiques de l'écosystème)"
+  },
+  "selection": {
+    "description": "Sélectionnez des fournisseurs pour comparer leurs caractéristiques et capacités de produit",
+    "chooseVendors": "Choisir les fournisseurs à évaluer",
+    "chooseVendorsDescription": "Sélectionnez un ou plusieurs fournisseurs pour comparer en détail leurs capacités de produit",
+    "noVendorsSelected": "Aucun fournisseur sélectionné",
+    "vendorsSelected_one": "{{count}} fournisseur sélectionné",
+    "vendorsSelected_other": "{{count}} fournisseurs sélectionnés",
+    "noVendorsAvailable": "Aucun fournisseur disponible pour ce marché.",
+    "chooseVendorsToCompare": "Choisir les fournisseurs à comparer",
+    "selectAtLeastOne": "Sélectionnez au moins un fournisseur pour voir le tableau comparatif"
+  },
+  "buttons": {
+    "updating": "Mise à jour...",
+    "updateVendorEvaluation": "Mettre à jour l'évaluation du fournisseur",
+    "clearAll": "Tout effacer",
+    "selectAll": "Tout sélectionner",
+    "compareProducts": "Comparer {{count}}/2",
+    "viewProductEvaluation": "Voir l'évaluation du produit ({{count}})",
+    "pdf": "PDF",
+    "pdfReport": "Rapport PDF",
+    "change": "Modifier",
+    "changeSelection": "Modifier la sélection",
+    "expandAll": "Tout développer",
+    "collapseAll": "Tout réduire",
+    "hideFilters": "Masquer les filtres",
+    "filterVendors": "Filtrer les fournisseurs",
+    "viewNotes": "Voir les notes",
+    "closeNotes": "Fermer les notes"
+  },
+  "mobile": {
+    "eyebrow": "Évaluation du produit",
+    "title": "Comparer le support produit",
+    "description": "Comparez deux enregistrements de support produit stockés, fonctionnalité par fonctionnalité.",
+    "productsToCompare": "Produits à comparer",
+    "chooseExactlyTwo": "Choisissez exactement 2",
+    "twoProductsSelected": "Deux produits sélectionnés. Les deux colonnes restent visibles ci-dessous.",
+    "moreProducts_one": "Sélectionnez {{count}} produit supplémentaire pour voir la comparaison.",
+    "moreProducts_other": "Sélectionnez {{count}} produits supplémentaires pour voir la comparaison.",
+    "noProducts": "Aucun produit n'est disponible pour ce marché.",
+    "featureSupportCommentary": "Support des fonctionnalités & commentaires",
+    "comparisonUnavailable": "Comparaison indisponible",
+    "chooseExactlyTwoAbove": "Choisissez exactement deux produits ci-dessus.",
+    "noCapabilityFeatures": "Aucune caractéristique de capacité de produit n'est disponible pour ce marché.",
+    "storedRows_one": "{{count}} ligne stockée",
+    "storedRows_other": "{{count}} lignes stockées"
+  },
+  "supportLevels": {
+    "none": "Aucun support",
+    "limited": "Limité",
+    "partial": "Partiel",
+    "good": "Bon",
+    "full": "Support complet",
+    "unknown": "Inconnu",
+    "legendNone": "Aucun",
+    "legendLimited": "Limité",
+    "legendPartial": "Partiel",
+    "legendGood": "Bon",
+    "legendFull": "Complet",
+    "unavailable": "Indisponible",
+    "scoreUnavailable": "Score de support indisponible",
+    "levelOfFour": "{{level}} sur 4 de support",
+    "tooltipWithNotes": "{{support}} - Cliquez pour les notes"
+  },
+  "matrix": {
+    "feature": "Fonctionnalité",
+    "features": "Fonctionnalités",
+    "evaluationCriteria": "Critères d'évaluation",
+    "featureCount_one": "{{count}} fonctionnalité",
+    "featureCount_other": "{{count}} fonctionnalités",
+    "noCapabilityFeatures": "Aucune caractéristique de capacité de produit disponible pour ce marché.",
+    "noVendorsSelected": "Aucun fournisseur sélectionné",
+    "chooseVendorsToCompare": "Choisissez des fournisseurs dans les filtres ci-dessus pour comparer leurs capacités de support de fonctionnalités"
+  },
+  "scores": {
+    "totalScore": "Score total",
+    "maximumPoints": "Maximum : {{maxScore}} points",
+    "ofMaximum": "sur {{maxScore}}",
+    "productCapabilitiesScore": "Score des capacités du produit",
+    "criterionDescription": "Critère d'évaluation du fournisseur sur l'échelle de 0 à 10, dérivé de la couverture ci-dessus",
+    "outOfTen": "sur 10",
+    "coverage": "Couverture {{coverage}}",
+    "productScore": "Score du produit",
+    "notDerivedYet": "Pas encore dérivé"
+  },
+  "notes": {
+    "evaluationNotes": "Notes d'évaluation",
+    "vendor": "Fournisseur",
+    "product": "Produit",
+    "support": "Support",
+    "storedCommentary": "Commentaire stocké",
+    "featureSupportDetails": "Détails du support des fonctionnalités",
+    "feature": "Fonctionnalité",
+    "supportLevel": "Niveau de support : {{level}}/4",
+    "notes": "Notes"
+  },
+  "fallbacks": {
+    "productNameUnavailable": "Nom du produit indisponible",
+    "productUnavailable": "Produit indisponible",
+    "featureDescriptionUnavailable": "Description de la fonctionnalité indisponible.",
+    "noSupportRecord": "Aucun enregistrement de support n'est disponible pour ce fournisseur, produit et fonctionnalité.",
+    "noStoredCommentary": "Aucun commentaire stocké n'est disponible pour cet enregistrement de support.",
+    "noEvaluationCriteria": "Aucun critère d'évaluation spécifié",
+    "noAdditionalNotes": "Aucune note supplémentaire pour cette évaluation."
+  },
+  "reports": {
+    "title": "Générer un rapport d'évaluation du produit",
+    "description": "Sélectionnez les fournisseurs à inclure dans le rapport PDF d'évaluation du produit"
+  },
+  "toasts": {
+    "scoresUpdated": {
+      "title": "Scores mis à jour avec succès",
+      "description_one": "Scores des capacités du produit mis à jour pour {{count}} fournisseur",
+      "description_other": "Scores des capacités du produit mis à jour pour {{count}} fournisseurs"
+    },
+    "updateFailed": {
+      "title": "Échec de la mise à jour",
+      "description": "Échec de la mise à jour des scores d'évaluation des fournisseurs"
+    },
+    "reportSuccess": {
+      "title": "Succès",
+      "description": "Rapport d'évaluation du produit généré avec succès"
+    },
+    "reportFailed": {
+      "title": "Erreur",
+      "description": "Échec de la génération du rapport"
+    },
+    "chooseTwoProducts": {
+      "title": "Choisissez exactement 2 produits",
+      "description": "Désélectionnez un produit avant d'en sélectionner un autre."
+    }
+  }
+}

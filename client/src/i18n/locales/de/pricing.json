@@ -1,0 +1,51 @@
+{
+  "seo": {
+    "title": "Preise — itmap.ai",
+    "description": "itmap.ai Preise für IT-Einkäufer und -Anbieter im Unternehmensbereich. Zugang für Technologiekäufer ist kostenlos, Anbieterzugang ab $2,500/Nutzer/Monat. Kontaktieren Sie den Vertrieb für Details."
+  },
+  "hero": {
+    "eyebrow": "Preise",
+    "titleLine1": "Pläne für Käufer",
+    "titleLine2": "und Anbieter",
+    "subtitle": "Ob Sie Anbieter bewerten oder in den Unternehmens-IT-Bereich verkaufen, itmap.ai bietet Ihnen die Intelligenz-Tools, um schneller zu agieren."
+  },
+  "plans": {
+    "endUser": {
+      "name": "Technologiekäufer",
+      "audience": "Für IT-Einkäufer im Unternehmensbereich, die Anbieter bewerten",
+      "price": "Kostenlos",
+      "unit": "",
+      "badge": "",
+      "features": [
+        "Zugang zu allen Märkten und Berichten",
+        "RFP-Builder",
+        "Datenblätter",
+        "Sicherheitsintelligenz"
+      ]
+    },
+    "vendor": {
+      "name": "Anbieterzugang",
+      "audience": "Für Anbieter, die in den Unternehmens-IT-Bereich verkaufen",
+      "price": "$2,500",
+      "unit": "/ Nutzer / Monat",
+      "badge": "Für Anbieter",
+      "features": [
+        "Zugang zu allen Märkten und Berichten",
+        "Lead-Generator",
+        "Markt-Builder",
+        "Prognose-Builder",
+        "Anbieterintelligenz",
+        "Battle Cards",
+        "RFP-Responder",
+        "Datenblätter",
+        "Sicherheitsintelligenz"
+      ]
+    }
+  },
+  "contactSales": "Vertrieb kontaktieren",
+  "cta": {
+    "heading": "Haben Sie Fragen zu den Preisen?",
+    "body": "Kontaktieren Sie unser Vertriebsteam — wir helfen Ihnen, den richtigen Plan zu finden.",
+    "buttonPrefix": "Kontakt"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "heading": "Ecosystem Support",
+  "headingEvaluation": "Ecosystem evaluation",
+  "description": "Third-party integrations and ecosystem partnerships",
+  "messages": {
+    "success": "Success",
+    "error": "Error",
+    "reportGenerated": "ISV Ecosystem report generated successfully",
+    "generateFailed": "Failed to generate report"
+  },
+  "selection": {
+    "stepHeading": "01 · Products to compare",
+    "exactlyTwoTitle": "Choose exactly 2",
+    "deselectOneDescription": "Deselect one product before selecting another.",
+    "twoProductsDescription": "Select two products. Each ecosystem row keeps both support records together.",
+    "productsToCompare": "Products to compare",
+    "productNameUnavailable": "Product name unavailable",
+    "productUnavailable": "Product unavailable",
+    "unavailable": "Unavailable",
+    "compareCount": "Compare {{count}}/2",
+    "noProducts": "No products are available for this market.",
+    "chooseVendorsDescription": "Select vendors to compare their third-party integrations and ecosystem partnerships",
+    "loadingVendors": "Loading vendors...",
+    "chooseVendorsHeading": "Choose Vendors to Compare",
+    "chooseVendorsPrompt": "Select one or more vendors to view their ecosystem support capabilities",
+    "noVendorsSelected": "No vendors selected",
+    "vendorsSelected_one": "{{count}} vendor selected",
+    "vendorsSelected_other": "{{count}} vendors selected",
+    "clearAll": "Clear All",
+    "selectAll": "Select All",
+    "viewEcosystemSupport": "View Ecosystem Support ({{count}})",
+    "noVendorsAvailable": "No vendors available for this market.",
+    "changeProducts": "Change products",
+    "vendorCount": "{{selected}} of {{total}} vendors",
+    "changeSelection": "Change Selection",
+    "hideFilters": "Hide Filters",
+    "filterVendors": "Filter Vendors",
+    "selectAtLeastOne": "Select at least one vendor to view the ecosystem support matrix"
+  },
+  "support": {
+    "levelsHeading": "Support levels",
+    "legendCompact": "○ None · ◔ Limited · ◑ Partial · ◕ Good · ● Full",
+    "tooltip": "{{level}}",
+    "tooltipWithNotes": "{{level}} - Click for notes",
+    "accessibleLevel": "{{level}} of 4 support",
+    "level": {
+      "noSupport": "No Support",
+      "limited": "Limited",
+      "partial": "Partial",
+      "good": "Good",
+      "fullSupport": "Full Support",
+      "unknown": "Unknown"
+    },
+    "legend": {
+      "full": "Full",
+      "good": "Good",
+      "partial": "Partial",
+      "limited": "Limited",
+      "none": "None"
+    }
+  },
+  "empty": {
+    "supportUnavailableHeading": "Ecosystem support unavailable",
+    "noStoredSupportRecords": "No stored ecosystem-support records are available for this market.",
+    "noSupportData": "No ecosystem support data available for this market.",
+    "noFeaturesStoredHeading": "No ecosystem features stored",
+    "noStoredFeatureEvaluations": "This market does not currently contain stored ecosystem feature evaluations.",
+    "noFeaturesHeading": "No Ecosystem Features",
+    "noFeaturesDescription": "No ecosystem features have been defined for this market yet.",
+    "noVendorsSelectedHeading": "No Vendors Selected",
+    "chooseVendorsDescription": "Choose vendors from the filters above to compare their ecosystem support capabilities"
+  },
+  "evaluation": {
+    "stepHeading": "02 · Ecosystem support & commentary",
+    "storedRows_one": "{{count}} stored rows",
+    "storedRows_other": "{{count}} stored rows",
+    "noCriteriaForFeature": "No evaluation criteria stored for this feature.",
+    "featureCount_one": "{{count}} feature",
+    "featureCount_other": "{{count}} features",
+    "noCriteriaSpecified": "No evaluation criteria specified"
+  },
+  "table": {
+    "feature": "Feature",
+    "features": "Features",
+    "evaluationCriteria": "Evaluation Criteria"
+  },
+  "categories": {
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All"
+  },
+  "scores": {
+    "totalScore": "Total Score",
+    "maximumPoints": "Maximum: {{count}} points",
+    "ofMaximum": "of {{maximum}} ({{percentage}}%)",
+    "finalEcosystemSupport": "Final Ecosystem Support Score",
+    "finalScoreDescription": "ISV Ecosystem criterion on the 0–10 rubric, derived from the coverage above",
+    "outOfTen": "out of 10",
+    "coverage": "{{coverage}} coverage",
+    "ecosystemScore": "Ecosystem Score",
+    "notDerived": "Not derived yet",
+    "tooltipNotDerived": "ISV Ecosystem has not been derived for this vendor yet.",
+    "tooltipWithoutCoverage": "ISV Ecosystem: {{score}} / 10 (stored score; coverage roll-up not recorded).",
+    "tooltipWithCoverage": "ISV Ecosystem: weighted feature coverage {{coverage}}{{features}}, mapped onto the 0–10 rubric (0% → 0, 55% → 5, 100% → 10) = {{score}}."
+  },
+  "notes": {
+    "noStoredCommentary": "No stored commentary is available for this support record.",
+    "viewNotesFor": "View notes for {{vendor}}, {{feature}}",
+    "viewNotes": "View notes",
+    "evaluationNotes": "Evaluation notes",
+    "vendor": "Vendor",
+    "product": "Product",
+    "support": "Support",
+    "supportRecordUnavailable": "Support record unavailable",
+    "supportLevel": "{{level}} / 4 · {{support}}",
+    "storedCommentary": "Stored commentary",
+    "notes": "Notes",
+    "noAdditionalNotes": "No additional notes for this rating.",
+    "detailsTitle": "Ecosystem Support Details",
+    "supportLevelLabel": "Support Level: {{level}}/4"
+  },
+  "reports": {
+    "pdf": "PDF",
+    "pdfReport": "PDF Report",
+    "generateTitle": "Generate ISV Ecosystem Report",
+    "generateDescription": "Select vendors to include in the ISV Ecosystem PDF report"
+  }
+}

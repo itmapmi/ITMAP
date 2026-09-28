@@ -1,0 +1,67 @@
+{
+  "seo": {
+    "title": "Technology Buyers — ITMAP | Free IT Vendor Intelligence Forever",
+    "description": "Free IT vendor intelligence for technology buyers. Evaluate vendors, compare products, build RFPs, monitor security — always free, no paid plan, no credit card."
+  },
+  "hero": {
+    "eyebrow": "FOR TECHNOLOGY BUYERS",
+    "titleLine1": "Enterprise IT intelligence,",
+    "titleLine2": "completely free",
+    "description": "Independent vendor rankings, feature comparisons, security monitoring and RFP tools — all free for buyers. No sponsorships, no paywalls, no plan to charge you. Ever.",
+    "createAccount": "Create Free Account",
+    "exploreMarkets": "Explore Live Markets",
+    "stats": {
+      "scoringDimensions": "Scoring dimensions",
+      "independentResearch": "Independent research",
+      "freeForever": "Free Forever",
+      "noCreditCard": "No credit card · No paid plan"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "CAPABILITIES",
+    "title": "Everything you need to evaluate vendors",
+    "description": "One platform for market maps, product comparisons, security monitoring and RFP creation — all included, always free.",
+    "items": {
+      "vendorEvaluation": {
+        "title": "ITMAP Vendor Evaluation",
+        "description": "Interactive execution-vs-product maps position every vendor in your market. Drill into score rationale, compare historical movement and identify leaders vs challengers at a glance."
+      },
+      "productEvaluation": {
+        "title": "Product Evaluation",
+        "description": "Side-by-side feature support matrices across hundreds of capabilities. See which vendors deliver the features you care about and where gaps exist."
+      },
+      "ecosystemEvaluation": {
+        "title": "Ecosystem Evaluation",
+        "description": "Map partner networks, integrations and alliances to understand the full competitive landscape beyond product checklists."
+      },
+      "conversationPlatform": {
+        "title": "Conversation Platform",
+        "description": "Ask natural-language questions about any market or vendor. Our AI analyst synthesises scores, news, features and reports into sourced answers."
+      },
+      "securityIntelligence": {
+        "title": "Security Intelligence",
+        "description": "Monitor CVEs, CISA KEV alerts and EPSS exploit scores for the vendors in your stack. Get early warning when a supplier's security posture changes."
+      },
+      "createRfps": {
+        "title": "Create RFPs",
+        "description": "Generate vendor-agnostic RFPs from any market's feature set, then run structured evaluations and shortlists in one workflow."
+      }
+    }
+  },
+  "freePromise": {
+    "eyebrow": "FREE FOR BUYERS — NO EXCEPTIONS",
+    "title": "No paywalls. No upsells. No fine print.",
+    "description": "ITMAP is free for technology buyers because our mission is to make enterprise IT selection transparent. We will never charge buyers for access to vendor intelligence, evaluations or RFP tools."
+  },
+  "registration": {
+    "eyebrow": "GET STARTED",
+    "title": "Start evaluating for free today",
+    "description": "Registration is free and access is free — today and always. Create your buyer account with any email address and unlock every feature.",
+    "benefits": {
+      "noCreditCard": "No credit card required",
+      "noSponsorships": "No vendor sponsorships or paid placements",
+      "allFeatures": "All buyer features included at no cost",
+      "anyEmail": "Personal or company email — either works"
+    }
+  }
+}

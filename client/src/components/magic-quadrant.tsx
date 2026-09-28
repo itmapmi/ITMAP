@@ -29,6 +29,9 @@ import {
 } from "@shared/quadrant-positioning";
 import { buildChartProvenanceLines } from "@shared/quadrant-export";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
+import { formatDate as formatI18nDate } from "@/lib/i18n-format";
+import { translateCriterionName } from "@/lib/criteria-i18n";
 import {
   allHistoricalPositionsQueryKey,
   historicalPositionsQueryKey,
@@ -101,6 +104,8 @@ const historicalTimelineTicks = Array.from(
 );
 
 export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, mobileMode = false }: MagicQuadrantProps) {
+  const { t } = useTranslation("magicQuadrant");
+  const { t: tc } = useTranslation("common");
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([HISTORICAL_WEEKS]); // Start at the current week
@@ -233,12 +238,12 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     return date;
   };
   
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
+  const formatDate = (date: Date, includeYear = true): string => {
+    return formatI18nDate(date, {
+      month: "short",
+      day: "numeric",
+      ...(includeYear ? { year: "numeric" as const } : {}),
+    }) ?? "";
   };
   
   const currentWeekIndex = timelineValue[0];
@@ -334,14 +339,14 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "scores"] });
       toast({
-        title: "Notes Saved",
-        description: "Your notes have been saved successfully.",
+        title: t("toasts.notesSaved.title"),
+        description: t("toasts.notesSaved.description"),
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to save notes. Please try again.",
+        title: t("toasts.saveNotesError.title"),
+        description: t("toasts.saveNotesError.description"),
         variant: "destructive",
       });
     }
@@ -373,16 +378,16 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       document.body.removeChild(a);
 
       toast({
-        title: "Success",
-        description: "Vendor Evaluation report generated successfully",
+        title: t("toasts.reportGenerated.title"),
+        description: t("toasts.reportGenerated.description"),
       });
 
       setShowVendorModal(false);
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
-        title: "Error",
-        description: "Failed to generate report",
+        title: t("toasts.reportError.title"),
+        description: t("toasts.reportError.description"),
         variant: "destructive",
       });
     } finally {
@@ -675,7 +680,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text(compactChart ? "Execution →" : "Product Strategy and Execution →");
+      .text(compactChart ? t("chart.axes.executionCompact") : t("chart.axes.execution"));
 
     // Y-axis label: positioned left of the tick numbers to avoid overlapping "50"
     svg.append("text")
@@ -686,7 +691,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text(compactChart ? "Viability →" : "Vendor Viability →");
+      .text(compactChart ? t("chart.axes.viabilityCompact") : t("chart.axes.viability"));
 
     // ITMAP watermark — bottom right, outside the grid
     svg.append("text")
@@ -696,7 +701,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("font-size", compactChart ? "9px" : "11px")
       .attr("font-weight", "500")
       .attr("fill", "#94a3b8")
-      .text("Powered by itmap.ai");
+      .text(t("chart.poweredBy"));
 
     // ── Six-box labels — outside the chart boundary ───────────────────────
     const bandLabelSize = compactChart ? "10px" : "12px";
@@ -747,9 +752,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
     });
 
-    drawBadge(col0Mid, topLabelY, "Custodians",  "#1E3A5F", "600");
-    drawBadge(col1Mid, topLabelY, "Contenders",  "#1E3A5F", "600");
-    drawBadge(col2Mid, topLabelY, "Leaders",     "#6D5BD0", "700");
+    drawBadge(col0Mid, topLabelY, t("quadrants.custodians"),  "#1E3A5F", "600");
+    drawBadge(col1Mid, topLabelY, t("quadrants.contenders"),  "#1E3A5F", "600");
+    drawBadge(col2Mid, topLabelY, t("quadrants.leaders"),     "#6D5BD0", "700");
 
     // Bottom labels — sit below the chart, centred on each column
     const botLabelY = bottomY + (compactChart ? 18 : 20);
@@ -762,9 +767,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
     });
 
-    drawBadge(col0Mid, botLabelY, compactChart ? "Emerging" : "Emerging Players", "#1E3A5F", "600");
-    drawBadge(col1Mid, botLabelY, "Specialists", "#1E3A5F", "600");
-    drawBadge(col2Mid, botLabelY, "Catalysts",   "#1E3A5F", "600");
+    drawBadge(col0Mid, botLabelY, compactChart ? t("quadrants.emergingCompact") : t("quadrants.emergingPlayers"), "#1E3A5F", "600");
+    drawBadge(col1Mid, botLabelY, t("quadrants.specialists"), "#1E3A5F", "600");
+    drawBadge(col2Mid, botLabelY, t("quadrants.catalysts"),   "#1E3A5F", "600");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.
@@ -914,7 +919,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, mobileMode, mobileSelectedVendors, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, mobileMode, mobileSelectedVendors, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions, t]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1071,8 +1076,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       track("chart_interacted", { marketId, metadata: { action: "pdf_export" } });
     } catch (e) {
       toast({
-        title: "Export failed",
-        description: "Could not generate the PDF. Please try again.",
+        title: t("toasts.exportError.title"),
+        description: t("toasts.exportError.description"),
         variant: "destructive",
       });
     } finally {
@@ -1093,19 +1098,19 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 <div className="w-full">
                   <div className="mb-3 flex items-end gap-2 border-b border-slate-200 pb-2">
                     <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">02</p>
-                    <h3 className="text-base font-bold">Vendor positioning</h3>
+                    <h3 className="text-base font-bold">{t("chart.vendorPositioning")}</h3>
                   </div>
-                  <p className="font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-slate-500">Fixed score domain · 0–100</p>
+                  <p className="font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-slate-500">{t("chart.fixedScoreDomain")}</p>
                 </div>
               ) : <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>}
               <div className="flex items-center gap-2">
               {!mobileMode && isWhatIf && (
                 <span
                   className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
-                  title="Dots are positioned with your slider weights. Reset the sliders to see the published chart."
+                  title={t("chart.whatIfTooltip")}
                   data-testid="badge-what-if"
                 >
-                  What-if weights
+                  {t("chart.whatIfWeights")}
                 </span>
               )}
               {!mobileMode && (
@@ -1113,12 +1118,12 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
                 className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
-                title="Export chart as PDF"
+                title={t("chart.exportTooltip")}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M7 1v8m0 0L4 6m3 3l3-3M2 11v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                {isExportingPdf ? "Exporting…" : "Export PDF"}
+                {isExportingPdf ? t("chart.exporting") : t("chart.exportPdf")}
               </button>
               )}
               </div>
@@ -1127,11 +1132,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               <div ref={containerRef} className="relative w-full">
                 {mobileMode && (
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-slate-500">Pinch or use controls to zoom · drag to pan</span>
+                    <span className="text-[10px] text-slate-500">{t("chart.mobileZoomHint")}</span>
                     <div className="flex overflow-hidden rounded border border-slate-200 bg-white">
-                      <button type="button" aria-label="Zoom out" className="grid h-8 w-8 place-items-center border-r border-slate-200 text-sky-600" onClick={() => setMobileScaleAround(mobileChartScale - .12)}><Minus className="h-3.5 w-3.5" /></button>
-                      <button type="button" aria-label="Zoom in" className="grid h-8 w-8 place-items-center border-r border-slate-200 text-sky-600" onClick={() => setMobileScaleAround(mobileChartScale + .12)}><Plus className="h-3.5 w-3.5" /></button>
-                      <button type="button" aria-label="Reset chart to fit" className="flex h-8 items-center gap-1 px-2 text-[10px] font-semibold text-sky-600" onClick={resetMobileChart}><RotateCcw className="h-3 w-3" /> Fit</button>
+                      <button type="button" aria-label={t("chart.zoomOut")} className="grid h-8 w-8 place-items-center border-r border-slate-200 text-sky-600" onClick={() => setMobileScaleAround(mobileChartScale - .12)}><Minus className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label={t("chart.zoomIn")} className="grid h-8 w-8 place-items-center border-r border-slate-200 text-sky-600" onClick={() => setMobileScaleAround(mobileChartScale + .12)}><Plus className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label={t("chart.resetChartToFit")} className="flex h-8 items-center gap-1 px-2 text-[10px] font-semibold text-sky-600" onClick={resetMobileChart}><RotateCcw className="h-3 w-3" /> {t("chart.fit")}</button>
                     </div>
                   </div>
                 )}
@@ -1156,7 +1161,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 </div>
                 {mobileMode && (
                   <div className="flex justify-between px-px pt-2 text-[10px] text-slate-500">
-                    <span>0</span><span>Execution / product strategy</span><span>100</span>
+                    <span>0</span><span>{t("chart.mobileExecutionAxis")}</span><span>100</span>
                   </div>
                 )}
 
@@ -1183,9 +1188,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-3">
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold text-slate-800 text-sm">{evidenceVendor?.vendor.name}</h4>
-                        <span className="text-[10px] uppercase tracking-wider font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Evidence</span>
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{t("evidence.label")}</span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">Latest news events</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{t("evidence.latestNews")}</p>
                     </div>
                     <div className="max-h-[240px] overflow-y-auto">
                       {evidenceNews && evidenceNews.length > 0 ? (
@@ -1207,7 +1212,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                                   {article.impactLabel || "NEUTRAL"}
                                 </span>
                                 <span className="text-[10px] text-slate-400">
-                                  {new Date(article.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                  {formatI18nDate(article.publishedAt, { month: "short", day: "numeric" }) ?? ""}
                                 </span>
                               </div>
                               <p className="text-xs text-slate-700 font-medium leading-snug line-clamp-2">{article.title}</p>
@@ -1219,7 +1224,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                         </div>
                       ) : (
                         <div className="p-4 text-center">
-                          <p className="text-xs text-slate-500">No recent news events for this vendor.</p>
+                          <p className="text-xs text-slate-500">{t("evidence.empty")}</p>
                         </div>
                       )}
                     </div>
@@ -1236,7 +1241,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                         }}
                         className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                       >
-                        View full vendor details →
+                        {t("evidence.viewVendorDetails")}
                       </button>
                     </div>
                   </PopoverContent>
@@ -1247,7 +1252,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 {!mobileMode && (
                   <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
                     <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                      {isMobile ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${weeksAgo}w ago)` : ' (Now)'}` : `Historical View - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}`}
+                      {isMobile
+                        ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${t("timeline.weeksAgoShort", { weeks: weeksAgo })})` : ` (${t("timeline.now")})`}`
+                        : `${t("timeline.historicalView")} - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${t(weeksAgo === 1 ? "timeline.weekAgo" : "timeline.weeksAgo", { weeks: weeksAgo })})` : ` (${t("timeline.current")})`}`}
                     </label>
                     <div className="relative py-1">
                       <div
@@ -1269,13 +1276,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                         max={HISTORICAL_WEEKS}
                         step={1}
                         className="relative z-0 w-full"
-                        aria-label="Historical view timeline for the last six months"
+                        aria-label={t("timeline.ariaLabel")}
                         data-testid="timeline-slider"
                       />
                     </div>
                     <div className={`flex justify-between text-gray-500 mt-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
-                      <span>{isMobile ? formatDate(startDate).replace(', 2022', '') : formatDate(startDate)}</span>
-                      <span>{isMobile ? formatDate(today).replace(', 2025', '') : formatDate(today)}</span>
+                      <span>{formatDate(startDate, !isMobile)}</span>
+                      <span>{formatDate(today, !isMobile)}</span>
                     </div>
                   </div>
                 )}
@@ -1288,11 +1295,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           <div className="lg:col-span-1">
             <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
               <CardHeader className={isMobile ? "pb-3" : ""}>
-                <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
+                <CardTitle className={isMobile ? "text-lg" : ""}>{t("criteriaWeights.title")}</CardTitle>
                 <p className="text-xs text-gray-500 leading-snug" data-testid="text-weights-note">
                   {isWhatIf
-                    ? "Showing your what-if view. The published chart uses this market's saved weights."
-                    : "Move a slider to build your own what-if view. The published chart uses this market's saved weights."}
+                    ? t("criteriaWeights.whatIfDescription")
+                    : t("criteriaWeights.description")}
                 </p>
                 {isWhatIf && (
                   <Button
@@ -1304,17 +1311,17 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     data-testid="button-reset-weights"
                   >
                     <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                    Reset to published
+                    {t("criteriaWeights.reset")}
                   </Button>
                 )}
               </CardHeader>
               <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
                 <div className="space-y-4">
-                  <h4 className="font-bold text-gray-900 mb-3">Product Strategy and Execution</h4>
+                  <h4 className="font-bold text-gray-900 mb-3">{t("chart.axes.executionHeading")}</h4>
                   {executionCriteria.map(criterion => (
                     <div key={criterion.id} className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {criterion.name}
+                        {translateCriterionName(tc, criterion.name)}
                       </label>
                       <Slider
                         value={[criteriaWeights[criterion.id] ?? 100]}
@@ -1334,11 +1341,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 <hr className="my-6 border-gray-300" />
 
                 <div className="space-y-4">
-                  <h4 className="font-bold text-gray-900 mb-3">Vendor Viability</h4>
+                  <h4 className="font-bold text-gray-900 mb-3">{t("chart.axes.viabilityHeading")}</h4>
                   {viabilityCriteria.map(criterion => (
                     <div key={criterion.id} className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {criterion.name}
+                        {translateCriterionName(tc, criterion.name)}
                       </label>
                       <Slider
                         value={[criteriaWeights[criterion.id] ?? 100]}
@@ -1373,7 +1380,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
             <div>
               <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">05</p>
-              <h3 className="text-base font-bold">Criteria weights</h3>
+              <h3 className="text-base font-bold">{t("criteriaWeights.mobileTitle")}</h3>
             </div>
             <button
               type="button"
@@ -1381,7 +1388,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               onClick={() => setMobileCriteriaOpen(value => !value)}
               aria-expanded={mobileCriteriaOpen}
             >
-              {mobileCriteriaOpen ? "Hide" : "Show"}
+              {mobileCriteriaOpen ? t("criteriaWeights.hide") : t("criteriaWeights.show")}
               <svg className={`h-4 w-4 transition-transform ${mobileCriteriaOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6" strokeWidth="2" strokeLinecap="round" /></svg>
             </button>
           </div>
@@ -1390,8 +1397,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               {[...executionCriteria, ...viabilityCriteria].map(criterion => (
                 <div key={criterion.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-200 py-3 last:border-0">
                   <div>
-                    <strong className="block text-xs text-slate-900">{criterion.name}</strong>
-                    <small className="mt-0.5 block text-[10px] capitalize text-slate-500">{criterion.category} axis · persisted weight</small>
+                    <strong className="block text-xs text-slate-900">{translateCriterionName(tc, criterion.name)}</strong>
+                    <small className="mt-0.5 block text-[10px] capitalize text-slate-500">{t("criteriaWeights.axisPersistedWeight", { category: criterion.category })}</small>
                   </div>
                   <b className="font-[Menlo] text-xs text-sky-600">{criteriaWeights[criterion.id] ?? 100}%</b>
                 </div>
@@ -1410,64 +1417,64 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           {selectedVendor && (
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-2"}`}>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="scores">Scores</TabsTrigger>
-                {isAdmin && <TabsTrigger value="notes">Notes</TabsTrigger>}
+                    <TabsTrigger value="overview">{t("vendorDetails.tabs.overview")}</TabsTrigger>
+                <TabsTrigger value="scores">{t("vendorDetails.tabs.scores")}</TabsTrigger>
+                {isAdmin && <TabsTrigger value="notes">{t("vendorDetails.tabs.notes")}</TabsTrigger>}
               </TabsList>
               
               <TabsContent value="overview" className="mt-4">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Financial Performance</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t("vendorDetails.financialPerformance")}</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Revenue:</span>
+                        <span className="text-gray-600">{t("vendorDetails.revenue")}</span>
                         <span className="font-medium">
                           {selectedVendor.vendor.revenue ? 
                             `$${Number(selectedVendor.vendor.revenue).toFixed(1)}B` : 
-                            'N/A'
+                            t("vendorDetails.notAvailable")
                           }
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Website:</span>
+                        <span className="text-gray-600">{t("vendorDetails.website")}</span>
                         <span className="font-medium">
-                          {selectedVendor.vendor.website || 'N/A'}
+                          {selectedVendor.vendor.website || t("vendorDetails.notAvailable")}
                         </span>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Quadrant Position</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t("vendorDetails.quadrantPosition")}</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Execution composite:</span>
+                        <span className="text-gray-600">{t("vendorDetails.executionComposite")}</span>
                         <span className="font-medium" data-testid="text-execution-composite">
                           {selectedVendor.vendor.executionComposite.toFixed(2)} / 10
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Viability composite:</span>
+                        <span className="text-gray-600">{t("vendorDetails.viabilityComposite")}</span>
                         <span className="font-medium" data-testid="text-viability-composite">
                           {selectedVendor.vendor.viabilityComposite.toFixed(2)} / 10
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Box:</span>
+                        <span className="text-gray-600">{t("vendorDetails.box")}</span>
                         <span className="font-medium" data-testid="text-quadrant-box">
-                          {selectedVendor.vendor.box.label}
+                          {t(`quadrants.${selectedVendor.vendor.box.key}`)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Chart position:</span>
+                        <span className="text-gray-600">{t("vendorDetails.chartPosition")}</span>
                         <span className="font-medium">
                           ({selectedVendor.position.x.toFixed(1)}, {selectedVendor.position.y.toFixed(1)})
                         </span>
                       </div>
                       {isWhatIf && !selectedVendor.vendor.isHistorical && (
                         <p className="text-xs text-amber-700">
-                          Computed with your what-if slider weights, not the published weights.
+                          {t("vendorDetails.whatIfPosition")}
                         </p>
                       )}
                     </div>
@@ -1476,7 +1483,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               </TabsContent>
               
               <TabsContent value="scores" className="mt-4">
-                <h4 className="font-medium text-gray-900 mb-4">Individual Criteria Scores</h4>
+                <h4 className="font-medium text-gray-900 mb-4">{t("vendorDetails.individualCriteriaScores")}</h4>
                 <div className="space-y-3">
                   {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
                     const criterion = criteria?.find(c => c.id === criteriaId);
@@ -1488,7 +1495,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     if (isProductCapabilities) {
                       return (
                         <div key={criteriaId} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                          <span className="text-gray-900 font-medium">Product Capabilities (Auto-calculated)</span>
+                          <span className="text-gray-900 font-medium">{t("vendorDetails.productCapabilitiesAutoCalculated")}</span>
                           <span className="font-bold text-green-600 text-lg">
                             {score.toFixed(1)}/10
                           </span>
@@ -1500,7 +1507,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     
                     return (
                       <div key={criteriaId} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-900 font-medium">{criterion.name}</span>
+                        <span className="text-gray-900 font-medium">{translateCriterionName(tc, criterion.name)}</span>
                         <span className="font-bold text-blue-600 text-lg">
                           {score.toFixed(1)}/10
                         </span>
@@ -1512,7 +1519,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               
               {isAdmin && (
               <TabsContent value="notes" className="mt-4">
-                <h4 className="font-medium text-gray-900 mb-4">Criteria Notes</h4>
+                <h4 className="font-medium text-gray-900 mb-4">{t("vendorDetails.criteriaNotes")}</h4>
                 <div className="space-y-4">
                   {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
                     const criterion = criteria?.find(c => c.id === criteriaId);
@@ -1527,10 +1534,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                       return (
                         <div key={criteriaId} className="border rounded-lg p-4">
                           <Label className="font-medium text-gray-900 mb-2 block">
-                            Product Capabilities - Auto-calculated (Score: {score.toFixed(1)}/10)
+                            {t("vendorDetails.productCapabilitiesScore", { score: score.toFixed(1) })}
                           </Label>
                           <Textarea
-                            placeholder="Add your notes about this vendor's product capabilities..."
+                            placeholder={t("vendorDetails.productCapabilitiesNotesPlaceholder")}
                             value={currentNote}
                             onChange={(e) => setNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
                             className="min-h-[80px]"
@@ -1547,7 +1554,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                             disabled={saveNotesMutation.isPending}
                             data-testid={`save-notes-product-capabilities-${selectedVendor.vendor.id}`}
                           >
-                            {saveNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
+                            {saveNotesMutation.isPending ? t("vendorDetails.saving") : t("vendorDetails.saveNotes")}
                           </Button>
                         </div>
                       );
@@ -1558,10 +1565,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     return (
                       <div key={criteriaId} className="border rounded-lg p-4">
                         <Label className="font-medium text-gray-900 mb-2 block">
-                          {criterion.name} (Score: {score.toFixed(1)}/10)
+                          {t("vendorDetails.criterionScore", { criterion: translateCriterionName(tc, criterion.name), score: score.toFixed(1) })}
                         </Label>
                         <Textarea
-                          placeholder={`Add your notes about ${criterion.name}...`}
+                          placeholder={t("vendorDetails.criterionNotesPlaceholder", { criterion: translateCriterionName(tc, criterion.name) })}
                           value={currentNote}
                           onChange={(e) => setNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
                           className="min-h-[80px]"
@@ -1578,7 +1585,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                           disabled={saveNotesMutation.isPending}
                           data-testid={`save-notes-${criteriaId}-${selectedVendor.vendor.id}`}
                         >
-                          {saveNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
+                          {saveNotesMutation.isPending ? t("vendorDetails.saving") : t("vendorDetails.saveNotes")}
                         </Button>
                       </div>
                     );
@@ -1596,8 +1603,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         onOpenChange={setShowVendorModal}
         vendors={vendors || []}
         onGenerate={handleGenerateReport}
-        title="Generate Vendor Evaluation Report"
-        description="Select vendors to include in the Vendor Evaluation PDF report"
+        title={t("reportModal.title")}
+        description={t("reportModal.description")}
         isGenerating={isGenerating}
       />
     </>

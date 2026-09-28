@@ -1,0 +1,142 @@
+{
+  "heading": {
+    "productEvaluation": "Produktevaluierung",
+    "vendorCount": "{{selected}} von {{total}} Anbietern",
+    "capabilitiesOnly": "Nur Produktfähigkeiten (Unterstützung des Ökosystems ausgeschlossen)"
+  },
+  "loading": {
+    "description": "Harvey-Ball-Indikatoren zeigen die Bewertungsebenen der Anbieterprodukte",
+    "capabilitiesDescription": "Harvey-Ball-Indikatoren zeigen die Produktfähigkeiten der Anbieter (ohne Ökosystemmerkmale)"
+  },
+  "selection": {
+    "description": "Wählen Sie Anbieter aus, um deren Produktmerkmale und -fähigkeiten zu vergleichen",
+    "chooseVendors": "Anbieter zur Bewertung auswählen",
+    "chooseVendorsDescription": "Wählen Sie einen oder mehrere Anbieter aus, um deren Produktfähigkeiten im Detail zu vergleichen",
+    "noVendorsSelected": "Keine Anbieter ausgewählt",
+    "vendorsSelected_one": "{{count}} Anbieter ausgewählt",
+    "vendorsSelected_other": "{{count}} Anbieter ausgewählt",
+    "noVendorsAvailable": "Keine Anbieter für diesen Markt verfügbar.",
+    "chooseVendorsToCompare": "Anbieter zum Vergleichen auswählen",
+    "selectAtLeastOne": "Wählen Sie mindestens einen Anbieter aus, um die Vergleichsmatrix anzuzeigen"
+  },
+  "buttons": {
+    "updating": "Aktualisieren...",
+    "updateVendorEvaluation": "Anbieterevaluierung aktualisieren",
+    "clearAll": "Alle löschen",
+    "selectAll": "Alle auswählen",
+    "compareProducts": "Vergleichen {{count}}/2",
+    "viewProductEvaluation": "Produktevaluierung anzeigen ({{count}})",
+    "pdf": "PDF",
+    "pdfReport": "PDF-Bericht",
+    "change": "Ändern",
+    "changeSelection": "Auswahl ändern",
+    "expandAll": "Alle erweitern",
+    "collapseAll": "Alle reduzieren",
+    "hideFilters": "Filter ausblenden",
+    "filterVendors": "Anbieter filtern",
+    "viewNotes": "Notizen anzeigen",
+    "closeNotes": "Notizen schließen"
+  },
+  "mobile": {
+    "eyebrow": "Produktevaluierung",
+    "title": "Produktunterstützung vergleichen",
+    "description": "Vergleichen Sie zwei gespeicherte Produktunterstützungsdatensätze Merkmal für Merkmal.",
+    "productsToCompare": "Zu vergleichende Produkte",
+    "chooseExactlyTwo": "Wählen Sie genau 2",
+    "twoProductsSelected": "Zwei Produkte ausgewählt. Beide Spalten bleiben unten sichtbar.",
+    "moreProducts_one": "Wählen Sie {{count}} weiteres Produkt aus, um den Vergleich anzuzeigen.",
+    "moreProducts_other": "Wählen Sie {{count}} weitere Produkte aus, um den Vergleich anzuzeigen.",
+    "noProducts": "Keine Produkte für diesen Markt verfügbar.",
+    "featureSupportCommentary": "Merkmalsunterstützung & Kommentar",
+    "comparisonUnavailable": "Vergleich nicht verfügbar",
+    "chooseExactlyTwoAbove": "Wählen Sie oben genau zwei Produkte aus.",
+    "noCapabilityFeatures": "Keine Produktfähigkeitsmerkmale für diesen Markt verfügbar.",
+    "storedRows_one": "{{count}} gespeicherte Zeile",
+    "storedRows_other": "{{count}} gespeicherte Zeilen"
+  },
+  "supportLevels": {
+    "none": "Keine Unterstützung",
+    "limited": "Begrenzt",
+    "partial": "Teilweise",
+    "good": "Gut",
+    "full": "Volle Unterstützung",
+    "unknown": "Unbekannt",
+    "legendNone": "Keine",
+    "legendLimited": "Begrenzt",
+    "legendPartial": "Teilweise",
+    "legendGood": "Gut",
+    "legendFull": "Voll",
+    "unavailable": "Nicht verfügbar",
+    "scoreUnavailable": "Unterstützungsbewertung nicht verfügbar",
+    "levelOfFour": "{{level}} von 4 Unterstützung",
+    "tooltipWithNotes": "{{support}} - Klicken für Notizen"
+  },
+  "matrix": {
+    "feature": "Merkmal",
+    "features": "Merkmale",
+    "evaluationCriteria": "Bewertungskriterien",
+    "featureCount_one": "{{count}} Merkmal",
+    "featureCount_other": "{{count}} Merkmale",
+    "noCapabilityFeatures": "Keine Produktfähigkeitsmerkmale für diesen Markt verfügbar.",
+    "noVendorsSelected": "Keine Anbieter ausgewählt",
+    "chooseVendorsToCompare": "Wählen Sie Anbieter aus den obigen Filtern aus, um deren Merkmalsunterstützungsfähigkeiten zu vergleichen"
+  },
+  "scores": {
+    "totalScore": "Gesamtpunktzahl",
+    "maximumPoints": "Maximum: {{maxScore}} Punkte",
+    "ofMaximum": "von {{maxScore}}",
+    "productCapabilitiesScore": "Produktfähigkeiten-Punktzahl",
+    "criterionDescription": "Anbieterevaluierungskriterium auf der 0–10 Skala, abgeleitet aus der obigen Abdeckung",
+    "outOfTen": "von 10",
+    "coverage": "{{coverage}} Abdeckung",
+    "productScore": "Produktpunktzahl",
+    "notDerivedYet": "Noch nicht abgeleitet"
+  },
+  "notes": {
+    "evaluationNotes": "Bewertungsnotizen",
+    "vendor": "Anbieter",
+    "product": "Produkt",
+    "support": "Unterstützung",
+    "storedCommentary": "Gespeicherter Kommentar",
+    "featureSupportDetails": "Details zur Merkmalsunterstützung",
+    "feature": "Merkmal",
+    "supportLevel": "Unterstützungsniveau: {{level}}/4",
+    "notes": "Notizen"
+  },
+  "fallbacks": {
+    "productNameUnavailable": "Produktname nicht verfügbar",
+    "productUnavailable": "Produkt nicht verfügbar",
+    "featureDescriptionUnavailable": "Merkmalsbeschreibung nicht verfügbar.",
+    "noSupportRecord": "Kein Unterstützungsdatensatz für diesen Anbieter, dieses Produkt und dieses Merkmal verfügbar.",
+    "noStoredCommentary": "Kein gespeicherter Kommentar für diesen Unterstützungsdatensatz verfügbar.",
+    "noEvaluationCriteria": "Keine Bewertungskriterien angegeben",
+    "noAdditionalNotes": "Keine zusätzlichen Notizen für diese Bewertung."
+  },
+  "reports": {
+    "title": "Produktevaluierungsbericht erstellen",
+    "description": "Wählen Sie Anbieter aus, die im Produktevaluierungs-PDF-Bericht enthalten sein sollen"
+  },
+  "toasts": {
+    "scoresUpdated": {
+      "title": "Punktzahlen erfolgreich aktualisiert",
+      "description_one": "Aktualisierte Produktfähigkeiten-Punktzahlen für {{count}} Anbieter",
+      "description_other": "Aktualisierte Produktfähigkeiten-Punktzahlen für {{count}} Anbieter"
+    },
+    "updateFailed": {
+      "title": "Aktualisierung fehlgeschlagen",
+      "description": "Fehler beim Aktualisieren der Anbieterevaluierungspunkte"
+    },
+    "reportSuccess": {
+      "title": "Erfolg",
+      "description": "Produktevaluierungsbericht erfolgreich erstellt"
+    },
+    "reportFailed": {
+      "title": "Fehler",
+      "description": "Fehler beim Erstellen des Berichts"
+    },
+    "chooseTwoProducts": {
+      "title": "Wählen Sie genau 2 Produkte",
+      "description": "Wählen Sie ein Produkt ab, bevor Sie ein anderes auswählen."
+    }
+  }
+}

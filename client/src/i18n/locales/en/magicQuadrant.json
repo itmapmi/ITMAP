@@ -1,0 +1,134 @@
+{
+  "chart": {
+    "axes": {
+      "execution": "Product Strategy and Execution →",
+      "executionCompact": "Execution →",
+      "executionHeading": "Product Strategy and Execution",
+      "viability": "Vendor Viability →",
+      "viabilityCompact": "Viability →",
+      "viabilityHeading": "Vendor Viability"
+    },
+    "poweredBy": "Powered by itmap.ai",
+    "vendorPositioning": "Vendor positioning",
+    "fixedScoreDomain": "Fixed score domain · 0–100",
+    "whatIfTooltip": "Dots are positioned with your slider weights. Reset the sliders to see the published chart.",
+    "whatIfWeights": "What-if weights",
+    "exportTooltip": "Export chart as PDF",
+    "exporting": "Exporting…",
+    "exportPdf": "Export PDF",
+    "mobileZoomHint": "Pinch or use controls to zoom · drag to pan",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "resetChartToFit": "Reset chart to fit",
+    "fit": "Fit",
+    "mobileExecutionAxis": "Execution / product strategy"
+  },
+  "quadrants": {
+    "custodians": "Custodians",
+    "contenders": "Contenders",
+    "leaders": "Leaders",
+    "emergingCompact": "Emerging",
+    "emergingPlayers": "Emerging Players",
+    "emerging_players": "Emerging Players",
+    "specialists": "Specialists",
+    "catalysts": "Catalysts"
+  },
+  "evidence": {
+    "label": "Evidence",
+    "latestNews": "Latest news events",
+    "empty": "No recent news events for this vendor.",
+    "viewVendorDetails": "View full vendor details →"
+  },
+  "timeline": {
+    "now": "Now",
+    "current": "Current",
+    "historicalView": "Historical View",
+    "weeksAgoShort": "{{weeks}}w ago",
+    "weekAgo": "{{weeks}} week ago",
+    "weeksAgo": "{{weeks}} weeks ago",
+    "ariaLabel": "Historical view timeline for the last six months"
+  },
+  "criteriaWeights": {
+    "title": "Criteria Weights",
+    "mobileTitle": "Criteria weights",
+    "whatIfDescription": "Showing your what-if view. The published chart uses this market's saved weights.",
+    "description": "Move a slider to build your own what-if view. The published chart uses this market's saved weights.",
+    "reset": "Reset to published",
+    "hide": "Hide",
+    "show": "Show",
+    "axisPersistedWeight": "{{category}} axis · persisted weight"
+  },
+  "vendorDetails": {
+    "tabs": {
+      "overview": "Overview",
+      "scores": "Scores",
+      "notes": "Notes"
+    },
+    "financialPerformance": "Financial Performance",
+    "revenue": "Revenue:",
+    "notAvailable": "N/A",
+    "website": "Website:",
+    "quadrantPosition": "Quadrant Position",
+    "executionComposite": "Execution composite:",
+    "viabilityComposite": "Viability composite:",
+    "box": "Box:",
+    "chartPosition": "Chart position:",
+    "whatIfPosition": "Computed with your what-if slider weights, not the published weights.",
+    "individualCriteriaScores": "Individual Criteria Scores",
+    "productCapabilitiesAutoCalculated": "Product Capabilities (Auto-calculated)",
+    "criteriaNotes": "Criteria Notes",
+    "productCapabilitiesScore": "Product Capabilities - Auto-calculated (Score: {{score}}/10)",
+    "productCapabilitiesNotesPlaceholder": "Add your notes about this vendor's product capabilities...",
+    "criterionScore": "{{criterion}} (Score: {{score}}/10)",
+    "criterionNotesPlaceholder": "Add your notes about {{criterion}}...",
+    "saving": "Saving...",
+    "saveNotes": "Save Notes"
+  },
+  "compare": {
+    "title": "Compare Vendors",
+    "criteria": "Criteria",
+    "notes": "Notes",
+    "viewNotes": "View Notes",
+    "hideNotes": "Hide Notes",
+    "viewDetailedReport": "View Detailed Report",
+    "selectAtLeastTwo": "Select at least 2 vendors to compare their scores",
+    "productNameUnavailable": "Product name unavailable",
+    "noStoredCommentary": "No stored commentary is available for this score.",
+    "mobileTitle": "Compare products",
+    "mobileScoresTitle": "Scores & commentary",
+    "mobileSelectedCount": "{{count}} selected · max 3",
+    "mobileSelectPrompt": "Select up to three products to see their scores and commentary below.",
+    "mobileMaxSelected": "Maximum of three products selected. Uncheck one to swap it out.",
+    "mobileSelectHint": "Select up to three products. Each one you check is listed below.",
+    "mobileViewNotes": "View notes",
+    "vendor": "Vendor",
+    "score": "Score",
+    "product": "Product"
+  },
+  "reportModal": {
+    "title": "Generate Vendor Evaluation Report",
+    "description": "Select vendors to include in the Vendor Evaluation PDF report"
+  },
+  "toasts": {
+    "notesSaved": {
+      "title": "Notes Saved",
+      "description": "Your notes have been saved successfully."
+    },
+    "saveNotesError": {
+      "title": "Error",
+      "description": "Failed to save notes. Please try again."
+    },
+    "reportGenerated": {
+      "title": "Success",
+      "description": "Vendor Evaluation report generated successfully"
+    },
+    "reportError": {
+      "title": "Error",
+      "description": "Failed to generate report"
+    },
+    "exportError": {
+      "title": "Export failed",
+      "description": "Could not generate the PDF. Please try again."
+    }
+  }
+}

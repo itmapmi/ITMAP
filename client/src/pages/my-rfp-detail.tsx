@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { track, trackDwell } from "@/lib/track";
@@ -17,23 +18,25 @@ import remarkGfm from "remark-gfm";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpOutreachEntry } from "@shared/schema";
 import "@/styles/rfp-builder-mobile.css";
+import { formatDate } from "@/lib/i18n-format";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
 interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; invitedAt: string | null; respondedAt: string | null; vendor: { id: string; name: string } | null }
-const fmtDate = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString() : null;
+const fmtDate = (s: string | null | undefined) => formatDate(s);
 
 // Guided step order used for the mobile wizard — same tab keys as the
 // desktop Tabs, just navigated one at a time instead of via a tab strip.
 const STEPS = [
-  { key: "interview", label: "Interview" },
-  { key: "requirements", label: "Requirements" },
-  { key: "preview", label: "Preview" },
-  { key: "shortlist", label: "Shortlist" },
-  { key: "outreach", label: "Outreach" },
-  { key: "export", label: "Export" },
+  { key: "interview" },
+  { key: "requirements" },
+  { key: "preview" },
+  { key: "shortlist" },
+  { key: "outreach" },
+  { key: "export" },
 ] as const;
 
 export default function MyRfpDetailPage() {
+  const { t } = useTranslation("rfp");
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
@@ -75,18 +78,18 @@ export default function MyRfpDetailPage() {
     },
     onError: (e: unknown) => {
       if (isMissingLlmKeyError(e)) {
-        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        toast({ title: t("detail.toast.openAiKeyRequired"), description: t("detail.toast.openAiKeyDescription"), variant: "destructive" });
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Could not send", description: getErrorMessage(e), variant: "destructive" });
+      toast({ title: t("detail.toast.couldNotSend"), description: getErrorMessage(e), variant: "destructive" });
     },
   });
 
   const generateMutation = useMutation({
     mutationFn: async () => apiRequestJson(`/api/me/rfps/${id}/generate`, "POST"),
     onSuccess: () => {
-      toast({ title: "RFP generated", description: "Preview, shortlist, and exports are ready." });
+      toast({ title: t("detail.toast.generated"), description: t("detail.toast.generatedDescription") });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "sections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "shortlist"] });
@@ -95,11 +98,11 @@ export default function MyRfpDetailPage() {
     },
     onError: (e: unknown) => {
       if (isMissingLlmKeyError(e)) {
-        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        toast({ title: t("detail.toast.openAiKeyRequired"), description: t("detail.toast.openAiKeyDescription"), variant: "destructive" });
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Generation failed", description: getErrorMessage(e), variant: "destructive" });
+      toast({ title: t("detail.toast.generationFailed"), description: getErrorMessage(e), variant: "destructive" });
     },
   });
 
@@ -124,17 +127,17 @@ export default function MyRfpDetailPage() {
   const regenSectionMutation = useMutation({
     mutationFn: async (sectionKey: string) => apiRequestJson(`/api/me/rfps/${id}/sections/${sectionKey}/regenerate`, "POST"),
     onSuccess: () => {
-      toast({ title: "Section regenerated" });
+      toast({ title: t("detail.toast.sectionRegenerated") });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "sections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id] });
     },
     onError: (e: unknown) => {
       if (isMissingLlmKeyError(e)) {
-        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        toast({ title: t("detail.toast.openAiKeyRequired"), description: t("detail.toast.openAiKeyDescription"), variant: "destructive" });
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Regeneration failed", description: getErrorMessage(e), variant: "destructive" });
+      toast({ title: t("detail.toast.regenerationFailed"), description: getErrorMessage(e), variant: "destructive" });
     },
   });
 
@@ -150,7 +153,7 @@ export default function MyRfpDetailPage() {
   if (mobileMode) {
     const step = STEPS[stepIndex];
     const sortedSections = [...sections].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
-    const generateLabel = generateMutation.isPending ? "Generating…" : rfp?.status === "ready" ? "Regenerate" : "Generate";
+    const generateLabel = generateMutation.isPending ? t("detail.generating") : rfp?.status === "ready" ? t("detail.regenerate") : t("detail.generate");
     const sectionHeading = (
       title: string,
       subtitle: string,
@@ -167,15 +170,16 @@ export default function MyRfpDetailPage() {
         <main className="rfpm-main">
           <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
             <div style={{ minWidth: 0 }}>
-              <div className="rfpm-kicker">ACTIVE RFP</div>
-              <div className="rfpm-title" style={{ fontSize: 16, marginTop: 4 }}>{rfp?.title || "RFP"}</div>
-              <div className="rfpm-meta">{filledSlots}/{totalSlots} slots · <span style={{ color: "var(--rfp-text)" }}>{rfp?.status || "loading"}</span></div>
+              <div className="rfpm-kicker">{t("detail.activeRfp")}</div>
+              <div className="rfpm-title" style={{ fontSize: 16, marginTop: 4 }}>{rfp?.title || t("detail.rfpFallback")}</div>
+              <div className="rfpm-meta">{t("detail.slots", { filled: filledSlots, total: totalSlots })} · <span style={{ color: "var(--rfp-text)" }}>{rfp?.status ? t(`detail.status.${rfp.status}`, { defaultValue: rfp.status }) : t("detail.loading")}</span></div>
             </div>
             <button
               className="rfpm-btn primary"
               onClick={() => generateMutation.mutate()}
               disabled={generateMutation.isPending || !interviewReady}
-              title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "8 of 14 total"}`}
+              title={interviewReady ? undefined : t("detail.needCriticalSlots", { slots: missingCritical.join(", ") || t("detail.defaultCriticalSlots") })}
+              aria-label={t("detail.generateRfp")}
               data-testid="button-generate-rfp"
             >
               <Sparkles size={14} /> {generateLabel}
@@ -183,7 +187,7 @@ export default function MyRfpDetailPage() {
           </div>
           <div className="rfpm-step">
             <div className="rfpm-stepbar">{STEPS.map((s, i) => <i key={s.key} className={i <= stepIndex ? "on" : ""} />)}</div>
-            <div className="rfpm-steptext">Step {stepIndex + 1} of 6 · {step.label}</div>
+            <div className="rfpm-steptext">{t("detail.mobileStepProgress", { current: stepIndex + 1, total: 6, step: t(`detail.steps.${step.key}`) })}</div>
           </div>
         </main>
 
@@ -191,19 +195,19 @@ export default function MyRfpDetailPage() {
           {tab === "interview" && (
             <>
               <div className="rfpm-row">
-                <h1 className="rfpm-h1">Discovery interview</h1>
-                <span className="rfpm-mini">{filledSlots} / {totalSlots} SLOTS</span>
+                <h1 className="rfpm-h1">{t("detail.interview.heading")}</h1>
+                <span className="rfpm-mini">{t("detail.slotsUpper", { filled: filledSlots, total: totalSlots })}</span>
               </div>
               <div className="rfpm-chat">
                 {messages.map((m) => (
                   <div className={`rfpm-msg ${m.role === "user" ? "user" : ""}`} key={m.id}>
-                    <small>{m.role === "user" ? "YOU" : "ITMAP ANALYST"}</small>{m.content}
+                    <small>{m.role === "user" ? t("detail.interview.you") : t("detail.interview.analyst")}</small>{m.content}
                   </div>
                 ))}
-                {sendMutation.isPending && <div className="rfpm-msg"><small>ITMAP ANALYST</small><Clock size={13} className="animate-pulse" /> Thinking…</div>}
+                {sendMutation.isPending && <div className="rfpm-msg"><small>{t("detail.interview.analyst")}</small><Clock size={13} className="animate-pulse" /> {t("detail.interview.thinking")}</div>}
                 <div className="rfpm-card" style={{ color: interviewComplete ? "var(--rfp-lime)" : "var(--rfp-amber)", fontSize: 11 }}>
                   <CheckCircle2 size={14} style={{ display: "inline", marginRight: 6 }} />
-                  {interviewComplete ? "Interview complete · ready to generate" : `Interview in progress · ${missingCritical.length} critical slots remain`}
+                  {interviewComplete ? t("detail.interview.complete") : t("detail.interview.inProgress", { count: missingCritical.length })}
                 </div>
                 <div ref={messagesEndRef} />
               </div>
@@ -213,35 +217,35 @@ export default function MyRfpDetailPage() {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && draft.trim() && !sendMutation.isPending) sendMutation.mutate(draft.trim()); }}
-                  placeholder="Type your answer…"
+                  placeholder={t("detail.interview.answerPlaceholder")}
                   data-testid="input-interview-message"
                 />
-                <button className="rfpm-btn primary" onClick={() => draft.trim() && sendMutation.mutate(draft.trim())} disabled={!draft.trim() || sendMutation.isPending} data-testid="button-send-message">
+                <button className="rfpm-btn primary" onClick={() => draft.trim() && sendMutation.mutate(draft.trim())} disabled={!draft.trim() || sendMutation.isPending} aria-label={t("detail.interview.send")} data-testid="button-send-message">
                   {sendMutation.isPending ? <Clock size={14} className="animate-pulse" /> : <Send size={14} />}
                 </button>
               </div>
-              {!interviewReady && <div className="rfpm-alert"><Clock size={13} /> Generate RFP is unavailable until all critical slots are captured.</div>}
+              {!interviewReady && <div className="rfpm-alert"><Clock size={13} /> {t("detail.interview.unavailable")}</div>}
             </>
           )}
 
           {tab === "requirements" && (
             <>
-              {sectionHeading("Requirements", "Generated from your interview and market catalogue.", <SlidersHorizontal size={16} color="var(--rfp-cyan)" />)}
+              {sectionHeading(t("detail.requirements.heading"), t("detail.requirements.subtitle"), <SlidersHorizontal size={16} color="var(--rfp-cyan)" />)}
               <div style={{ marginTop: 18 }}>
-                {requirements.length === 0 ? <div className="rfpm-empty">Generate the RFP to seed weighted requirements.</div> : requirements.map((r) => (
+                {requirements.length === 0 ? <div className="rfpm-empty">{t("detail.requirements.empty")}</div> : requirements.map((r) => (
                   <article className="rfpm-card" key={r.id} data-testid={`row-requirement-${r.id}`}>
                     <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
                       <h2 className="rfpm-title">{r.label}</h2>
-                      <button className="rfpm-btn ghost" onClick={() => deleteReqMutation.mutate(r.id)} aria-label={`Delete ${r.label}`}><Trash2 size={14} /></button>
+                      <button className="rfpm-btn ghost" onClick={() => deleteReqMutation.mutate(r.id)} aria-label={t("detail.requirements.deleteAria", { label: r.label })}><Trash2 size={14} /></button>
                     </div>
                     {r.description && <p className="rfpm-meta">{r.description}</p>}
-                    <p className="rfpm-meta">{r.kind} requirement</p>
+                    <p className="rfpm-meta">{t("detail.requirements.kindRequirement", { kind: r.kind })}</p>
                     <div className="rfpm-row">
                       <select className="rfpm-select" value={r.priority} onChange={(e) => updateReqMutation.mutate({ reqId: r.id, body: { priority: e.target.value } })}>
-                        <option value="must">must</option><option value="should">should</option><option value="nice">nice</option>
+                        <option value="must">{t("detail.requirements.priorityLower.must")}</option><option value="should">{t("detail.requirements.priorityLower.should")}</option><option value="nice">{t("detail.requirements.priorityLower.nice")}</option>
                       </select>
                       <select className="rfpm-select" value={String(r.weight)} onChange={(e) => updateReqMutation.mutate({ reqId: r.id, body: { weight: Number(e.target.value) } })}>
-                        {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>Weight {n}</option>)}
+                        {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t("detail.requirements.weight", { weight: n })}</option>)}
                       </select>
                     </div>
                   </article>
@@ -252,17 +256,17 @@ export default function MyRfpDetailPage() {
 
           {tab === "preview" && (
             <>
-              {sectionHeading("Document preview", "Generated markdown · current document", <FileText size={19} color="var(--rfp-cyan)" />)}
+              {sectionHeading(t("detail.preview.heading"), t("detail.preview.subtitle"), <FileText size={19} color="var(--rfp-cyan)" />)}
               <div style={{ marginTop: 18 }}>
-                {sortedSections.length === 0 ? <div className="rfpm-empty">Generate the RFP to produce the document.</div> : sortedSections.map((s, index) => (
+                {sortedSections.length === 0 ? <div className="rfpm-empty">{t("detail.preview.empty")}</div> : sortedSections.map((s, index) => (
                   <article className="rfpm-card" key={s.id} data-testid={`section-${s.sectionKey}`}>
                     <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
                       <div><span className="rfpm-kicker">{String(index + 1).padStart(2, "0")}</span><h2 className="rfpm-title" style={{ marginTop: 5 }}>{s.title}</h2></div>
                       <button className="rfpm-btn" onClick={() => regenSectionMutation.mutate(s.sectionKey)} disabled={regenSectionMutation.isPending} data-testid={`button-regenerate-${s.sectionKey}`}>
-                        <RefreshCw size={13} /> {regenSectionMutation.isPending && regenSectionMutation.variables === s.sectionKey ? "Regenerating…" : "Regenerate"}
+                        <RefreshCw size={13} /> {regenSectionMutation.isPending && regenSectionMutation.variables === s.sectionKey ? t("detail.regenerating") : t("detail.regenerate")}
                       </button>
                     </div>
-                    <div className="rfpm-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{s.body || "_(empty)_"}</ReactMarkdown></div>
+                    <div className="rfpm-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{s.body || `_${t("detail.preview.emptySection")}_`}</ReactMarkdown></div>
                   </article>
                 ))}
               </div>
@@ -271,15 +275,15 @@ export default function MyRfpDetailPage() {
 
           {tab === "shortlist" && (
             <>
-              {sectionHeading("Vendor shortlist", "Deterministic fit against your weighted requirements.", <Trophy size={18} color="var(--rfp-amber)" />)}
+              {sectionHeading(t("detail.shortlist.heading"), t("detail.shortlist.subtitle"), <Trophy size={18} color="var(--rfp-amber)" />)}
               <div style={{ marginTop: 18 }}>
-                {shortlist.length === 0 ? <div className="rfpm-empty">Generate the RFP to score vendors.</div> : shortlist.map((s, index) => (
+                {shortlist.length === 0 ? <div className="rfpm-empty">{t("detail.shortlist.empty")}</div> : shortlist.map((s, index) => (
                   <article className="rfpm-card" key={s.id}>
-                    <div className="rfpm-row"><span className="rfpm-kicker">RANK #{s.rank || index + 1}</span><span className="rfpm-score">{Number(s.fitScore || 0).toFixed(1)}</span></div>
-                    <h2 className="rfpm-title" style={{ marginTop: 8 }}>{s.vendor?.name || "Vendor"}</h2>
+                    <div className="rfpm-row"><span className="rfpm-kicker">{t("detail.shortlist.rank", { rank: s.rank || index + 1 })}</span><span className="rfpm-score">{Number(s.fitScore || 0).toFixed(1)}</span></div>
+                      <h2 className="rfpm-title" style={{ marginTop: 8 }}>{s.vendor?.name || t("detail.vendorFallback")}</h2>
                     <p className="rfpm-meta">{s.rationale}</p>
                     <button className={`rfpm-btn ${s.isIncluded ? "primary" : "ghost"}`} style={{ width: "100%", marginTop: 7 }} onClick={() => toggleShortlistMutation.mutate({ entryId: s.id, isIncluded: !s.isIncluded })} data-testid={`button-toggle-shortlist-${s.id}`}>
-                      {s.isIncluded ? <><Check size={14} /> Included</> : <><X size={14} /> Excluded</>}
+                      {s.isIncluded ? <><Check size={14} /> {t("detail.shortlist.included")}</> : <><X size={14} /> {t("detail.shortlist.excluded")}</>}
                     </button>
                   </article>
                 ))}
@@ -289,7 +293,7 @@ export default function MyRfpDetailPage() {
 
           {tab === "outreach" && (
             <>
-              {sectionHeading("Outreach tracker", "Capture vendor contact details and responses.", <Mail size={18} color="var(--rfp-cyan)" />)}
+              {sectionHeading(t("detail.outreach.heading"), t("detail.outreach.subtitle"), <Mail size={18} color="var(--rfp-cyan)" />)}
               <div style={{ marginTop: 18 }}>
                 {shortlist.filter((s) => s.isIncluded).map((s) => {
                   const row = outreach.find((o) => o.vendorId === s.vendorId);
@@ -301,17 +305,17 @@ export default function MyRfpDetailPage() {
                   return (
                     <article className="rfpm-card" key={s.id} data-testid={`outreach-row-${s.vendorId}`}>
                       <div className="rfpm-row">
-                        <h2 className="rfpm-title">{s.vendor?.name || "Vendor"}</h2>
-                        <span className={`rfpm-tag ${row?.status === "responded" || row?.status === "awarded" ? "ready" : ""}`}>{row?.status === "invited" ? "sent" : (row?.status || "draft").replace("_", " ")}</span>
+                        <h2 className="rfpm-title">{s.vendor?.name || t("detail.vendorFallback")}</h2>
+                        <span className={`rfpm-tag ${row?.status === "responded" || row?.status === "awarded" ? "ready" : ""}`}>{row?.status ? t(`detail.outreach.badge.${row.status}`, { defaultValue: row.status.replace("_", " ") }) : t("detail.outreach.badge.draft")}</span>
                       </div>
-                      {(row?.invitedAt || row?.respondedAt) && <p className="rfpm-meta">{fmtDate(row.invitedAt) && `Sent ${fmtDate(row.invitedAt)}`} {fmtDate(row.respondedAt) && `· Replied ${fmtDate(row.respondedAt)}`}</p>}
+                      {(row?.invitedAt || row?.respondedAt) && <p className="rfpm-meta">{fmtDate(row.invitedAt) && t("detail.outreach.sent", { date: fmtDate(row.invitedAt) })} {fmtDate(row.respondedAt) && t("detail.outreach.replied", { date: fmtDate(row.respondedAt) })}</p>}
                       <select className="rfpm-select" style={{ marginTop: 11 }} value={row?.status || "not_started"} onChange={(e) => upsertOutreachMutation.mutate(base({ status: e.target.value }))}>
-                        <option value="not_started">Draft</option><option value="invited">Sent</option><option value="declined">Declined</option><option value="responded">Responded</option><option value="awarded">Awarded</option>
+                        <option value="not_started">{t("detail.outreach.status.draft")}</option><option value="invited">{t("detail.outreach.status.sent")}</option><option value="declined">{t("detail.outreach.status.declined")}</option><option value="responded">{t("detail.outreach.status.responded")}</option><option value="awarded">{t("detail.outreach.status.awarded")}</option>
                       </select>
-                      <input key={`cn-${row?.id || "new"}`} className="rfpm-input" style={{ marginTop: 8 }} defaultValue={row?.contactName || ""} placeholder="Contact name" onBlur={(e) => upsertOutreachMutation.mutate(base({ contactName: e.target.value }))} />
-                      <input key={`ce-${row?.id || "new"}`} className="rfpm-input" style={{ marginTop: 8 }} defaultValue={row?.contactEmail || ""} placeholder="Contact email" type="email" onBlur={(e) => upsertOutreachMutation.mutate(base({ contactEmail: e.target.value }))} />
-                      <textarea key={`notes-${row?.id || "new"}`} className="rfpm-textarea" style={{ marginTop: 8 }} defaultValue={row?.notes || ""} placeholder="Outreach notes…" rows={2} onBlur={(e) => upsertOutreachMutation.mutate(base({ notes: e.target.value }))} />
-                      <textarea key={`rt-${row?.id || "new"}`} className="rfpm-textarea" style={{ marginTop: 8 }} defaultValue={row?.responseText || ""} placeholder="Paste vendor response text here…" rows={3} onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))} />
+                      <input key={`cn-${row?.id || "new"}`} className="rfpm-input" style={{ marginTop: 8 }} defaultValue={row?.contactName || ""} placeholder={t("detail.outreach.contactName")} onBlur={(e) => upsertOutreachMutation.mutate(base({ contactName: e.target.value }))} />
+                      <input key={`ce-${row?.id || "new"}`} className="rfpm-input" style={{ marginTop: 8 }} defaultValue={row?.contactEmail || ""} placeholder={t("detail.outreach.contactEmail")} type="email" onBlur={(e) => upsertOutreachMutation.mutate(base({ contactEmail: e.target.value }))} />
+                      <textarea key={`notes-${row?.id || "new"}`} className="rfpm-textarea" style={{ marginTop: 8 }} defaultValue={row?.notes || ""} placeholder={t("detail.outreach.notesPlaceholder")} rows={2} onBlur={(e) => upsertOutreachMutation.mutate(base({ notes: e.target.value }))} />
+                      <textarea key={`rt-${row?.id || "new"}`} className="rfpm-textarea" style={{ marginTop: 8 }} defaultValue={row?.responseText || ""} placeholder={t("detail.outreach.responsePlaceholder")} rows={3} onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))} />
                       <ObjectUploader
                         maxNumberOfFiles={1}
                         maxFileSize={26214400}
@@ -325,43 +329,43 @@ export default function MyRfpDetailPage() {
                         }}
                         buttonClassName="rfpm-upload"
                       >
-                        <span><Upload size={13} style={{ display: "inline", marginRight: 6 }} />Upload response file · one file, up to 25MB</span>
+                         <span><Upload size={13} style={{ display: "inline", marginRight: 6 }} />{t("detail.outreach.uploadResponseLimit")}</span>
                       </ObjectUploader>
-                      {row?.responseFileUrl && <a href={row.responseFileUrl} target="_blank" rel="noreferrer" className="rfpm-meta" style={{ display: "block", color: "var(--rfp-cyan)" }}>View uploaded file</a>}
+                       {row?.responseFileUrl && <a href={row.responseFileUrl} target="_blank" rel="noreferrer" className="rfpm-meta" style={{ display: "block", color: "var(--rfp-cyan)" }}>{t("detail.outreach.viewUploadedFile")}</a>}
                     </article>
                   );
                 })}
-                {!shortlist.some((s) => s.isIncluded) && <div className="rfpm-empty">Include vendors in the Shortlist step to track outreach.</div>}
+                {!shortlist.some((s) => s.isIncluded) && <div className="rfpm-empty">{t("detail.outreach.empty")}</div>}
               </div>
             </>
           )}
 
           {tab === "export" && (
             <>
-              {sectionHeading("Export RFP", "Download the generated document in your preferred format.", <CheckCircle2 size={18} color="var(--rfp-lime)" />)}
+              {sectionHeading(t("detail.export.heading"), t("detail.export.subtitle"), <CheckCircle2 size={18} color="var(--rfp-lime)" />)}
               {rfp?.generatedMarkdown ? (
                 <>
                   <div className="rfpm-card" style={{ marginTop: 20 }}>
-                    <div className="rfpm-kicker">DOCUMENT READY</div>
+                    <div className="rfpm-kicker">{t("detail.export.documentReady")}</div>
                     <h2 className="rfpm-title" style={{ fontSize: 17, marginTop: 8 }}>{rfp.title}</h2>
-                    <p className="rfpm-meta">Generated markdown available · {sections.length} sections · {requirements.length} requirements</p>
+                    <p className="rfpm-meta">{t("detail.export.documentSummary", { sections: sections.length, requirements: requirements.length })}</p>
                   </div>
                   {(["pdf", "docx", "xlsx"] as const).map((format) => (
                     <a className="rfpm-card" href={`/api/me/rfps/${id}/export/${format}`} target="_blank" rel="noreferrer" key={format} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "var(--rfp-text)", textDecoration: "none" }} data-testid={`link-export-${format}`}>
-                      <span style={{ display: "flex", gap: 10, alignItems: "center" }}><FileText size={17} color="var(--rfp-cyan)" /><span><b style={{ fontSize: 13 }}>Download {format.toUpperCase()}</b><small className="rfpm-meta" style={{ display: "block" }}>Generated from current RFP</small></span></span>
+                       <span style={{ display: "flex", gap: 10, alignItems: "center" }}><FileText size={17} color="var(--rfp-cyan)" /><span><b style={{ fontSize: 13 }}>{t("detail.export.downloadFormat", { format: format.toUpperCase() })}</b><small className="rfpm-meta" style={{ display: "block" }}>{t("detail.export.generatedFromCurrent")}</small></span></span>
                       <Download size={15} color="var(--rfp-cyan)" />
                     </a>
                   ))}
                 </>
-              ) : <div className="rfpm-empty" style={{ marginTop: 20 }}>Generate the RFP first to enable exports.</div>}
+              ) : <div className="rfpm-empty" style={{ marginTop: 20 }}>{t("detail.export.empty")}</div>}
             </>
           )}
         </main>
 
         <div className="rfpm-footer">
-          <button className="rfpm-btn ghost" onClick={() => goToStep(stepIndex - 1)} disabled={stepIndex === 0} data-testid="button-wizard-back"><ArrowLeft size={14} /> Back</button>
+          <button className="rfpm-btn ghost" onClick={() => goToStep(stepIndex - 1)} disabled={stepIndex === 0} data-testid="button-wizard-back"><ArrowLeft size={14} /> {t("detail.back")}</button>
           <button className="rfpm-btn primary" onClick={() => goToStep(stepIndex + 1)} disabled={stepIndex === STEPS.length - 1} data-testid="button-wizard-next">
-            Next: {STEPS[Math.min(stepIndex + 1, STEPS.length - 1)].label} <ArrowRight size={14} />
+            {t("detail.next", { step: t(`detail.steps.${STEPS[Math.min(stepIndex + 1, STEPS.length - 1)].key}`) })} <ArrowRight size={14} />
           </button>
         </div>
       </div>
@@ -375,7 +379,7 @@ export default function MyRfpDetailPage() {
           <div className="mb-5">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <h1 className="text-lg font-bold truncate">{rfp?.title || "RFP"}</h1>
+                <h1 className="text-lg font-bold truncate">{rfp?.title || t("detail.rfpFallback")}</h1>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {filledSlots}/{totalSlots} slots · <span className="font-medium text-slate-200">{rfp?.status}</span>
                 </p>
@@ -384,7 +388,7 @@ export default function MyRfpDetailPage() {
                 size="sm"
                 onClick={() => generateMutation.mutate()}
                 disabled={generateMutation.isPending || !interviewReady}
-                title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "10 of 14 total"}`}
+                title={interviewReady ? undefined : t("detail.needCriticalSlots", { slots: missingCritical.join(", ") || t("detail.defaultCriticalSlots") })}
                 className="bg-gradient-to-r from-cyan-500 to-violet-600 flex-shrink-0"
                 data-testid="button-generate-rfp"
               >
@@ -397,25 +401,25 @@ export default function MyRfpDetailPage() {
                 <div key={s.key} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= stepIndex ? "bg-gradient-to-r from-cyan-500 to-violet-600" : "bg-slate-800"}`} />
               ))}
             </div>
-            <p className="text-xs text-slate-500 mt-2">Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex].label}</p>
+            <p className="text-xs text-slate-500 mt-2">{t("detail.mobileStepProgress", { current: stepIndex + 1, total: STEPS.length, step: t(`detail.steps.${STEPS[stepIndex].key}`) })}</p>
           </div>
         ) : (
           <div className="flex items-start justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold">{rfp?.title || "RFP"}</h1>
+              <h1 className="text-2xl font-bold">{rfp?.title || t("detail.rfpFallback")}</h1>
               <p className="text-slate-400 text-sm mt-1">
-                {filledSlots}/{totalSlots} interview slots captured · Status: <span className="font-medium text-slate-200">{rfp?.status}</span>
+                {t("detail.interview.slotsCaptured", { filled: filledSlots, total: totalSlots })} · {t("detail.statusLabel")} <span className="font-medium text-slate-200">{rfp?.status ? t(`detail.status.${rfp.status}`, { defaultValue: rfp.status }) : t("detail.loading")}</span>
               </p>
             </div>
             <Button
               onClick={() => generateMutation.mutate()}
               disabled={generateMutation.isPending || !interviewReady}
-              title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "10 of 14 total"}`}
+              title={interviewReady ? undefined : t("detail.needCriticalSlots", { slots: missingCritical.join(", ") || t("detail.defaultCriticalSlots") })}
               className="bg-gradient-to-r from-cyan-500 to-violet-600"
               data-testid="button-generate-rfp"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              {generateMutation.isPending ? "Generating…" : rfp?.status === "ready" ? "Regenerate RFP" : "Generate RFP"}
+              {generateMutation.isPending ? t("detail.generating") : rfp?.status === "ready" ? t("detail.regenerateRfp") : t("detail.generateRfp")}
             </Button>
           </div>
         )}
@@ -423,12 +427,12 @@ export default function MyRfpDetailPage() {
         <Tabs value={tab} onValueChange={setTab}>
           {!mobileMode && (
             <TabsList className="bg-slate-900 border border-white/5">
-              <TabsTrigger value="interview" data-testid="tab-interview">Interview</TabsTrigger>
-              <TabsTrigger value="requirements" data-testid="tab-requirements">Requirements ({requirements.length})</TabsTrigger>
-              <TabsTrigger value="preview" data-testid="tab-preview">Preview</TabsTrigger>
-              <TabsTrigger value="shortlist" data-testid="tab-shortlist">Shortlist ({shortlist.length})</TabsTrigger>
-              <TabsTrigger value="outreach" data-testid="tab-outreach">Outreach</TabsTrigger>
-              <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
+              <TabsTrigger value="interview" data-testid="tab-interview">{t("detail.steps.interview")}</TabsTrigger>
+              <TabsTrigger value="requirements" data-testid="tab-requirements">{t("detail.steps.requirements")} ({requirements.length})</TabsTrigger>
+              <TabsTrigger value="preview" data-testid="tab-preview">{t("detail.steps.preview")}</TabsTrigger>
+              <TabsTrigger value="shortlist" data-testid="tab-shortlist">{t("detail.steps.shortlist")} ({shortlist.length})</TabsTrigger>
+              <TabsTrigger value="outreach" data-testid="tab-outreach">{t("detail.steps.outreach")}</TabsTrigger>
+              <TabsTrigger value="export" data-testid="tab-export">{t("detail.steps.export")}</TabsTrigger>
             </TabsList>
           )}
 
@@ -447,7 +451,7 @@ export default function MyRfpDetailPage() {
                   {interviewComplete && (
                     <div className="flex justify-center">
                       <div className="text-xs text-emerald-300 inline-flex items-center gap-2 bg-emerald-500/10 px-3 py-2 rounded-full">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Interview complete — click Generate RFP above.
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("detail.interview.completeDesktop")}
                       </div>
                     </div>
                   )}
@@ -457,7 +461,7 @@ export default function MyRfpDetailPage() {
                   <Input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Type your answer…"
+                    placeholder={t("detail.interview.answerPlaceholder")}
                     onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) sendMutation.mutate(draft); }}
                     className="bg-slate-800 border-white/10 text-slate-100 placeholder:text-slate-500"
                     data-testid="input-interview-message"
@@ -466,6 +470,7 @@ export default function MyRfpDetailPage() {
                     onClick={() => draft.trim() && sendMutation.mutate(draft)}
                     disabled={!draft.trim() || sendMutation.isPending}
                     className="bg-gradient-to-r from-cyan-500 to-violet-600"
+                aria-label={t("detail.interview.send")}
                     data-testid="button-send-message"
                   >
                     {sendMutation.isPending ? <Clock className="w-4 h-4 animate-pulse" /> : <Send className="w-4 h-4" />}
@@ -478,10 +483,10 @@ export default function MyRfpDetailPage() {
           {/* ── Requirements ──────────────────────────────────────── */}
           <TabsContent value="requirements">
             <Card className="bg-slate-900 border-white/5 text-slate-100">
-              <CardHeader><CardTitle className="text-base">Requirements</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("detail.steps.requirements")}</CardTitle></CardHeader>
               <CardContent>
                 {requirements.length === 0 ? (
-                  <p className="text-sm text-slate-400">Requirements will be seeded automatically the first time you Generate the RFP, based on this market's feature catalogue and your must-haves.</p>
+                  <p className="text-sm text-slate-400">{t("detail.requirements.seededDescription")}</p>
                 ) : (
                   <div className="space-y-2">
                     {requirements.map(r => {
@@ -489,9 +494,9 @@ export default function MyRfpDetailPage() {
                         <Select value={r.priority} onValueChange={(v) => updateReqMutation.mutate({ reqId: r.id, body: { priority: v } })}>
                           <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                            <SelectItem value="must">Must</SelectItem>
-                            <SelectItem value="should">Should</SelectItem>
-                            <SelectItem value="nice">Nice</SelectItem>
+                            <SelectItem value="must">{t("detail.requirements.priority.must")}</SelectItem>
+                            <SelectItem value="should">{t("detail.requirements.priority.should")}</SelectItem>
+                            <SelectItem value="nice">{t("detail.requirements.priority.nice")}</SelectItem>
                           </SelectContent>
                         </Select>
                       );
@@ -499,7 +504,7 @@ export default function MyRfpDetailPage() {
                         <Select value={String(r.weight)} onValueChange={(v) => updateReqMutation.mutate({ reqId: r.id, body: { weight: Number(v) } })}>
                           <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                            {[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>Weight {n}</SelectItem>)}
+                            {[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{t("detail.requirements.weight", { weight: n })}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       );
@@ -510,7 +515,7 @@ export default function MyRfpDetailPage() {
                               <div className="text-sm font-medium">{r.label}</div>
                               {r.description && <div className="text-xs text-slate-400 mt-0.5">{r.description}</div>}
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs flex-shrink-0 text-slate-100 hover:text-white">×</Button>
+                            <Button variant="ghost" size="sm" aria-label={t("detail.requirements.deleteAria", { label: r.label })} onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs flex-shrink-0 text-slate-100 hover:text-white">×</Button>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="flex-1">{prioritySelect}</div>
@@ -528,7 +533,7 @@ export default function MyRfpDetailPage() {
                           <div className="col-span-2">{weightSelect}</div>
                           <div className="col-span-2 text-xs text-slate-400">{r.kind}</div>
                           <div className="col-span-1 text-right">
-                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs text-slate-100 hover:text-white">×</Button>
+                            <Button variant="ghost" size="sm" aria-label={t("detail.requirements.deleteAria", { label: r.label })} onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs text-slate-100 hover:text-white">×</Button>
                           </div>
                         </div>
                       );
@@ -544,7 +549,7 @@ export default function MyRfpDetailPage() {
             {sections.length === 0 ? (
               <Card className="bg-slate-900 border-white/5 text-slate-100">
                 <CardContent className="p-6">
-                  <p className="text-sm text-slate-400">Click <span className="font-medium">Generate RFP</span> above to produce the document.</p>
+                  <p className="text-sm text-slate-400">{t("detail.preview.generatePrompt")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -562,12 +567,12 @@ export default function MyRfpDetailPage() {
                         data-testid={`button-regenerate-${s.sectionKey}`}
                       >
                         <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                        {regenSectionMutation.isPending && regenSectionMutation.variables === s.sectionKey ? "Regenerating…" : "Regenerate"}
+                        {regenSectionMutation.isPending && regenSectionMutation.variables === s.sectionKey ? t("detail.regenerating") : t("detail.regenerate")}
                       </Button>
                     </CardHeader>
                     <CardContent>
                       <div className="prose prose-invert prose-sm max-w-none prose-headings:text-slate-100 prose-p:text-slate-200 prose-li:text-slate-200 prose-strong:text-slate-100 prose-table:text-slate-200 prose-th:text-slate-100 prose-td:border-white/10 prose-th:border-white/10">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.body || "_(empty)_"}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.body || `_${t("detail.preview.emptySection")}_`}</ReactMarkdown>
                       </div>
                     </CardContent>
                   </Card>
@@ -579,10 +584,10 @@ export default function MyRfpDetailPage() {
           {/* ── Shortlist ─────────────────────────────────────────── */}
           <TabsContent value="shortlist">
             <Card className="bg-slate-900 border-white/5 text-slate-100">
-              <CardHeader><CardTitle className="text-base">Vendor Shortlist (deterministic fit)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("detail.shortlist.desktopHeading")}</CardTitle></CardHeader>
               <CardContent>
                 {shortlist.length === 0 ? (
-                  <p className="text-sm text-slate-400">No shortlist yet — generate the RFP to score vendors.</p>
+                  <p className="text-sm text-slate-400">{t("detail.shortlist.desktopEmpty")}</p>
                 ) : (
                   <div className="space-y-2">
                     {shortlist.map((s, i) => (
@@ -600,7 +605,7 @@ export default function MyRfpDetailPage() {
                           className={s.isIncluded ? "bg-gradient-to-r from-cyan-500 to-violet-600" : "bg-slate-800 border-white/10 text-slate-100"}
                           data-testid={`button-toggle-shortlist-${s.id}`}
                         >
-                          {s.isIncluded ? "Included" : "Excluded"}
+                          {s.isIncluded ? t("detail.shortlist.included") : t("detail.shortlist.excluded")}
                         </Button>
                       </div>
                     ))}
@@ -613,7 +618,7 @@ export default function MyRfpDetailPage() {
           {/* ── Outreach ──────────────────────────────────────────── */}
           <TabsContent value="outreach">
             <Card className="bg-slate-900 border-white/5 text-slate-100">
-              <CardHeader><CardTitle className="text-base">Vendor Outreach Tracker</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("detail.outreach.desktopHeading")}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {shortlist.filter(s => s.isIncluded).map(s => {
@@ -637,33 +642,33 @@ export default function MyRfpDetailPage() {
                           <div className="col-span-3 text-sm font-medium">
                             {s.vendor?.name}
                             <div className="text-[10px] text-slate-400 mt-0.5 space-x-2">
-                              {fmtDate(row?.invitedAt) && <span data-testid={`outreach-invited-${s.vendorId}`}>Sent {fmtDate(row?.invitedAt)}</span>}
-                              {fmtDate(row?.respondedAt) && <span data-testid={`outreach-responded-${s.vendorId}`}>Replied {fmtDate(row?.respondedAt)}</span>}
+                              {fmtDate(row?.invitedAt) && <span data-testid={`outreach-invited-${s.vendorId}`}>{t("detail.outreach.sent", { date: fmtDate(row?.invitedAt) })}</span>}
+                              {fmtDate(row?.respondedAt) && <span data-testid={`outreach-responded-${s.vendorId}`}>{t("detail.outreach.replied", { date: fmtDate(row?.respondedAt) })}</span>}
                             </div>
                           </div>
                           <div className="col-span-2">
                             <Select value={row?.status || "not_started"} onValueChange={(v) => upsertOutreachMutation.mutate(base({ status: v }))}>
                               <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                                <SelectItem value="not_started">Draft</SelectItem>
-                                <SelectItem value="invited">Sent</SelectItem>
-                                <SelectItem value="declined">Declined</SelectItem>
-                                <SelectItem value="responded">Responded</SelectItem>
-                                <SelectItem value="awarded">Awarded</SelectItem>
+                                <SelectItem value="not_started">{t("detail.outreach.status.draft")}</SelectItem>
+                                <SelectItem value="invited">{t("detail.outreach.status.sent")}</SelectItem>
+                                <SelectItem value="declined">{t("detail.outreach.status.declined")}</SelectItem>
+                                <SelectItem value="responded">{t("detail.outreach.status.responded")}</SelectItem>
+                                <SelectItem value="awarded">{t("detail.outreach.status.awarded")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
-                          <Input key={`cn-${row?.id || "new"}`} placeholder="Contact name" defaultValue={row?.contactName || ""}
+                          <Input key={`cn-${row?.id || "new"}`} placeholder={t("detail.outreach.contactName")} defaultValue={row?.contactName || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ contactName: e.target.value }))}
                             className="col-span-3 bg-slate-900 border-white/10 h-8 text-xs"
                             data-testid={`input-contact-name-${s.vendorId}`} />
-                          <Input key={`ce-${row?.id || "new"}`} placeholder="Email" defaultValue={row?.contactEmail || ""}
+                          <Input key={`ce-${row?.id || "new"}`} placeholder={t("detail.outreach.email")} defaultValue={row?.contactEmail || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ contactEmail: e.target.value }))}
                             className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
                             data-testid={`input-contact-email-${s.vendorId}`} />
                         </div>
                         <div className={mobileMode ? "grid grid-cols-1 gap-2" : "grid grid-cols-12 gap-3 items-start"}>
-                          <Textarea key={`rt-${row?.id || "new"}`} placeholder="Paste vendor's response text here…"
+                          <Textarea key={`rt-${row?.id || "new"}`} placeholder={t("detail.outreach.responsePlaceholderDesktop")}
                             defaultValue={row?.responseText || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))}
                             className="col-span-8 bg-slate-900 border-white/10 text-xs min-h-[60px]"
@@ -680,19 +685,19 @@ export default function MyRfpDetailPage() {
                                 const url = result?.successful?.[0]?.uploadURL;
                                 if (!url) return;
                                 upsertOutreachMutation.mutate(base({ responseFileUrl: url }));
-                                toast({ title: "Response file uploaded" });
+                                toast({ title: t("detail.toast.responseFileUploaded") });
                               }}
                               buttonClassName="w-full bg-slate-900 border border-white/10 hover:bg-slate-800 h-8 text-xs px-2"
                             >
                               <span className="flex items-center gap-1 text-xs" data-testid={`button-upload-response-${s.vendorId}`}>
-                                <Upload className="w-3 h-3" /> Upload response file
+                                <Upload className="w-3 h-3" /> {t("detail.outreach.uploadResponse")}
                               </span>
                             </ObjectUploader>
                             {row?.responseFileUrl && (
                               <a href={row.responseFileUrl} target="_blank" rel="noreferrer"
                                 className="block text-[10px] text-cyan-400 underline truncate"
                                 data-testid={`link-response-file-${s.vendorId}`}>
-                                View uploaded file
+                                {t("detail.outreach.viewUploadedFile")}
                               </a>
                             )}
                           </div>
@@ -701,12 +706,12 @@ export default function MyRfpDetailPage() {
                     );
                   })}
                   {!shortlist.some(s => s.isIncluded) && (
-                    <p className="text-sm text-slate-400">Include vendors in the Shortlist tab to track outreach.</p>
+                    <p className="text-sm text-slate-400">{t("detail.outreach.desktopEmpty")}</p>
                   )}
                   {/* Compare-view: side-by-side response snippets */}
                   {outreach.some(o => o.responseText || o.responseFileUrl) && (
                     <div className="mt-6 pt-4 border-t border-white/5">
-                      <div className="text-sm font-medium mb-2">Response comparison</div>
+                      <div className="text-sm font-medium mb-2">{t("detail.outreach.responseComparison")}</div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {outreach.filter(o => o.responseText || o.responseFileUrl).map(o => (
                           <div key={o.id} className="p-3 rounded border border-white/5 bg-slate-900/70" data-testid={`compare-card-${o.vendorId}`}>
@@ -730,10 +735,10 @@ export default function MyRfpDetailPage() {
           {/* ── Export ───────────────────────────────────────────── */}
           <TabsContent value="export">
             <Card className="bg-slate-900 border-white/5 text-slate-100">
-              <CardHeader><CardTitle className="text-base">Download</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("detail.export.downloadHeading")}</CardTitle></CardHeader>
               <CardContent>
                 {!rfp?.generatedMarkdown ? (
-                  <p className="text-sm text-slate-400">Generate the RFP first to enable exports.</p>
+                  <p className="text-sm text-slate-400">{t("detail.export.empty")}</p>
                 ) : (
                   <div className="flex flex-wrap gap-3">
                     <a href={`/api/me/rfps/${id}/export/pdf`} target="_blank" rel="noreferrer" data-testid="link-export-pdf">
@@ -763,7 +768,7 @@ export default function MyRfpDetailPage() {
             className="flex-1 bg-slate-800 border-white/10 hover:bg-slate-700 text-slate-100"
             data-testid="button-wizard-back"
           >
-            Back
+            {t("detail.back")}
           </Button>
           <Button
             onClick={() => goToStep(stepIndex + 1)}
@@ -771,7 +776,7 @@ export default function MyRfpDetailPage() {
             className="flex-1 bg-gradient-to-r from-cyan-500 to-violet-600"
             data-testid="button-wizard-next"
           >
-            Next: {STEPS[Math.min(stepIndex + 1, STEPS.length - 1)].label}
+            {t("detail.next", { step: t(`detail.steps.${STEPS[Math.min(stepIndex + 1, STEPS.length - 1)].key}`) })}
           </Button>
         </div>
       )}

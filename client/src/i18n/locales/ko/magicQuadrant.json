@@ -1,0 +1,134 @@
+{
+  "chart": {
+    "axes": {
+      "execution": "제품 전략 및 실행 →",
+      "executionCompact": "실행 →",
+      "executionHeading": "제품 전략 및 실행",
+      "viability": "벤더 생존 가능성 →",
+      "viabilityCompact": "생존 가능성 →",
+      "viabilityHeading": "벤더 생존 가능성"
+    },
+    "poweredBy": "itmap.ai 제공",
+    "vendorPositioning": "벤더 포지셔닝",
+    "fixedScoreDomain": "고정 점수 도메인 · 0–100",
+    "whatIfTooltip": "점은 슬라이더 가중치에 따라 위치합니다. 슬라이더를 재설정하여 게시된 차트를 확인하세요.",
+    "whatIfWeights": "가상 시나리오 가중치",
+    "exportTooltip": "차트를 PDF로 내보내기",
+    "exporting": "내보내는 중…",
+    "exportPdf": "PDF 내보내기",
+    "mobileZoomHint": "확대하려면 핀치 또는 컨트롤 사용 · 드래그하여 이동",
+    "zoomOut": "축소",
+    "zoomIn": "확대",
+    "resetChartToFit": "차트를 맞추기 위해 재설정",
+    "fit": "맞추기",
+    "mobileExecutionAxis": "실행 / 제품 전략"
+  },
+  "quadrants": {
+    "custodians": "관리자",
+    "contenders": "경쟁자",
+    "leaders": "리더",
+    "emergingCompact": "신흥",
+    "emergingPlayers": "신흥 플레이어",
+    "emerging_players": "신흥 플레이어",
+    "specialists": "전문가",
+    "catalysts": "촉매제"
+  },
+  "evidence": {
+    "label": "증거",
+    "latestNews": "최신 뉴스 이벤트",
+    "empty": "이 벤더에 대한 최근 뉴스 이벤트가 없습니다.",
+    "viewVendorDetails": "전체 벤더 세부정보 보기 →"
+  },
+  "timeline": {
+    "now": "현재",
+    "current": "현재",
+    "historicalView": "역사적 보기",
+    "weeksAgoShort": "{{weeks}}주 전",
+    "weekAgo": "{{weeks}}주 전",
+    "weeksAgo": "{{weeks}}주 전",
+    "ariaLabel": "지난 6개월 동안의 역사적 보기 타임라인"
+  },
+  "criteriaWeights": {
+    "title": "기준 가중치",
+    "mobileTitle": "기준 가중치",
+    "whatIfDescription": "가상 시나리오 보기를 표시합니다. 게시된 차트는 이 시장의 저장된 가중치를 사용합니다.",
+    "description": "슬라이더를 이동하여 가상 시나리오 보기를 만드세요. 게시된 차트는 이 시장의 저장된 가중치를 사용합니다.",
+    "reset": "게시된 상태로 재설정",
+    "hide": "숨기기",
+    "show": "보이기",
+    "axisPersistedWeight": "{{category}} 축 · 지속된 가중치"
+  },
+  "vendorDetails": {
+    "tabs": {
+      "overview": "개요",
+      "scores": "점수",
+      "notes": "노트"
+    },
+    "financialPerformance": "재무 성과",
+    "revenue": "수익:",
+    "notAvailable": "N/A",
+    "website": "웹사이트:",
+    "quadrantPosition": "사분면 위치",
+    "executionComposite": "실행 종합:",
+    "viabilityComposite": "생존 가능성 종합:",
+    "box": "박스:",
+    "chartPosition": "차트 위치:",
+    "whatIfPosition": "게시된 가중치가 아닌 가상 시나리오 슬라이더 가중치로 계산됨.",
+    "individualCriteriaScores": "개별 기준 점수",
+    "productCapabilitiesAutoCalculated": "제품 기능 (자동 계산됨)",
+    "criteriaNotes": "기준 노트",
+    "productCapabilitiesScore": "제품 기능 - 자동 계산됨 (점수: {{score}}/10)",
+    "productCapabilitiesNotesPlaceholder": "이 벤더의 제품 기능에 대한 노트를 추가하세요...",
+    "criterionScore": "{{criterion}} (점수: {{score}}/10)",
+    "criterionNotesPlaceholder": "{{criterion}}에 대한 노트를 추가하세요...",
+    "saving": "저장 중...",
+    "saveNotes": "노트 저장"
+  },
+  "compare": {
+    "title": "공급업체 비교",
+    "criteria": "기준",
+    "notes": "메모",
+    "viewNotes": "메모 보기",
+    "hideNotes": "메모 숨기기",
+    "viewDetailedReport": "상세 보고서 보기",
+    "selectAtLeastTwo": "점수를 비교하려면 공급업체를 2개 이상 선택하세요",
+    "productNameUnavailable": "제품명을 사용할 수 없습니다",
+    "noStoredCommentary": "이 점수에 대해 저장된 코멘트가 없습니다.",
+    "mobileTitle": "제품 비교",
+    "mobileScoresTitle": "점수 및 코멘트",
+    "mobileSelectedCount": "{{count}}개 선택됨 · 최대 3개",
+    "mobileSelectPrompt": "최대 3개 제품을 선택하면 아래에 점수와 코멘트가 표시됩니다.",
+    "mobileMaxSelected": "최대 3개 제품이 선택되었습니다. 하나를 해제하여 교체하세요.",
+    "mobileSelectHint": "최대 3개 제품을 선택하세요. 선택한 각 제품은 아래에 나열됩니다.",
+    "mobileViewNotes": "메모 보기",
+    "vendor": "공급업체",
+    "score": "점수",
+    "product": "제품"
+  },
+  "reportModal": {
+    "title": "벤더 평가 보고서 생성",
+    "description": "벤더 평가 PDF 보고서에 포함할 벤더를 선택하세요"
+  },
+  "toasts": {
+    "notesSaved": {
+      "title": "노트 저장됨",
+      "description": "노트가 성공적으로 저장되었습니다."
+    },
+    "saveNotesError": {
+      "title": "오류",
+      "description": "노트를 저장하지 못했습니다. 다시 시도하세요."
+    },
+    "reportGenerated": {
+      "title": "성공",
+      "description": "벤더 평가 보고서가 성공적으로 생성되었습니다"
+    },
+    "reportError": {
+      "title": "오류",
+      "description": "보고서 생성 실패"
+    },
+    "exportError": {
+      "title": "내보내기 실패",
+      "description": "PDF를 생성할 수 없습니다. 다시 시도하세요."
+    }
+  }
+}

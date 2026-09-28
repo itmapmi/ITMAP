@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Shield, FileText, CheckCircle2, XCircle, ArrowRight, Mail } from "lucide-react";
@@ -10,63 +11,44 @@ const fadeUp = {
   transition: { duration: 0.6, ease: [0.25, 0.25, 0, 1] as any },
 };
 
-const REQUIRES_LICENSE = [
-  "Charts, diagrams, matrices, market maps or other graphics created by ITMAP",
-  "Research content: report excerpts, key takeaways, ratings, quotes, summaries or narrative text",
-  "Data points or findings unique to ITMAP (even if paraphrased) when used to endorse products or services",
-  "Translations of any ITMAP content",
-  "Thumbnails or screengrabs of our graphics",
-  "Use of ITMAP logos, product marks or badges",
-];
-
-const NO_LICENSE = [
-  "Linking to public ITMAP pages using article or report titles",
-  "Short, purely editorial citations in neutral journalistic contexts (vendors must still obtain a license)",
-];
-
 const STEPS = [
   {
     num: "01",
-    title: "Submit a request",
-    desc: "Email support@itmap.ai with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
-    cta: { label: "Email us", href: "mailto:support@itmap.ai" },
+    key: "submitRequest",
+    cta: true,
   },
   {
     num: "02",
-    title: "We scope and quote",
-    desc: "Fees depend on asset type, distribution geography, channels, duration and exclusivity. We'll respond within 2 business days.",
-    cta: null,
+    key: "scopeAndQuote",
+    cta: false,
   },
   {
     num: "03",
-    title: "Agreement & invoice",
-    desc: "We issue a short reprint licence agreement. Once executed and paid, you'll receive approved files and attribution copy.",
-    cta: null,
+    key: "agreementInvoice",
+    cta: false,
   },
   {
     num: "04",
-    title: "Implement & attribute",
-    desc: "Publish using our supplied assets, attribution line and optional Licensed Reprint badge.",
-    cta: null,
+    key: "implementAttribute",
+    cta: false,
   },
   {
     num: "05",
-    title: "Compliance review",
-    desc: "For high-visibility placements, we can pre-review to ensure brand and research integrity before go-live.",
-    cta: null,
+    key: "complianceReview",
+    cta: false,
   },
   {
     num: "06",
-    title: "Renew or retire",
-    desc: "Licences expire at the end of the agreed term. You may renew or remove the content.",
-    cta: null,
+    key: "renewOrRetire",
+    cta: false,
   },
 ];
 
 export default function Licensing() {
+  const { t } = useTranslation("licensing");
   useSeo({
-    title: "Licensing & Reprints — ITMAP",
-    description: "License ITMAP vendor evaluations, market reports, and forecasts for internal use, marketing, sales enablement, or analyst-style reprint rights.",
+    title: t("seo.title"),
+    description: t("seo.description"),
     path: "/licensing",
   });
   return (
@@ -81,15 +63,15 @@ export default function Licensing() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <Shield className="h-4 w-4" /> Licensing & Reprints
+              <Shield className="h-4 w-4" /> {t("hero.eyebrow")}
             </div>
             <h1 className="text-5xl sm:text-6xl font-bold mb-6 leading-tight">
-              Third-party use of
+              {t("hero.titleLine1")}
               <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">ITMAP research</span>
+              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">{t("hero.titleLine2")}</span>
             </h1>
             <p className="text-xl text-slate-400 leading-relaxed max-w-2xl">
-              Our research and graphics are protected intellectual property. Here's what requires a licence and how to get one.
+              {t("hero.subtitle")}
             </p>
           </motion.div>
         </div>
@@ -102,13 +84,13 @@ export default function Licensing() {
             <div className="p-2 bg-red-400/10 rounded-lg">
               <FileText className="h-5 w-5 text-red-400" />
             </div>
-            <h2 className="text-2xl font-bold text-white">What requires a licence?</h2>
+            <h2 className="text-2xl font-bold text-white">{t("requirements.requiredTitle")}</h2>
           </div>
           <p className="text-slate-400 mb-6 leading-relaxed">
-            The following always require a ITMAP reprint licence when used by vendors or for promotional / marketing purposes:
+            {t("requirements.requiredDescription")}
           </p>
           <ul className="space-y-3">
-            {REQUIRES_LICENSE.map((item) => (
+            {(t("requirements.requiredItems", { returnObjects: true }) as string[]).map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
                 <span className="text-slate-300 leading-snug">{item}</span>
@@ -123,10 +105,10 @@ export default function Licensing() {
             <div className="p-2 bg-emerald-400/10 rounded-lg">
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             </div>
-            <h2 className="text-2xl font-bold text-white">What does not require a licence?</h2>
+            <h2 className="text-2xl font-bold text-white">{t("requirements.notRequiredTitle")}</h2>
           </div>
           <ul className="space-y-3">
-            {NO_LICENSE.map((item) => (
+            {(t("requirements.notRequiredItems", { returnObjects: true }) as string[]).map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
                 <span className="text-slate-300 leading-snug">{item}</span>
@@ -137,7 +119,7 @@ export default function Licensing() {
 
         {/* Process */}
         <motion.div {...fadeUp}>
-          <h2 className="text-3xl font-bold text-white mb-8">How the licensing process works</h2>
+          <h2 className="text-3xl font-bold text-white mb-8">{t("process.title")}</h2>
           <div className="space-y-4">
             {STEPS.map((step, i) => (
               <motion.div
@@ -152,14 +134,14 @@ export default function Licensing() {
                   <span className="text-sm font-bold text-cyan-400">{step.num}</span>
                 </div>
                 <div className="flex-grow">
-                  <h3 className="font-semibold text-white mb-2">{step.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{step.desc}</p>
-                  {step.cta && (
+                      <h3 className="font-semibold text-white mb-2">{t(`process.steps.${step.key}.title`)}</h3>
+                   <p className="text-slate-400 text-sm leading-relaxed">{t(`process.steps.${step.key}.description`)}</p>
+                   {step.cta && (
                     <a
-                      href={step.cta.href}
+                      href="mailto:support@itmap.ai"
                       className="inline-flex items-center gap-1.5 text-cyan-400 text-sm font-medium mt-3 hover:text-cyan-300 transition-colors"
                     >
-                      {step.cta.label} <ArrowRight className="h-3.5 w-3.5" />
+                      {t("process.emailUs")} <ArrowRight className="h-3.5 w-3.5" />
                     </a>
                   )}
                 </div>
@@ -173,11 +155,11 @@ export default function Licensing() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.06)_0%,transparent_70%)]" />
           <div className="relative">
             <Mail className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Questions about licensing?</h3>
-            <p className="text-slate-400 mb-6">Our team typically responds within 2 business days.</p>
+            <h3 className="text-xl font-bold text-white mb-2">{t("contact.title")}</h3>
+            <p className="text-slate-400 mb-6">{t("contact.description")}</p>
             <a href="mailto:support@itmap.ai">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                Contact support@itmap.ai <ArrowRight className="ml-2 h-4 w-4" />
+                {t("contact.button")} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
           </div>

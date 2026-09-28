@@ -1,0 +1,190 @@
+{
+  "list": {
+    "heading": "Construtor de RFP",
+    "subtitle": "Realize uma entrevista conversacional e produza um RFP específico para o cliente, baseado em dados reais de mercado.",
+    "newRfp": "Novo RFP",
+    "loading": "Carregando…",
+    "loadingProjects": "Carregando projetos…",
+    "market": "Mercado",
+    "updated": "Atualizado",
+    "open": "Abrir",
+    "cancel": "Cancelar",
+    "starting": "Iniciando…",
+    "startInterview": "Iniciar entrevista",
+    "empty": "Ainda não há RFPs. Inicie o primeiro a partir de qualquer página de mercado ou do botão acima.",
+    "startFirst": "Inicie seu primeiro RFP",
+    "deleteAria": "Excluir {{title}}",
+    "mobile": {
+      "kicker": "COMPRADOR / CONSTRUTOR DE RFP",
+      "heading": "Projetos",
+      "subtitle": "Transforme evidências em um resumo de aquisição específico para o cliente.",
+      "empty": "Ainda não há RFPs. Inicie seu primeiro projeto acima."
+    },
+    "limits": {
+      "daily": "Limite diário atingido ({{count}}/{{limit}} RFPs em 24 h). Tente novamente amanhã.",
+      "activeMobile": "{{count}} / {{limit}} RFPs ativos · complete ou exclua um antes de iniciar outro.",
+      "active": "Você tem {{count}}/{{limit}} RFPs ativos. Complete ou exclua um antes de iniciar outro."
+    },
+    "status": {
+      "draft": "rascunho",
+      "interviewing": "entrevistando",
+      "generating": "gerando",
+      "ready": "pronto"
+    },
+    "toast": {
+      "openAiKeyRequired": "Chave OpenAI necessária",
+      "openAiKeyDescription": "Adicione sua chave API OpenAI em Configurações → Chaves LLM para usar o Construtor de RFP.",
+      "couldNotStart": "Não foi possível iniciar o RFP",
+      "deleted": "RFP excluído"
+    },
+    "dialog": {
+      "title": "Iniciar um novo RFP",
+      "workingTitle": "Título provisório",
+      "titlePlaceholder": "Acme Corp — RFP de Segurança de Endpoint",
+      "market": "Mercado",
+      "pickMarket": "Escolha um mercado"
+    }
+  },
+  "detail": {
+    "activeRfp": "RFP ATIVO",
+    "rfpFallback": "RFP",
+    "loading": "carregando",
+    "slots": "{{filled}}/{{total}} vagas",
+    "slotsUpper": "{{filled}} / {{total}} VAGAS",
+    "statusLabel": "Status:",
+    "needCriticalSlots": "Necessita de vagas críticas: {{slots}}",
+    "defaultCriticalSlots": "10 de 14 no total",
+    "stepProgress": "Etapa {{current}} de {{total}}: {{step}}",
+    "mobileStepProgress": "Etapa {{current}} de {{total}} · {{step}}",
+    "steps": {
+      "interview": "Entrevista",
+      "requirements": "Requisitos",
+      "preview": "Pré-visualização",
+      "shortlist": "Lista de Seleção",
+      "outreach": "Contato",
+      "export": "Exportar"
+    },
+    "generating": "Gerando…",
+    "generate": "Gerar",
+    "generateRfp": "Gerar RFP",
+    "regenerate": "Regenerar",
+    "regenerateRfp": "Regenerar RFP",
+    "regenerating": "Regenerando…",
+    "vendorFallback": "Fornecedor",
+    "back": "Voltar",
+    "next": "Próximo: {{step}}",
+    "status": {
+      "draft": "rascunho",
+      "interviewing": "entrevistando",
+      "generating": "gerando",
+      "ready": "pronto"
+    },
+    "toast": {
+      "openAiKeyRequired": "Chave OpenAI necessária",
+      "openAiKeyDescription": "Adicione sua chave API OpenAI em Configurações → Chaves LLM.",
+      "couldNotSend": "Não foi possível enviar",
+      "generated": "RFP gerado",
+      "generatedDescription": "Pré-visualização, lista de seleção e exportações estão prontas.",
+      "generationFailed": "Falha na geração",
+      "sectionRegenerated": "Seção regenerada",
+      "regenerationFailed": "Falha na regeneração",
+      "responseFileUploaded": "Arquivo de resposta carregado"
+    },
+    "interview": {
+      "heading": "Entrevista de descoberta",
+      "you": "VOCÊ",
+      "analyst": "ANALISTA ITMAP",
+      "thinking": "Pensando…",
+      "complete": "Entrevista completa · pronta para gerar",
+      "inProgress": "Entrevista em andamento · {{count}} vagas críticas restantes",
+      "answerPlaceholder": "Digite sua resposta…",
+      "send": "Enviar",
+      "unavailable": "Gerar RFP está indisponível até que todas as vagas críticas sejam capturadas.",
+      "completeDesktop": "Entrevista completa — clique em Gerar RFP acima.",
+      "slotsCaptured": "{{filled}}/{{total}} vagas de entrevista capturadas"
+    },
+    "requirements": {
+      "heading": "Requisitos",
+      "subtitle": "Gerado a partir de sua entrevista e catálogo de mercado.",
+      "empty": "Gere o RFP para iniciar os requisitos ponderados.",
+      "seededDescription": "Os requisitos serão iniciados automaticamente na primeira vez que você gerar o RFP, com base no catálogo de recursos deste mercado e suas necessidades essenciais.",
+      "deleteAria": "Excluir {{label}}",
+      "kindRequirement": "Requisito de {{kind}}",
+      "priority": {
+        "must": "Deve",
+        "should": "Deveria",
+        "nice": "Bom"
+      },
+      "priorityLower": {
+        "must": "deve",
+        "should": "deveria",
+        "nice": "bom"
+      },
+      "weight": "Peso {{weight}}"
+    },
+    "preview": {
+      "heading": "Pré-visualização do documento",
+      "subtitle": "Markdown gerado · documento atual",
+      "empty": "Gere o RFP para produzir o documento.",
+      "emptySection": "(vazio)",
+      "generatePrompt": "Clique em Gerar RFP acima para produzir o documento."
+    },
+    "shortlist": {
+      "heading": "Lista de seleção de fornecedores",
+      "subtitle": "Ajuste determinístico com base nos seus requisitos ponderados.",
+      "empty": "Gere o RFP para pontuar fornecedores.",
+      "rank": "CLASSIFICAÇÃO #{{rank}}",
+      "included": "Incluído",
+      "excluded": "Excluído",
+      "desktopHeading": "Lista de Seleção de Fornecedores (ajuste determinístico)",
+      "desktopEmpty": "Ainda não há lista de seleção — gere o RFP para pontuar fornecedores."
+    },
+    "outreach": {
+      "heading": "Rastreador de contato",
+      "subtitle": "Capture detalhes de contato e respostas dos fornecedores.",
+      "status": {
+        "draft": "Rascunho",
+        "not_started": "Rascunho",
+        "sent": "Enviado",
+        "invited": "Enviado",
+        "declined": "Recusado",
+        "responded": "Respondido",
+        "awarded": "Concedido"
+      },
+      "badge": {
+        "draft": "rascunho",
+        "not_started": "não iniciado",
+        "sent": "enviado",
+        "invited": "enviado",
+        "declined": "recusado",
+        "responded": "respondido",
+        "awarded": "concedido"
+      },
+      "sent": "Enviado {{date}}",
+      "replied": "· Respondido {{date}}",
+      "contactName": "Nome do contato",
+      "contactEmail": "Email do contato",
+      "email": "Email",
+      "notesPlaceholder": "Notas de contato…",
+      "responsePlaceholder": "Cole o texto da resposta do fornecedor aqui…",
+      "responsePlaceholderDesktop": "Cole o texto da resposta do fornecedor aqui…",
+      "uploadResponseLimit": "Carregar arquivo de resposta · um arquivo, até 25MB",
+      "uploadResponse": "Carregar arquivo de resposta",
+      "viewUploadedFile": "Ver arquivo carregado",
+      "empty": "Inclua fornecedores na etapa de Lista de Seleção para rastrear o contato.",
+      "desktopHeading": "Rastreador de Contato de Fornecedores",
+      "desktopEmpty": "Inclua fornecedores na aba de Lista de Seleção para rastrear o contato.",
+      "responseComparison": "Comparação de respostas"
+    },
+    "export": {
+      "heading": "Exportar RFP",
+      "subtitle": "Baixe o documento gerado no formato de sua preferência.",
+      "documentReady": "DOCUMENTO PRONTO",
+      "documentSummary": "Markdown gerado disponível · {{sections}} seções · {{requirements}} requisitos",
+      "downloadFormat": "Baixar {{format}}",
+      "generatedFromCurrent": "Gerado a partir do RFP atual",
+      "empty": "Gere o RFP primeiro para habilitar exportações.",
+      "downloadHeading": "Baixar"
+    }
+  }
+}

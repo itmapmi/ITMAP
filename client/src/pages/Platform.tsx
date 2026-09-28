@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
@@ -20,94 +21,79 @@ const fadeUp = {
 
 const BUYER_TOOLS = [
   {
+    key: "vendorEvaluationMaps",
     icon: <Eye className="h-5 w-5 text-cyan-400" />,
-    title: "Vendor Evaluation Maps",
-    desc: "Interactive quadrant visualizations positioning vendors across execution and product strength.",
   },
   {
+    key: "featureSupportMatrix",
     icon: <Target className="h-5 w-5 text-violet-400" />,
-    title: "Feature Support Matrix",
-    desc: "Side-by-side comparison across hundreds of product capabilities and dimensions.",
   },
   {
+    key: "newsIntelligenceFeed",
     icon: <Newspaper className="h-5 w-5 text-cyan-400" />,
-    title: "News & Intelligence Feed",
-    desc: "AI-scored news, funding, product launches, and market signals with impact ratings.",
   },
   {
+    key: "researchReports",
     icon: <FileText className="h-5 w-5 text-violet-400" />,
-    title: "Research Reports",
-    desc: "Deep-dive market and vendor reports, continuously updated and exportable as PDFs.",
   },
   {
+    key: "marketBuilder",
     icon: <LineChart className="h-5 w-5 text-cyan-400" />,
-    title: "Market Builder",
-    desc: "Define custom criteria and weights to generate a ranking tailored to your needs.",
   },
   {
+    key: "datasheets",
     icon: <Database className="h-5 w-5 text-violet-400" />,
-    title: "Datasheets",
-    desc: "Compare vendor datasheets, specifications, and feature claims in one place.",
   },
   {
+    key: "rfpBuilder",
     icon: <ClipboardList className="h-5 w-5 text-cyan-400" />,
-    title: "RFP Builder",
-    desc: "Generate RFPs from market data, scoring criteria, and vendor requirements.",
   },
   {
+    key: "forecastBuilder",
     icon: <TrendingUp className="h-5 w-5 text-violet-400" />,
-    title: "Forecast Builder",
-    desc: "Model market trajectories and forecast vendor positioning over time.",
   },
   {
+    key: "battleCards",
     icon: <MessageSquare className="h-5 w-5 text-cyan-400" />,
-    title: "Battle Cards",
-    desc: "Competitive positioning cards to compare vendors for internal decision-making.",
   },
   {
+    key: "cveIntelligence",
     icon: <Shield className="h-5 w-5 text-violet-400" />,
-    title: "CVE Intelligence",
-    desc: "Security vulnerability tracking and risk signals for evaluated vendors.",
   },
   {
+    key: "factReview",
     icon: <CheckCircle2 className="h-5 w-5 text-cyan-400" />,
-    title: "Fact Review",
-    desc: "Collaborate on flagging and verifying research facts with the ITMAP team.",
   },
   {
+    key: "aiChat",
     icon: <Sparkles className="h-5 w-5 text-violet-400" />,
-    title: "AI Chat",
-    desc: "Conversational assistant that answers questions about any market or vendor.",
   },
 ];
 
 const HOW_STEPS = [
   {
+    key: "continuousDataIngestion",
     icon: <Database className="h-5 w-5" />,
-    title: "Continuous Data Ingestion",
-    desc: "Our pipeline monitors thousands of public sources: vendor websites, press releases, GitHub repositories, SEC filings, job postings, patent databases and news feeds.",
   },
   {
+    key: "llmPoweredScoring",
     icon: <Brain className="h-5 w-5" />,
-    title: "LLM-Powered Scoring",
-    desc: "Large language models evaluate each data point against our 40+ dimension scoring rubric. Scores are weighted, validated and aggregated into vendor positions.",
   },
   {
+    key: "structuredOutput",
     icon: <GitBranch className="h-5 w-5" />,
-    title: "Structured Output",
-    desc: "Results are structured into a normalised data model covering scores, feature support flags, news impact events and narrative insights — all queryable by users.",
   },
   {
+    key: "expertReviewLayer",
     icon: <Search className="h-5 w-5" />,
-    title: "Expert Review Layer",
-    desc: "Our team of IT practitioners reviews model outputs for accuracy, applies domain corrections and ensures the research reflects real-world operational reality.",
   },
 ];
 
 export default function Platform() {
+  const { t } = useTranslation("platform");
   useSeo({
-    title: "ITMAP | AI-native vendor selection",
-    description: "Explore the ITMAP platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace.",
+    title: t("seo.title"),
+    description: t("seo.description"),
     path: "/platform",
   });
 
@@ -137,27 +123,27 @@ export default function Platform() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <Zap className="h-4 w-4" /> The Platform
+              <Zap className="h-4 w-4" /> {t("hero.eyebrow")}
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-8">
-              Intelligence infrastructure
+              {t("hero.titleLine1")}
               <br />
               <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">
-                built for buyers
+                {t("hero.titleLine2")}
               </span>
             </h1>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              Six deeply integrated capabilities — from vendor maps to custom evaluation frameworks — built around one principle: give enterprise buyers the truth about technology.
+              {t("hero.subtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/markets">
                 <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-10">
-                  Explore a Market <ArrowRight className="ml-2 h-4 w-4" />
+                  {t("hero.exploreMarket")} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/register">
                 <Button variant="outline" size="lg" className="border-white/15 text-white hover:bg-white/5 bg-transparent px-10">
-                  Get Free Access
+                  {t("hero.freeAccess")}
                 </Button>
               </Link>
             </div>
@@ -185,13 +171,13 @@ export default function Platform() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <motion.div {...fadeUp}>
               <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-6">
-                <div className="h-px w-8 bg-violet-400" /> METHODOLOGY
+                <div className="h-px w-8 bg-violet-400" /> {t("methodology.eyebrow")}
               </div>
               <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-                How we produce research you can trust
+                {t("methodology.title")}
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed">
-                Our methodology is designed to eliminate bias at every stage — from data ingestion through scoring to publication. Every decision in the pipeline is documented and auditable.
+                {t("methodology.description")}
               </p>
             </motion.div>
 
@@ -211,9 +197,9 @@ export default function Platform() {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-xs font-bold text-slate-600">0{i + 1}</span>
-                      <h4 className="font-semibold text-white">{step.title}</h4>
+                      <h4 className="font-semibold text-white">{t(`methodology.steps.${step.key}.title`)}</h4>
                     </div>
-                    <p className="text-slate-400 text-sm leading-relaxed">{step.desc}</p>
+                    <p className="text-slate-400 text-sm leading-relaxed">{t(`methodology.steps.${step.key}.description`)}</p>
                   </div>
                 </motion.div>
               ))}
@@ -227,10 +213,10 @@ export default function Platform() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-16">
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
-              <div className="h-px w-8 bg-cyan-400" /> VS TRADITIONAL ANALYSTS
+              <div className="h-px w-8 bg-cyan-400" /> {t("comparison.eyebrow")}
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-              The alternative to analyst-as-usual
+              {t("comparison.title")}
             </h2>
           </motion.div>
 
@@ -238,28 +224,20 @@ export default function Platform() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="text-left p-5 text-slate-500 text-sm font-medium w-1/3">Criteria</th>
-                  <th className="text-center p-5 text-slate-500 text-sm font-medium w-1/3 border-l border-white/5">Traditional Analysts</th>
+                  <th className="text-left p-5 text-slate-500 text-sm font-medium w-1/3">{t("comparison.criteria")}</th>
+                  <th className="text-center p-5 text-slate-500 text-sm font-medium w-1/3 border-l border-white/5">{t("comparison.traditionalAnalysts")}</th>
                   <th className="text-center p-5 text-sm font-medium w-1/3 border-l border-white/5 bg-gradient-to-r from-cyan-500/5 to-violet-500/5">
                     <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent font-semibold">ITMAP</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  ["Vendor influence", "Paid placements & sponsorships", "Zero — never"],
-                  ["Update frequency", "Quarterly or annual", "Continuous (daily)"],
-                  ["Source transparency", "Opaque methodology", "Full source disclosure"],
-                  ["Research depth", "Broad coverage, shallow data", "Deep scoring with drill-down"],
-                  ["Access cost", "Six figures / year", "Affordable tiered access"],
-                  ["Customisation", "None", "Custom market builder"],
-                  ["News impact tracking", "Manual, infrequent", "AI-scored, real-time"],
-                ].map(([criterion, traditional, spectio], i) => (
+                {["vendorInfluence", "updateFrequency", "sourceTransparency", "researchDepth", "accessCost", "customisation", "newsImpactTracking"].map((row, i) => (
                   <tr key={i} className="border-b border-white/5 last:border-0">
-                    <td className="p-5 text-slate-300 text-sm font-medium">{criterion}</td>
-                    <td className="p-5 text-slate-500 text-sm text-center border-l border-white/5">{traditional}</td>
+                    <td className="p-5 text-slate-300 text-sm font-medium">{t(`comparison.rows.${row}.criterion`)}</td>
+                    <td className="p-5 text-slate-500 text-sm text-center border-l border-white/5">{t(`comparison.rows.${row}.traditional`)}</td>
                     <td className="p-5 text-sm text-center border-l border-white/5 bg-gradient-to-r from-cyan-500/5 to-violet-500/5">
-                      <span className="text-cyan-400 font-medium">{spectio}</span>
+                      <span className="text-cyan-400 font-medium">{t(`comparison.rows.${row}.itmap`)}</span>
                     </td>
                   </tr>
                 ))}
@@ -274,20 +252,20 @@ export default function Platform() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-16">
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
-              <LayoutGrid className="h-4 w-4" /> INCLUDED FOR BUYERS
+              <LayoutGrid className="h-4 w-4" /> {t("buyerTools.eyebrow")}
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-              Every tool a Technology Buyer needs
+              {t("buyerTools.title")}
             </h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              All of these capabilities are unlocked for Technology Buyers and end users — no tiers, no paywalls, no vendor influence.
+              {t("buyerTools.description")}
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {BUYER_TOOLS.map((tool, i) => (
               <motion.div
-                key={tool.title}
+                key={tool.key}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -297,8 +275,8 @@ export default function Platform() {
                 <div className="p-2.5 bg-white/5 border border-white/5 rounded-xl w-fit mb-4">
                   {tool.icon}
                 </div>
-                <h3 className="text-base font-semibold text-white mb-2">{tool.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{tool.desc}</p>
+                <h3 className="text-base font-semibold text-white mb-2">{t(`buyerTools.tools.${tool.key}.title`)}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{t(`buyerTools.tools.${tool.key}.description`)}</p>
               </motion.div>
             ))}
           </div>
@@ -313,20 +291,20 @@ export default function Platform() {
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.07)_0%,transparent_70%)]" />
               <div className="relative">
                 <h2 className="text-4xl font-bold text-white mb-6">
-                  Experience it for yourself
+                  {t("cta.title")}
                 </h2>
                 <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-                  Free access to all markets, vendor maps and feature matrices. No credit card required.
+                  {t("cta.description")}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link href="/register">
                     <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-10">
-                      Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
+                      {t("cta.freeAccess")} <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="/markets">
                     <Button variant="outline" size="lg" className="border-white/15 text-white hover:bg-white/5 bg-transparent px-10">
-                      Browse Markets <ChevronRight className="ml-1 h-4 w-4" />
+                      {t("cta.browseMarkets")} <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   </Link>
                 </div>

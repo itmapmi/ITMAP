@@ -1,0 +1,51 @@
+{
+  "seo": {
+    "title": "Pricing — itmap.ai",
+    "description": "itmap.ai pricing for enterprise IT buyers and vendors. Technology Buyer access is free, Vendor access from $2,500/user/month. Contact sales for details."
+  },
+  "hero": {
+    "eyebrow": "Pricing",
+    "titleLine1": "Plans for buyers",
+    "titleLine2": "and vendors",
+    "subtitle": "Whether you're evaluating vendors or selling into enterprise IT, itmap.ai gives you the intelligence tools to move faster."
+  },
+  "plans": {
+    "endUser": {
+      "name": "Technology Buyer",
+      "audience": "For enterprise IT buyers evaluating vendors",
+      "price": "Free",
+      "unit": "",
+      "badge": "",
+      "features": [
+        "Access to All Markets and Reports",
+        "RFP Builder",
+        "Datasheets",
+        "Security Intelligence"
+      ]
+    },
+    "vendor": {
+      "name": "Vendor Access",
+      "audience": "For vendors selling into enterprise IT",
+      "price": "$2,500",
+      "unit": "/ user / month",
+      "badge": "For Vendors",
+      "features": [
+        "Access to All Markets and Reports",
+        "Lead Generator",
+        "Market Builder",
+        "Forecast Builder",
+        "Vendor Intelligence",
+        "Battle Cards",
+        "RFP Responder",
+        "Datasheets",
+        "Security Intelligence"
+      ]
+    }
+  },
+  "contactSales": "Contact Sales",
+  "cta": {
+    "heading": "Have questions about pricing?",
+    "body": "Reach out to our sales team — we'll help you find the right plan.",
+    "buttonPrefix": "Contact"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "seo": {
+    "title": "ITMAPに連絡 — ベンダーインテリジェンスチームと話す",
+    "description": "パートナーシップ、ライセンス、企業アクセス、またはメディアのお問い合わせについては、ITMAPにご連絡ください。"
+  },
+  "hero": {
+    "eyebrow": "お問い合わせ",
+    "titleLine1": "話しましょう",
+    "titleLine2": "インテリジェンス",
+    "subtitle": "プラットフォームの探索、ライセンスについての質問、または組織のベンダー選定の課題について話し合いたい場合は、ぜひご連絡ください。"
+  },
+  "form": {
+    "title": "メッセージを送信",
+    "responseTime": "通常、1営業日以内に返信いたします。",
+    "fields": {
+      "website": "ウェブサイト",
+      "firstName": "名",
+      "lastName": "姓",
+      "email": "勤務先メール",
+      "company": "会社",
+      "subject": "件名",
+      "message": "メッセージ"
+    },
+    "placeholders": {
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@company.com",
+      "company": "Acme Corp",
+      "subject": "プラットフォームの問い合わせ / ライセンス / リサーチ",
+      "message": "技術インテリジェンスのニーズや、どのようにお手伝いできるか教えてください..."
+    },
+    "sending": "送信中…",
+    "sendMessage": "メッセージを送信",
+    "privacyPrefix": "このメッセージを送信することにより、当社の",
+    "privacyPolicy": "プライバシーポリシー",
+    "success": {
+      "title": "メッセージが送信されました",
+      "description": "ありがとうございます。当チームは1営業日以内に返信いたします。"
+    },
+    "error": {
+      "title": "メッセージが送信されませんでした",
+      "description": "もう一度お試しいただくか、sales@itmap.aiにメールしてください。"
+    }
+  },
+  "details": {
+    "email": "メール",
+    "office": "オフィス",
+    "businessHours": "営業時間"
+  },
+  "partnership": {
+    "title": "パートナーシップをお考えですか？",
+    "description": "私たちはリサーチ会社、ITコンサルティング会社、調達プラットフォームと協力しています。ITMAPインテリジェンスをワークフローに統合することに興味がある場合は、ぜひお話ししましょう。",
+    "button": "パートナーシップを探る"
+  }
+}

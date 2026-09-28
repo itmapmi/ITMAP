@@ -2,14 +2,16 @@ import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useSearch } from "wouter";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { LEGAL_LAST_UPDATED, TERMS_OF_SERVICE_PATH } from "@shared/legal/primitives";
 import { TERMS_OF_SERVICE_META, TermsOfServiceBody } from "@shared/legal/terms-of-service";
 import { renderSpaLink } from "@/pages/privacy";
 
 export default function TermsPage() {
+  const { t } = useTranslation("legal");
   useSeo({
-    title: TERMS_OF_SERVICE_META.title,
-    description: TERMS_OF_SERVICE_META.description,
+    title: t("terms.seo.title", { defaultValue: TERMS_OF_SERVICE_META.title }),
+    description: t("terms.seo.description", { defaultValue: TERMS_OF_SERVICE_META.description }),
     path: TERMS_OF_SERVICE_PATH,
   });
 
@@ -38,15 +40,22 @@ export default function TermsPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
         <Link href={returnTo} className="inline-flex items-center text-sm text-cyan-400 hover:text-cyan-300 mb-8">
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to registration
+          {t("terms.shell.backToRegistration", { defaultValue: "Back to registration" })}
         </Link>
 
         <div className="bg-slate-900/80 border border-white/10 rounded-2xl shadow-2xl p-6 sm:p-10" data-testid="page-terms-of-service">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">{TERMS_OF_SERVICE_META.heading}</h1>
-          <p className="text-sm text-slate-400 mb-8">Last updated: {LEGAL_LAST_UPDATED}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+            {t("terms.shell.heading", { defaultValue: TERMS_OF_SERVICE_META.heading })}
+          </h1>
+          <p className="text-sm text-slate-400 mb-8">
+            {t("shell.lastUpdated", { defaultValue: "Last updated:" })} {LEGAL_LAST_UPDATED}
+          </p>
 
           <div className="max-w-none">
-            <TermsOfServiceBody renderLink={renderSpaLink} />
+            <TermsOfServiceBody
+              renderLink={renderSpaLink}
+              t={(key, defaultValue) => t(key, { defaultValue })}
+            />
           </div>
 
           <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -56,7 +65,7 @@ export default function TermsPage() {
               data-testid="button-terms-agree"
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              I Agree
+              {t("terms.shell.agree", { defaultValue: "I Agree" })}
             </Button>
             <Button
               onClick={declineTerms}
@@ -65,7 +74,7 @@ export default function TermsPage() {
               data-testid="button-terms-disagree"
             >
               <XCircle className="mr-2 h-4 w-4" />
-              Disagree
+              {t("terms.shell.disagree", { defaultValue: "Disagree" })}
             </Button>
           </div>
         </div>

@@ -1,0 +1,26 @@
+{
+  "locked": {
+    "feature": "인텔리전스 피드"
+  },
+  "heading": "인텔리전스 피드",
+  "description": "Hacker News, Reddit, GitHub, Layoffs.fyi 및 CVE 취약성 데이터의 실시간 신호.",
+  "filters": {
+    "allVendors": "모든 공급업체",
+    "sources": {
+      "all": "전체",
+      "hn": "HN",
+      "reddit": "Reddit",
+      "github": "GitHub",
+      "layoffs": "Layoffs",
+      "cve": "CVE"
+    }
+  },
+  "empty": {
+    "noCveSignals": "아직 CVE 신호가 없습니다. 확인된 크로스워크 매핑이 설정된 후 CVE 이벤트가 여기에 나타납니다.",
+    "noMarketSignals": "이 시장에 대한 수집된 신호가 아직 없습니다.",
+    "noVendorSignals": "이 공급업체에 대한 수집된 신호가 아직 없습니다."
+  },
+  "pagination": {
+    "showing": "{{total}}개의 신호 중 {{shown}}개 표시 중"
+  }
+}

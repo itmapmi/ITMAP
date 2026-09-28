@@ -1,0 +1,174 @@
+{
+  "seo": {
+    "title": "ITMAP — 엔터프라이즈 IT 벤더 인텔리전스 | 모든 벤더를 보고, 모든 움직임을 파악하세요.",
+    "description": "AI 기반의 엔터프라이즈 IT 벤더 인텔리전스 — 독립적인 벤더 순위, 기능 평가, AI 기반 시장 예측, 뉴스 영향 분석 및 기술 구매자를 위한 연구 보고서."
+  },
+  "marketCard": {
+    "inReview": "검토 중",
+    "liveData": "실시간 데이터",
+    "explore": "탐색"
+  },
+  "buyerDashboard": {
+    "welcomeBack": "다시 오신 것을 환영합니다{{name}}.",
+    "decisionTools": "의사 결정 도구",
+    "researchWorkflow": "귀하의 연구 워크플로우",
+    "markets": "시장",
+    "evaluateVendors": "실시간 시장 조사, 제품 컨텍스트 및 신호를 통해 벤더 평가.",
+    "rfpBuilder": "RFP 작성기",
+    "createVendorRequests": "벤더 요청 생성, 관리 및 전송.",
+    "securityIntelligence": "보안 인텔리전스",
+    "vulnerabilitiesAlerts": "취약점 및 경고",
+    "methodology": "방법론",
+    "howItmapEvaluates": "ITMAP 평가 방법",
+    "researchCoverage": "연구 범위",
+    "liveMarkets": "실시간 시장",
+    "currentMarketIntelligence": "검토 준비된 현재 시장 인텔리전스.",
+    "viewAll": "모두 보기"
+  },
+  "vendorDashboard": {
+    "notLinked": {
+      "heading": "계정이 벤더에 연결되지 않음",
+      "messageBefore": "귀하의 계정은 벤더 좌석으로 제공되었지만 아직 벤더 기록에 연결되지 않았습니다. 이는",
+      "administrator": "itmap.ai 관리자",
+      "messageAfter": "에 의해 수행됩니다 — 설정 완료를 위해 계정 관리자에게 문의하십시오.",
+      "accountLabel": "귀하의 계정",
+      "contactSales": "sales@itmap.ai에 문의"
+    },
+    "vendorSeat": "벤더 좌석",
+    "itVendor": "IT 벤더",
+    "linkedAs": "다음으로 연결됨",
+    "intelligenceHub": "인텔리전스 허브",
+    "your": "귀하의",
+    "vendorHub": "벤더 허브",
+    "fallbackHubWithName": "{{name}}의 벤더 허브",
+    "headerDescription": "시장 데이터, 경쟁 신호 및 벤더 도구 — 잠긴 기능은 플랜 업그레이드가 필요합니다.",
+    "platformTools": "플랫폼 도구",
+    "vendorTools": "벤더 도구",
+    "toolsDescription": "리드 생성, 경쟁 대응 및 시장 인텔리전스를 위한 강력한 도구 — 플랜 업그레이드 필요.",
+    "markets": "시장",
+    "marketsDescription": "모든 시장을 탐색하고 벤더 평가, 제품 비교 및 생태계 데이터를 탐색하십시오.",
+    "yourMarkets": "귀하의 시장",
+    "myMarkets": "내 시장",
+    "marketsWhereCompanyAppears_one": "{{company}}가 나타나는 {{count}}개의 시장",
+    "marketsWhereCompanyAppears_other": "{{company}}가 나타나는 {{count}}개의 시장",
+    "allMarkets": "모든 시장",
+    "allMarketsHeading": "모든 시장",
+    "allMarketsDescription": "벤더 평가, 제품 평가, 생태계 평가, 뉴스 및 AI 채팅 — 완전히 접근 가능.",
+    "explore": "탐색",
+    "reports": "보고서",
+    "myReports": "내 보고서",
+    "myReportsDescription": "Market Builder를 통해 구축한 시장.",
+    "openMarketBuilder": "Market Builder 열기",
+    "manageCustomReports": "맞춤 시장 보고서 보기 및 관리"
+  },
+  "vendorTools": {
+    "lead_gen": {
+      "label": "리드 생성기",
+      "description": "귀하의 벤더 프로필에 매핑된 인바운드 구매자 관심을 캡처하고 자격을 부여합니다."
+    },
+    "rfp": {
+      "label": "RFP 응답기",
+      "description": "귀하의 제품 지식 기반을 사용한 AI 지원 RFP 응답 생성."
+    },
+    "market_builder": {
+      "label": "시장 작성기",
+      "description": "귀하의 특정 기준에 가중치를 둔 맞춤 벤더 평가를 구축합니다."
+    },
+    "forecast_builder": {
+      "label": "예측 작성기",
+      "description": "AI 기반 시장 크기 조정, 다중 시나리오 예측 및 민감도 테이블."
+    },
+    "fact_review": {
+      "label": "사실 검토",
+      "description": "시장 전반에 걸쳐 귀하의 제품에 대한 AI 생성 사실을 검토하고 승인합니다."
+    },
+    "battle_cards": {
+      "label": "배틀 카드",
+      "description": "귀하가 경쟁하는 모든 시장에 대한 경쟁 배틀 카드 — 판매에 사용 준비 완료."
+    },
+    "cve_intelligence": {
+      "label": "보안 인텔리전스",
+      "description": "IT 벤더 전반에 걸쳐 추적되는 CVE 취약점, CISA KEV 경고 및 EPSS 익스플로잇 점수."
+    },
+    "market_trends": {
+      "label": "시장 동향",
+      "description": "시장, 국가 및 경쟁 벤더 전반에 걸친 방문자 및 참여 비율 — 백분율로 표시."
+    }
+  },
+  "stats": {
+    "marketsCovered": "커버된 IT 시장",
+    "vendorsEvaluated": "평가된 벤더",
+    "independentResearch": "독립 연구",
+    "analysisEngine": "분석 엔진"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "AI 기반 · 독립적 · 실시간",
+      "titleLine1": "모든 벤더를 보세요.",
+      "titleLine2": "모든 움직임을 파악하세요.",
+      "subtitle": "기술 구매자를 위한 독립적이고 AI 기반의 엔터프라이즈 IT 인텔리전스. 편견 없음. 추측 없음.",
+      "freeMessage": "100% 무료, 영원히 — 유료 플랜 없음, 신용카드 필요 없음",
+      "features": {
+        "allMarkets": "모든 시장에 대한 접근",
+        "vendorMaps": "실시간 벤더 맵",
+        "productComparisons": "심층 제품 비교",
+        "vendorIntelligence": "벤더 인텔리전스",
+        "securityIntelligence": "보안 인텔리전스",
+        "rfpBuilder": "RFP 작성기"
+      },
+      "getFreeAccess": "무료 접근 권한 얻기"
+    },
+    "markets": {
+      "eyebrow": "실시간 시장",
+      "titleLine1": "중요한",
+      "titleLine2": "커버리지",
+      "description": "엔터프라이즈 인프라 스택 전반에 걸친 심층 평가, AI 점수 인텔리전스로 지속적으로 업데이트.",
+      "createBuyerAccount": "무료 구매자 계정 생성"
+    },
+    "howItWorks": {
+      "eyebrow": "작동 방식",
+      "titleLine1": "기다림 없는",
+      "titleLine2": "인텔리전스",
+      "description": "원시 데이터에서 실행 가능한 인사이트로 — 완전 자동화, 지속적으로 갱신.",
+      "steps": [
+        {
+          "title": "데이터 수집",
+          "description": "우리의 AI는 엔터프라이즈 IT 환경 전반에 걸쳐 공개 벤더 데이터, 뉴스, 제품 출시, 재무 및 분석가 논평을 지속적으로 수집합니다."
+        },
+        {
+          "title": "AI 기반 분석",
+          "description": "대규모 언어 모델이 40개 이상의 역량 차원에서 벤더를 처리하고 점수를 매깁니다 — 실행, 제품 깊이, 생태계 및 재무 건전성."
+        },
+        {
+          "title": "실행 가능한 인텔리전스",
+          "description": "상호작용 가능한 벤더 맵, 기능 매트릭스, 영향 점수 뉴스 및 AI 생성 연구 보고서를 얻으세요 — 지속적으로 업데이트, 편견 없음."
+        }
+      ]
+    },
+    "news": {
+      "eyebrow": "실시간 인텔리전스",
+      "titleLine1": "시장을 움직이는",
+      "titleLine2": "뉴스",
+      "description": "모든 벤더 뉴스 이벤트는 시장 포지셔닝에 미치는 영향을 분석합니다. 누구에게 이익이 되는지 — 그리고 누구에게 그렇지 않은지를 파악하세요.",
+      "impact": "영향",
+      "impactScore": "AI 영향 점수",
+      "getBuyerAccess": "무료 구매자 접근 권한 얻기"
+    },
+    "bottomCta": {
+      "heading": "명확하게 보실 준비가 되셨나요?",
+      "description": "편견 없는 AI 기반 벤더 인텔리전스를 신뢰하는 엔터프라이즈 IT 팀에 합류하세요.",
+      "buyerAccess": "무료 구매자 접근 권한 얻기",
+      "vendorAccess": "벤더 접근을 위한 영업 문의"
+    },
+    "footer": {
+      "rightsReserved": "모든 권리 보유.",
+      "platform": "플랫폼",
+      "about": "소개",
+      "licensing": "라이선스",
+      "contact": "연락처",
+      "privacy": "개인정보 보호",
+      "terms": "이용 약관",
+      "linkedinAriaLabel": "LinkedIn에서 ITMAP 팔로우"
+    }
+  }
+}

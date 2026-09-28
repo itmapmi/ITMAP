@@ -1,0 +1,26 @@
+{
+  "locked": {
+    "feature": "The intelligence feed"
+  },
+  "heading": "Intelligence Feed",
+  "description": "Real-time signals from Hacker News, Reddit, GitHub, Layoffs.fyi, and CVE vulnerability data.",
+  "filters": {
+    "allVendors": "All vendors",
+    "sources": {
+      "all": "All",
+      "hn": "HN",
+      "reddit": "Reddit",
+      "github": "GitHub",
+      "layoffs": "Layoffs",
+      "cve": "CVE"
+    }
+  },
+  "empty": {
+    "noCveSignals": "No CVE signals yet. CVE events appear here after confirmed crosswalk mappings are set up.",
+    "noMarketSignals": "No signals collected yet for this market.",
+    "noVendorSignals": "No signals collected yet for this vendor."
+  },
+  "pagination": {
+    "showing": "Showing {{shown}} of {{total}} signals"
+  }
+}
