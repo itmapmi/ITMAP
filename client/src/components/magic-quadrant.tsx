@@ -27,7 +27,6 @@ import {
   type PublishedChartConfig,
   type QuadrantBox,
 } from "@shared/quadrant-positioning";
-import { buildChartProvenanceLines } from "@shared/quadrant-export";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { formatDate as formatI18nDate } from "@/lib/i18n-format";
@@ -999,34 +998,16 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
       const pdfDoc = await PDFDocument.create();
       const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const png = await pdfDoc.embedPng(pngDataUrl);
 
-      // Provenance block: everything needed to reproduce every dot from the
-      // page alone — the weights in play (published version or what-if), the
-      // thresholds and each vendor's composites and box.
-      const provenance = buildChartProvenanceLines({
-        chartConfig,
-        criteria: positioningCriteria,
-        weightsInPlay: criteriaWeights,
-        isWhatIf,
-        thresholds,
-        vendors: vendorsWithScores,
-        historicalDate: weeksAgo > 0 ? formatDate(selectedDate) : null,
-      });
       // Standard PDF fonts only encode WinAnsi; swap anything else (e.g. CJK
-      // vendor names) for "?" rather than failing the whole export.
+      // market names) for "?" rather than failing the whole export.
       const winAnsiSafe = (text: string) =>
         text.replace(/[^\x20-\x7E\xA0-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC\u2122]/g, "?");
-      for (const line of provenance) line.text = winAnsiSafe(line.text);
       const safeMarketName = winAnsiSafe(marketName);
-      const bodySize = 8;
-      const lineH = 10.5;
-      const blockGap = 18;
-      const blockH = provenance.length * lineH + blockGap;
 
-      // Landscape page sized around the chart's aspect ratio, extended by the
-      // provenance block (same page, below the chart).
+      // Landscape page sized around the chart's aspect ratio: market name on
+      // top, chart below. No extra provenance/config text — just the graph.
       const margin = 40;
       const titleSize = 18;
       const titleGap = 24;
@@ -1035,9 +1016,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const ratio = Math.min(maxImgWidth / svgWidth, maxImgHeight / svgHeight);
       const imgW = svgWidth * ratio;
       const imgH = svgHeight * ratio;
-      const widestLine = Math.max(...provenance.map(l => bodyFont.widthOfTextAtSize(l.text, l.bold ? bodySize + 1 : bodySize)));
-      const pageW = Math.max(imgW + margin * 2, font.widthOfTextAtSize(safeMarketName, titleSize) + margin * 2, widestLine + margin * 2);
-      const pageH = imgH + margin * 2 + titleSize + titleGap + blockH;
+      const pageW = Math.max(imgW + margin * 2, font.widthOfTextAtSize(safeMarketName, titleSize) + margin * 2);
+      const pageH = imgH + margin * 2 + titleSize + titleGap;
       const page = pdfDoc.addPage([pageW, pageH]);
 
       page.drawText(safeMarketName, {
@@ -1049,22 +1029,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       });
       page.drawImage(png, {
         x: (pageW - imgW) / 2,
-        y: margin + blockH,
+        y: margin,
         width: imgW,
         height: imgH,
       });
-      let cursorY = margin + blockH - blockGap;
-      const blockX = (pageW - Math.max(imgW, widestLine)) / 2;
-      for (const line of provenance) {
-        page.drawText(line.text, {
-          x: blockX,
-          y: cursorY,
-          size: line.bold ? bodySize + 1 : bodySize,
-          font: line.bold ? font : bodyFont,
-          color: line.bold ? rgb(0.06, 0.09, 0.16) : rgb(0.28, 0.33, 0.41),
-        });
-        cursorY -= lineH;
-      }
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
