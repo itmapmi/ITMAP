@@ -1053,7 +1053,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         width: imgW,
         height: imgH,
       });
-      let cursorY = margin + blockH - blockGap + lineH * (provenance.length - 1);
+      let cursorY = margin + blockH - blockGap;
       const blockX = (pageW - Math.max(imgW, widestLine)) / 2;
       for (const line of provenance) {
         page.drawText(line.text, {
