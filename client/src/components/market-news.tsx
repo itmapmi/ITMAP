@@ -79,7 +79,7 @@ const NEWS_CATEGORIES = [
 ] as const;
 
 export function MarketNews({ marketId }: MarketNewsProps) {
-  const { t } = useTranslation("marketNews");
+  const { t, i18n } = useTranslation("marketNews");
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -163,7 +163,11 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       impact: selectedImpact !== 'all' ? selectedImpact : undefined,
       category: selectedCategory !== 'all' ? selectedCategory : undefined,
       range: selectedRange !== 'all' ? selectedRange : undefined,
-      limit: 50
+      limit: 50,
+      // Server translates title/summary/analysis fields on demand and caches
+      // the result; including the language in the key forces a refetch (and
+      // a translated response) whenever the buyer switches language.
+      language: i18n.language,
     }],
     queryFn: async ({ queryKey }) => {
       const [, params] = queryKey as [string, Record<string, any>];
@@ -183,6 +187,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       const since = sinceFromRange(params.range ? String(params.range) : 'all');
       if (since) queryParams.append('since', since);
       if (params.limit) queryParams.append('limit', String(params.limit));
+      if (params.language) queryParams.append('language', String(params.language));
 
       const response = await fetch(`/api/news?${queryParams}`, { credentials: 'include' });
       if (!response.ok) {

@@ -922,6 +922,45 @@ export function registerMarketRoutes(app: Express): void {
         sourceType: validatedSource,
         limit,
       });
+
+      // Optional `?language=` translates each signal's title/content on
+      // demand (cached in content_translations; see server/i18n/translateContent.ts).
+      // CVE signals never render `content` (see SignalCard), so it's skipped
+      // to avoid a wasted translation call. Falls back to English per-field
+      // if a translation isn't available/fails.
+      const languageParam = typeof req.query.language === 'string' ? req.query.language : undefined;
+      if (languageParam && isSupportedTranslationLanguage(languageParam) && page.data.length > 0) {
+        let skipTranslation = false;
+        if (!(req as any).isAuthenticated?.()) {
+          // Anonymous teaser-window callers get a per-IP budget on translated
+          // items, reserved before the (paid) translation call — see
+          // server/i18n/translationRateLimit.ts. Over budget: serve English.
+          const ip = (req.ip ?? req.socket?.remoteAddress ?? "").trim();
+          const { isTranslationRateLimited } = await import('../i18n/translationRateLimit');
+          skipTranslation = isTranslationRateLimited(ip, page.data.length);
+        }
+        if (!skipTranslation) {
+          const { translateContentFieldsBatch } = await import('../i18n/translateContent');
+          const overlay = await translateContentFieldsBatch(
+            'vendor_signal',
+            languageParam,
+            page.data.map(s => ({
+              id: s.id,
+              fields: s.sourceType === 'cve' ? { title: s.title } : { title: s.title, content: s.content },
+            })),
+          );
+          page.data = page.data.map(s => {
+            const translated = overlay.get(s.id);
+            if (!translated) return s;
+            return {
+              ...s,
+              title: translated.title ?? s.title,
+              content: translated.content ?? s.content,
+            };
+          });
+        }
+      }
+
       res.json(page);
     } catch (error) {
       console.error("Error fetching vendor signals:", error);

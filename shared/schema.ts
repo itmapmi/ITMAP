@@ -332,6 +332,42 @@ export const vendorFeatureSupportTranslations = pgTable("vendor_feature_support_
   supportLanguageUniq: uniqueIndex("vendor_feature_support_translations_support_lang_uniq").on(t.vendorFeatureSupportId, t.language),
 }));
 
+// On-demand AI translation cache for continuously-ingested, immutable content
+// (Intelligence Feed vendor signals and News articles) that isn't curated
+// through the Excel workflow above. Keyed by (contentType, contentId,
+// language); `translatedFields` holds a flat map of field name -> translated
+// string for whichever fields that content type exposes (e.g. title/content
+// for signals; title/summary/keyTakeaway/opinion/vendorContext for articles).
+// Signals and articles are treated as immutable once published, so unlike the
+// vendor score/feature-support translations above, there is no staleness
+// tracking here — a cached translation is reused forever.
+export const CONTENT_TRANSLATION_TYPES = ["vendor_signal", "news_article"] as const;
+export type ContentTranslationType = (typeof CONTENT_TRANSLATION_TYPES)[number];
+export function isContentTranslationType(value: unknown): value is ContentTranslationType {
+  return typeof value === "string" && (CONTENT_TRANSLATION_TYPES as readonly string[]).includes(value);
+}
+
+export const contentTranslations = pgTable("content_translations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contentType: text("content_type").notNull(),
+  contentId: varchar("content_id").notNull(),
+  language: text("language").notNull(),
+  translatedFields: jsonb("translated_fields").$type<Record<string, string>>().notNull(),
+  // Short hash of the English source text for each translated field, taken
+  // at translation time. Signals/articles are immutable once published, but
+  // NOT immutable end-to-end: articles are scraped first (many fields null)
+  // and enriched by analysis afterward, and analysis can re-run. On every
+  // read we recompute the current source hashes and re-translate only the
+  // fields whose hash no longer matches (newly populated or changed text),
+  // instead of trusting a merely-present cache row as complete.
+  sourceFieldHashes: jsonb("source_field_hashes").$type<Record<string, string>>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (t) => ({
+  contentLanguageUniq: uniqueIndex("content_translations_type_id_lang_uniq").on(t.contentType, t.contentId, t.language),
+}));
+export type ContentTranslation = typeof contentTranslations.$inferSelect;
+
 export const researchReports = pgTable("research_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),

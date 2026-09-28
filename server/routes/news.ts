@@ -7,6 +7,33 @@ import { PDFService } from "../pdf-generator/pdf-service";
 import { scrapeAllVendors, scrapeSingleVendor } from "../news/ingestion/scraper";
 import { directScrapeSingleVendor } from "../news/ingestion/directScraper";
 import { analyzeAllPending, analyzeSingleArticle } from "../news/impact/analyzer";
+import { isSupportedTranslationLanguage, type NewsArticle } from "@shared/schema";
+import { translateContentFieldsBatch, translateContentFields } from "../i18n/translateContent";
+
+// On-demand translation overlay for the fields the News tab actually
+// displays. `content` (the full scraped body) is intentionally excluded —
+// neither market-news.tsx nor the export renders it, so translating it would
+// just be wasted LLM calls.
+type NewsArticleTranslatable = NewsArticle & { keyTakeaway?: string | null; opinion?: string | null; vendorContext?: string | null };
+function newsTranslationFields(article: NewsArticleTranslatable) {
+  return {
+    title: article.title,
+    summary: article.summary,
+    keyTakeaway: (article as any).keyTakeaway,
+    opinion: (article as any).opinion,
+    vendorContext: (article as any).vendorContext,
+  };
+}
+function applyNewsTranslation<T extends NewsArticleTranslatable>(article: T, translated: Record<string, string>): T {
+  return {
+    ...article,
+    title: translated.title ?? article.title,
+    summary: translated.summary ?? article.summary,
+    keyTakeaway: translated.keyTakeaway ?? (article as any).keyTakeaway,
+    opinion: translated.opinion ?? (article as any).opinion,
+    vendorContext: translated.vendorContext ?? (article as any).vendorContext,
+  };
+}
 
 const NEWS_EXPORT_RANGES: Record<number, string> = {
   30: "past 30 days",
@@ -71,12 +98,43 @@ export function registerNewsRoutes(app: Express): void {
 
   app.get("/api/news", async (req, res) => {
     try {
-      const { q, market, source_id, vendor_id, canonical_vendor_id, since, until, impact, category, limit = '20', offset = '0' } = req.query;
+      const { q, market, source_id, vendor_id, canonical_vendor_id, since, until, impact, category, limit = '20', offset = '0', language } = req.query;
+      // Cap the page size regardless of caller-supplied `limit`, mirroring
+      // the vendor-signals route — this endpoint is anonymous-readable
+      // during the teaser window, and an uncapped limit combined with
+      // on-demand translation below would let one request fan out into an
+      // unbounded number of paid model calls.
+      const parsedLimit = parseInt(limit as string, 10);
+      const cappedLimit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 20;
+
+      const translationLanguage = typeof language === 'string' && isSupportedTranslationLanguage(language) ? language : undefined;
+      const isAnonymous = !(req as any).isAuthenticated?.();
+      const localize = async (articles: NewsArticleTranslatable[]) => {
+        if (!translationLanguage || articles.length === 0) return articles;
+        if (isAnonymous) {
+          // Anonymous callers (teaser window) get an extra per-IP budget on
+          // translated items, reserved before the (paid) translation call —
+          // see server/i18n/translationRateLimit.ts. Over budget: serve the
+          // page untranslated (English) rather than reject it.
+          const ip = (req.ip ?? req.socket?.remoteAddress ?? "").trim();
+          const { isTranslationRateLimited } = await import("../i18n/translationRateLimit");
+          if (isTranslationRateLimited(ip, articles.length)) return articles;
+        }
+        const overlay = await translateContentFieldsBatch(
+          'news_article',
+          translationLanguage,
+          articles.map(a => ({ id: a.id, fields: newsTranslationFields(a) })),
+        );
+        return articles.map(a => {
+          const translated = overlay.get(a.id);
+          return translated ? applyNewsTranslation(a, translated) : a;
+        });
+      };
       if (q && typeof q === 'string') {
-        const articles = await newsStorage.searchArticles(q, parseInt(limit as string));
-        return res.json(articles);
+        const articles = await newsStorage.searchArticles(q, cappedLimit);
+        return res.json(await localize(articles as NewsArticleTranslatable[]));
       }
-      const filters: any = { limit: parseInt(limit as string), offset: parseInt(offset as string) };
+      const filters: any = { limit: cappedLimit, offset: parseInt(offset as string) };
       if (source_id) filters.sourceId = source_id as string;
       if (canonical_vendor_id) {
         // Direct canonical vendor filter: collect all sibling vendor IDs
@@ -108,7 +166,7 @@ export function registerNewsRoutes(app: Express): void {
       if (since) filters.since = new Date(since as string);
       if (until) filters.until = new Date(until as string);
       const articles = await newsStorage.getArticles(filters);
-      res.json(articles);
+      res.json(await localize(articles as NewsArticleTranslatable[]));
     } catch (error) {
       console.error("Error fetching news articles:", error);
       res.status(500).json({ error: "Failed to fetch news articles" });
@@ -241,8 +299,13 @@ export function registerNewsRoutes(app: Express): void {
 
   app.get("/api/news/:id", requireAuth, async (req, res) => {
     try {
-      const article = await newsStorage.getArticleById(req.params.id);
+      const article = await newsStorage.getArticleById(req.params.id) as NewsArticleTranslatable | undefined;
       if (!article) return res.status(404).json({ error: "Article not found" });
+      const language = req.query.language;
+      if (typeof language === 'string' && isSupportedTranslationLanguage(language)) {
+        const translated = await translateContentFields('news_article', article.id, language, newsTranslationFields(article));
+        return res.json(applyNewsTranslation(article, translated));
+      }
       res.json(article);
     } catch (error) {
       console.error("Error fetching news article:", error);

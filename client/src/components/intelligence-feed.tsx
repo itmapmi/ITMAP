@@ -36,7 +36,7 @@ interface IntelligenceFeedProps {
 }
 
 export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
-  const { t } = useTranslation("intelligenceFeed");
+  const { t, i18n } = useTranslation("intelligenceFeed");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const isMobile = useIsMobile();
@@ -45,7 +45,11 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
     const base = `/api/markets/${marketId}/vendor-signals?limit=20`;
     const vendor = selectedVendorId !== "all" ? `&vendorId=${selectedVendorId}` : "";
     const source = sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : "";
-    return `${base}${vendor}${source}`;
+    // Server translates title/content on demand and caches the result; the
+    // buyer's language is included so a language switch refetches translated
+    // text instead of reusing a cached English response.
+    const language = `&language=${encodeURIComponent(i18n.language)}`;
+    return `${base}${vendor}${source}${language}`;
   })();
 
   const { data: page, isLoading, error } = useQuery<VendorSignalsPage>({

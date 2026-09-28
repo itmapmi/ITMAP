@@ -816,6 +816,26 @@ export async function runStartupMigrations(): Promise<void> {
         ON vendor_feature_support_translations (vendor_feature_support_id, language);
     `);
 
+    // 39. On-demand AI translation cache for continuously-ingested Intelligence
+    //     Feed signals and News articles. These items are immutable once
+    //     published, so unlike the two translation tables above there is no
+    //     staleness snapshot — a cached translation is reused indefinitely.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS content_translations (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        content_type text NOT NULL,
+        content_id varchar NOT NULL,
+        language text NOT NULL,
+        translated_fields jsonb NOT NULL,
+        source_field_hashes jsonb,
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS content_translations_type_id_lang_uniq
+        ON content_translations (content_type, content_id, language);
+      ALTER TABLE content_translations ADD COLUMN IF NOT EXISTS source_field_hashes jsonb;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
