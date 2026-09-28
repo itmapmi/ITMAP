@@ -1,11 +1,13 @@
 import {
   type Criteria, type InsertCriteria,
   type VendorScore, type InsertVendorScore,
+  type VendorScoreTranslation,
   type MarketCriteriaWeight,
   type MarketWeightVersion, type InsertMarketWeightVersion,
   type Market, type InsertMarket,
   type Vendor,
-  criteria, vendorScores, marketCriteriaWeights, marketWeightVersions, markets, vendors,
+  type TranslationLanguageCode,
+  criteria, vendorScores, vendorScoreTranslations, marketCriteriaWeights, marketWeightVersions, markets, vendors,
 } from "@shared/schema";
 import { db, type DbExecutor } from "../db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
@@ -124,6 +126,81 @@ export async function createOrUpdateVendorScore(score: InsertVendorScore): Promi
       .returning();
     return newScore;
   }
+}
+
+// ── Vendor Score Translations (offline Excel workflow, see server/routes/files.ts) ──
+
+/** All translation rows for one market+language, keyed by vendorScoreId. */
+export async function getVendorScoreTranslationsForMarket(
+  marketId: string, language: string,
+): Promise<Map<string, VendorScoreTranslation>> {
+  const rows = await db
+    .select({ translation: vendorScoreTranslations })
+    .from(vendorScoreTranslations)
+    .innerJoin(vendorScores, eq(vendorScoreTranslations.vendorScoreId, vendorScores.id))
+    .innerJoin(vendors, eq(vendorScores.vendorId, vendors.id))
+    .where(and(eq(vendors.marketId, marketId), eq(vendorScoreTranslations.language, language)));
+  return new Map(rows.map(r => [r.translation.vendorScoreId, r.translation]));
+}
+
+/**
+ * Same shape as getMarketVendorScores, but `notes` is overlaid with the
+ * language's translation when present, falling back to the English notes
+ * otherwise. English `notes` itself is never modified.
+ */
+export async function getMarketVendorScoresLocalized(
+  marketId: string, language: TranslationLanguageCode,
+): Promise<(VendorScore & { vendor: Vendor; criteria: Criteria })[]> {
+  const [scores, translations] = await Promise.all([
+    getMarketVendorScores(marketId),
+    getVendorScoreTranslationsForMarket(marketId, language),
+  ]);
+  return scores.map(score => {
+    const translation = translations.get(score.id);
+    if (!translation || translation.notes == null) return score;
+    return { ...score, notes: translation.notes };
+  });
+}
+
+/** Upsert on (vendorScoreId, language) — offline import re-runs are idempotent. */
+export async function upsertVendorScoreTranslation(input: {
+  vendorScoreId: string; language: string; notes: string | null; sourceUpdatedAt: Date | null;
+}): Promise<VendorScoreTranslation> {
+  const [row] = await db
+    .insert(vendorScoreTranslations)
+    .values(input)
+    .onConflictDoUpdate({
+      target: [vendorScoreTranslations.vendorScoreId, vendorScoreTranslations.language],
+      set: { notes: input.notes, sourceUpdatedAt: input.sourceUpdatedAt, updatedAt: new Date() },
+    })
+    .returning();
+  return row;
+}
+
+/**
+ * Aggregate staleness counts for the admin import screen: how many English
+ * scores have translatable notes, how many of those are translated for this
+ * language, and how many translations are stale (the English notes changed
+ * since the translation's `sourceUpdatedAt` snapshot).
+ */
+export async function getVendorScoreTranslationStatus(
+  marketId: string, language: string,
+): Promise<{ translatable: number; translated: number; stale: number }> {
+  const [scores, translations] = await Promise.all([
+    getMarketVendorScores(marketId),
+    getVendorScoreTranslationsForMarket(marketId, language),
+  ]);
+  const translatable = scores.filter(s => s.notes != null && s.notes.trim() !== "");
+  let translated = 0, stale = 0;
+  for (const score of translatable) {
+    const translation = translations.get(score.id);
+    if (!translation) continue;
+    translated++;
+    const sourceUpdatedAt = translation.sourceUpdatedAt ? new Date(translation.sourceUpdatedAt).getTime() : 0;
+    const currentUpdatedAt = score.updatedAt ? new Date(score.updatedAt).getTime() : 0;
+    if (currentUpdatedAt > sourceUpdatedAt) stale++;
+  }
+  return { translatable: translatable.length, translated, stale };
 }
 
 // ── Market Criteria Weights ────────────────────────────────────────────────

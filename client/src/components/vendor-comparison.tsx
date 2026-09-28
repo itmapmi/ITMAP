@@ -20,7 +20,7 @@ interface VendorComparisonProps {
 }
 
 export default function VendorComparison({ marketId, mobileMode = false, mobileSelectedVendors, onMobileSelectedVendorsChange }: VendorComparisonProps) {
-  const { t } = useTranslation("magicQuadrant");
+  const { t, i18n } = useTranslation("magicQuadrant");
   const { t: tc } = useTranslation("common");
   const [localSelectedVendors, setLocalSelectedVendors] = useState<string[]>([]);
   const selectedVendors = mobileMode && mobileSelectedVendors ? mobileSelectedVendors : localSelectedVendors;
@@ -38,7 +38,12 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   });
 
   const { data: scores } = useQuery<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>({
-    queryKey: ["/api/markets", marketId, "scores"],
+    queryKey: ["/api/markets", marketId, "scores", i18n.language],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/scores?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const { data: criteria } = useQuery<Criteria[]>({

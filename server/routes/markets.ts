@@ -80,7 +80,7 @@ import {
   insertMarketSchema, insertVendorSchema, insertCriteriaSchema,
   insertVendorScoreSchema, clientInsertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema,
   insertVendorFeatureSupportSchema, insertVendorLabelPositionSchema,
-  insertResearchReportSchema,
+  insertResearchReportSchema, isSupportedTranslationLanguage,
 } from "@shared/schema";
 
 export function registerMarketRoutes(app: Express): void {
@@ -595,7 +595,14 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets/:marketId/scores", requireMarketAccess, async (req, res) => {
     try {
-      const scores = await storage.getMarketVendorScores(req.params.marketId);
+      // Optional `?language=` overlays each score's `notes` with the offline
+      // translation workbook's text for that language (falling back to the
+      // English notes when no translation exists yet). English `notes` in the
+      // underlying row is never modified by this — see storage/criteria.ts.
+      const languageParam = typeof req.query.language === 'string' ? req.query.language : undefined;
+      const scores = languageParam && isSupportedTranslationLanguage(languageParam)
+        ? await storage.getMarketVendorScoresLocalized(req.params.marketId, languageParam)
+        : await storage.getMarketVendorScores(req.params.marketId);
       res.json(scores);
     } catch (error) {
       console.error("Error fetching vendor scores:", error);
@@ -830,7 +837,11 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets/:marketId/feature-support", requireMarketAccess, async (req, res) => {
     try {
-      const support = await storage.getVendorFeatureSupport(req.params.marketId);
+      // See the analogous `?language=` handling on GET /scores above.
+      const languageParam = typeof req.query.language === 'string' ? req.query.language : undefined;
+      const support = languageParam && isSupportedTranslationLanguage(languageParam)
+        ? await storage.getVendorFeatureSupportLocalized(req.params.marketId, languageParam)
+        : await storage.getVendorFeatureSupport(req.params.marketId);
       res.json(support);
     } catch (error) {
       console.error("Error fetching feature support:", error);

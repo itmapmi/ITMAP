@@ -2,8 +2,10 @@ import {
   type FeatureCategory, type InsertFeatureCategory,
   type Feature, type FeatureWithCategory, type InsertFeature,
   type VendorFeatureSupport, type InsertVendorFeatureSupport,
+  type VendorFeatureSupportTranslation,
   type Vendor,
-  featureCategories, features, vendorFeatureSupport, vendors,
+  type TranslationLanguageCode,
+  featureCategories, features, vendorFeatureSupport, vendorFeatureSupportTranslations, vendors,
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, and } from "drizzle-orm";
@@ -143,6 +145,76 @@ export async function createOrUpdateVendorFeatureSupport(
     const [newSupport] = await db.insert(vendorFeatureSupport).values(support).returning();
     return newSupport;
   }
+}
+
+// ── Vendor Feature Support Translations (offline Excel workflow) ────────────
+
+/** All translation rows for one market+language, keyed by vendorFeatureSupportId. */
+export async function getVendorFeatureSupportTranslationsForMarket(
+  marketId: string, language: string,
+): Promise<Map<string, VendorFeatureSupportTranslation>> {
+  const rows = await db
+    .select({ translation: vendorFeatureSupportTranslations })
+    .from(vendorFeatureSupportTranslations)
+    .innerJoin(vendorFeatureSupport, eq(vendorFeatureSupportTranslations.vendorFeatureSupportId, vendorFeatureSupport.id))
+    .innerJoin(vendors, eq(vendorFeatureSupport.vendorId, vendors.id))
+    .where(and(eq(vendors.marketId, marketId), eq(vendorFeatureSupportTranslations.language, language)));
+  return new Map(rows.map(r => [r.translation.vendorFeatureSupportId, r.translation]));
+}
+
+/**
+ * Same shape as getVendorFeatureSupport, but `comments` is overlaid with the
+ * language's translation when present, falling back to the English comments
+ * otherwise. English `comments` itself is never modified.
+ */
+export async function getVendorFeatureSupportLocalized(
+  marketId: string, language: TranslationLanguageCode,
+): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]> {
+  const [support, translations] = await Promise.all([
+    getVendorFeatureSupport(marketId),
+    getVendorFeatureSupportTranslationsForMarket(marketId, language),
+  ]);
+  return support.map(row => {
+    const translation = translations.get(row.id);
+    if (!translation || translation.comments == null) return row;
+    return { ...row, comments: translation.comments };
+  });
+}
+
+/** Upsert on (vendorFeatureSupportId, language) — offline import re-runs are idempotent. */
+export async function upsertVendorFeatureSupportTranslation(input: {
+  vendorFeatureSupportId: string; language: string; comments: string | null; sourceUpdatedAt: Date | null;
+}): Promise<VendorFeatureSupportTranslation> {
+  const [row] = await db
+    .insert(vendorFeatureSupportTranslations)
+    .values(input)
+    .onConflictDoUpdate({
+      target: [vendorFeatureSupportTranslations.vendorFeatureSupportId, vendorFeatureSupportTranslations.language],
+      set: { comments: input.comments, sourceUpdatedAt: input.sourceUpdatedAt, updatedAt: new Date() },
+    })
+    .returning();
+  return row;
+}
+
+/** Aggregate staleness counts for the admin import screen; see getVendorScoreTranslationStatus. */
+export async function getVendorFeatureSupportTranslationStatus(
+  marketId: string, language: string,
+): Promise<{ translatable: number; translated: number; stale: number }> {
+  const [support, translations] = await Promise.all([
+    getVendorFeatureSupport(marketId),
+    getVendorFeatureSupportTranslationsForMarket(marketId, language),
+  ]);
+  const translatable = support.filter(s => s.comments != null && s.comments.trim() !== "");
+  let translated = 0, stale = 0;
+  for (const row of translatable) {
+    const translation = translations.get(row.id);
+    if (!translation) continue;
+    translated++;
+    const sourceUpdatedAt = translation.sourceUpdatedAt ? new Date(translation.sourceUpdatedAt).getTime() : 0;
+    const currentUpdatedAt = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
+    if (currentUpdatedAt > sourceUpdatedAt) stale++;
+  }
+  return { translatable: translatable.length, translated, stale };
 }
 
 export async function createOrUpdateFeatureSupport(supportData: {

@@ -460,7 +460,7 @@ const HarveyBall = ({
 };
 
 export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, mobileMode = false }: SupportMatrixProps) {
-  const { t } = useTranslation("supportMatrix");
+  const { t, i18n } = useTranslation("supportMatrix");
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -496,7 +496,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   });
 
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<VendorFeatureSupport[]>({
-    queryKey: ["/api/markets", marketId, "feature-support"],
+    queryKey: ["/api/markets", marketId, "feature-support", i18n.language],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/feature-support?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   // Persisted Product Capabilities scores (derived server-side from this

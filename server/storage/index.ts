@@ -40,6 +40,8 @@ import {
   type RfpShortlistEntry, type InsertRfpShortlistEntry,
   type RfpOutreachEntry, type InsertRfpOutreachEntry,
   type ContactMessage, type InsertContactMessage,
+  type VendorScoreTranslation, type TranslationLanguageCode,
+  type VendorFeatureSupportTranslation,
 } from "@shared/schema";
 import type { RfpProjectWithMeta } from "./rfps";
 
@@ -135,6 +137,19 @@ export interface IStorage {
   getVendorScoreById(id: string): Promise<VendorScore | undefined>;
   deleteVendorScoresForCriterion(vendorIds: string[], criteriaId: string): Promise<number>;
   createOrUpdateVendorScore(score: InsertVendorScore): Promise<VendorScore>;
+
+  // Offline Excel translation workflow (see server/routes/files.ts) — per-language
+  // overlays for vendor score notes and feature-support comments. English rows
+  // are never modified; see server/storage/criteria.ts for the staleness model.
+  getVendorScoreTranslationsForMarket(marketId: string, language: string): Promise<Map<string, VendorScoreTranslation>>;
+  getMarketVendorScoresLocalized(marketId: string, language: TranslationLanguageCode): Promise<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>;
+  upsertVendorScoreTranslation(input: { vendorScoreId: string; language: string; notes: string | null; sourceUpdatedAt: Date | null }): Promise<VendorScoreTranslation>;
+  getVendorScoreTranslationStatus(marketId: string, language: string): Promise<{ translatable: number; translated: number; stale: number }>;
+
+  getVendorFeatureSupportTranslationsForMarket(marketId: string, language: string): Promise<Map<string, VendorFeatureSupportTranslation>>;
+  getVendorFeatureSupportLocalized(marketId: string, language: TranslationLanguageCode): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]>;
+  upsertVendorFeatureSupportTranslation(input: { vendorFeatureSupportId: string; language: string; comments: string | null; sourceUpdatedAt: Date | null }): Promise<VendorFeatureSupportTranslation>;
+  getVendorFeatureSupportTranslationStatus(marketId: string, language: string): Promise<{ translatable: number; translated: number; stale: number }>;
 
   getMarketCriteriaWeights(marketId: string): Promise<(MarketCriteriaWeight & { criteria: Criteria })[]>;
   updateMarketCriteriaWeight(marketId: string, criteriaId: string, weight: number): Promise<MarketCriteriaWeight>;

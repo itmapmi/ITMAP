@@ -1,22 +1,45 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { MarketSelector } from "@/components/admin/market-selector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Languages } from "lucide-react";
 import type { Market } from "@shared/schema";
+import { SUPPORTED_LANGUAGES } from "@/i18n";
+
+// Offline Excel translation workflow: everything but English is a translation
+// target exported/imported from the same three sheets, with extra
+// "- Notes (<language>)" / "- Comments (<language>)" columns. See
+// server/routes/files.ts for the export/import column layout.
+const TRANSLATION_LANGUAGES = SUPPORTED_LANGUAGES.filter((l) => l.code !== "en");
+
+type TranslationStatus = {
+  language: string;
+  scores: { translatable: number; translated: number; stale: number };
+  support: { translatable: number; translated: number; stale: number };
+};
 
 export default function ImportExportAdmin() {
+  const queryClient = useQueryClient();
   const [selectedMarketId, setSelectedMarketId] = useState<string>("");
+  const [language, setLanguage] = useState<string>("en");
   const [uploading, setUploading] = useState(false);
   const [exportingState, setExportingState] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  const isTranslation = language !== "en";
+
   const { data: markets, isLoading: marketsLoading } = useQuery<Market[]>({
     queryKey: ["/api/markets"],
+  });
+
+  const { data: translationStatus, isLoading: statusLoading } = useQuery<TranslationStatus>({
+    queryKey: ["/api/markets", selectedMarketId, "translation-status", language],
+    enabled: Boolean(selectedMarketId) && isTranslation,
   });
 
   const handleExport = async () => {
@@ -29,7 +52,8 @@ export default function ImportExportAdmin() {
       setExportingState(true);
       setMessage(null);
 
-      const response = await fetch(`/api/markets/${selectedMarketId}/export`, {
+      const url = `/api/markets/${selectedMarketId}/export${isTranslation ? `?language=${language}` : ''}`;
+      const response = await fetch(url, {
         method: 'GET',
         credentials: 'include',
       });
@@ -46,13 +70,13 @@ export default function ImportExportAdmin() {
 
       // Download the file
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url2 = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = url2;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(url2);
       document.body.removeChild(a);
 
       setMessage({ type: 'success', text: 'Data exported successfully!' });
@@ -91,7 +115,7 @@ export default function ImportExportAdmin() {
               'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify({ file: base64 }),
+            body: JSON.stringify(isTranslation ? { file: base64, language } : { file: base64 }),
           });
 
           const data = await response.json();
@@ -100,10 +124,21 @@ export default function ImportExportAdmin() {
             throw new Error(data.error || 'Import failed');
           }
 
-          setMessage({
-            type: 'success',
-            text: `Import successful! ${data.stats.vendors} vendors, ${data.stats.scores} scores, ${data.stats.supportLevels} support levels imported.`
-          });
+          if (data.translation) {
+            // Refresh the staleness/status badges immediately — otherwise they
+            // keep showing pre-import counts until something else happens to
+            // refetch them.
+            queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "translation-status", language] });
+            setMessage({
+              type: 'success',
+              text: `Translations imported! ${data.stats.scoreTranslations} score notes, ${data.stats.supportTranslations} feature comments updated.`,
+            });
+          } else {
+            setMessage({
+              type: 'success',
+              text: `Import successful! ${data.stats.vendors} vendors, ${data.stats.scores} scores, ${data.stats.supportLevels} support levels imported.`
+            });
+          }
         } catch (error) {
           console.error('Import error:', error);
           setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to import data' });
@@ -165,20 +200,75 @@ export default function ImportExportAdmin() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Market</CardTitle>
-          <CardDescription>Choose the market/technology for which you want to export or import data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MarketSelector
-            markets={markets}
-            selectedMarketId={selectedMarketId}
-            onMarketChange={setSelectedMarketId}
-            marketPlaceholder="Select a market…"
-          />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Market</CardTitle>
+            <CardDescription>Choose the market/technology for which you want to export or import data</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MarketSelector
+              markets={markets}
+              selectedMarketId={selectedMarketId}
+              onMarketChange={setSelectedMarketId}
+              marketPlaceholder="Select a market…"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Languages className="h-5 w-5" />
+              Language
+            </CardTitle>
+            <CardDescription>
+              English is the source of truth. Choose a translation language to work from an offline Excel workbook for that language.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger data-testid="select-translation-language">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English (source)</SelectItem>
+                {TRANSLATION_LANGUAGES.map((l) => (
+                  <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {isTranslation && selectedMarketId && (
+              <div className="text-xs text-gray-600 space-y-1" data-testid="translation-status">
+                {statusLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : translationStatus ? (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">Vendor scores:</span>
+                      <Badge variant="secondary">{translationStatus.scores.translated}/{translationStatus.scores.translatable} translated</Badge>
+                      {translationStatus.scores.stale > 0 && (
+                        <Badge variant="destructive">{translationStatus.scores.stale} stale</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">Feature comments:</span>
+                      <Badge variant="secondary">{translationStatus.support.translated}/{translationStatus.support.translatable} translated</Badge>
+                      {translationStatus.support.stale > 0 && (
+                        <Badge variant="destructive">{translationStatus.support.stale} stale</Badge>
+                      )}
+                    </div>
+                    {(translationStatus.scores.stale > 0 || translationStatus.support.stale > 0) && (
+                      <p className="text-amber-700">English content changed since these were last translated — re-export to get updated reference text.</p>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
@@ -188,7 +278,9 @@ export default function ImportExportAdmin() {
               Export Data
             </CardTitle>
             <CardDescription>
-              Download market data as an Excel file with three sheets
+              {isTranslation
+                ? `Download a workbook with English reference text plus editable ${TRANSLATION_LANGUAGES.find(l => l.code === language)?.label ?? language} columns`
+                : "Download market data as an Excel file with three sheets"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -225,19 +317,35 @@ export default function ImportExportAdmin() {
               Import Data
             </CardTitle>
             <CardDescription>
-              Upload a pre-filled Excel file to populate market data
+              {isTranslation
+                ? "Upload the translated workbook back — only the language columns are read"
+                : "Upload a pre-filled Excel file to populate market data"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-gray-600 space-y-2">
-              <p className="font-semibold">Upload Requirements:</p>
-              <ul className="text-xs pl-4 list-disc space-y-1">
-                <li>Excel file (.xlsx format)</li>
-                <li>Must contain all three required sheets</li>
-                <li>Vendor names must match existing vendors or will be created</li>
-                <li>Support levels should be 0-100 for features</li>
-                <li>Scores should be 0-10 for criteria</li>
-              </ul>
+              {isTranslation ? (
+                <>
+                  <p className="font-semibold">Translation import:</p>
+                  <ul className="text-xs pl-4 list-disc space-y-1">
+                    <li>Reads only the "(…)" language columns for this language</li>
+                    <li>Vendors, criteria and features must already exist — none are created</li>
+                    <li>Scores and support levels are never changed by this import</li>
+                    <li>Blank cells are left untouched, not cleared</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold">Upload Requirements:</p>
+                  <ul className="text-xs pl-4 list-disc space-y-1">
+                    <li>Excel file (.xlsx format)</li>
+                    <li>Must contain all three required sheets</li>
+                    <li>Vendor names must match existing vendors or will be created</li>
+                    <li>Support levels should be 0-100 for features</li>
+                    <li>Scores should be 0-10 for criteria</li>
+                  </ul>
+                </>
+              )}
             </div>
             <div>
               <input

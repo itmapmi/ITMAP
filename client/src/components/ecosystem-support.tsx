@@ -101,7 +101,7 @@ const HarveyBall = ({
 };
 
 export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick, mobileMode = false }: EcosystemSupportProps) {
-  const { t } = useTranslation("ecosystemSupport");
+  const { t, i18n } = useTranslation("ecosystemSupport");
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -137,7 +137,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<
     (VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]
   >({
-    queryKey: ["/api/markets", marketId, "feature-support"],
+    queryKey: ["/api/markets", marketId, "feature-support", i18n.language],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/feature-support?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   // Persisted ISV Ecosystem scores (derived server-side from this matrix);

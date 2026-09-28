@@ -787,6 +787,35 @@ export async function runStartupMigrations(): Promise<void> {
         ON market_criteria_weights (market_id, criteria_id);
     `);
 
+    // 38. Offline Excel translation workflow: per-language overlays for vendor
+    //     score notes and feature-support comments. English text always stays
+    //     on vendor_scores / vendor_feature_support; these tables only ever
+    //     hold translated text plus a staleness snapshot (source_updated_at).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vendor_score_translations (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vendor_score_id varchar NOT NULL REFERENCES vendor_scores(id) ON DELETE CASCADE,
+        language text NOT NULL,
+        notes text,
+        source_updated_at timestamp,
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS vendor_score_translations_score_lang_uniq
+        ON vendor_score_translations (vendor_score_id, language);
+      CREATE TABLE IF NOT EXISTS vendor_feature_support_translations (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vendor_feature_support_id varchar NOT NULL REFERENCES vendor_feature_support(id) ON DELETE CASCADE,
+        language text NOT NULL,
+        comments text,
+        source_updated_at timestamp,
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS vendor_feature_support_translations_support_lang_uniq
+        ON vendor_feature_support_translations (vendor_feature_support_id, language);
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

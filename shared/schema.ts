@@ -263,6 +263,32 @@ export const vendorScores = pgTable("vendor_scores", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Languages the offline Excel translation workflow supports, in addition to
+// the English source of truth. Keep in sync with SUPPORTED_LANGUAGES in
+// client/src/i18n/index.ts (minus "en", which is never a translation target).
+export const SUPPORTED_TRANSLATION_LANGUAGES = ["fr", "de", "pt-BR", "ja", "ko"] as const;
+export type TranslationLanguageCode = (typeof SUPPORTED_TRANSLATION_LANGUAGES)[number];
+export function isSupportedTranslationLanguage(value: unknown): value is TranslationLanguageCode {
+  return typeof value === "string" && (SUPPORTED_TRANSLATION_LANGUAGES as readonly string[]).includes(value);
+}
+
+// Per-language overlay for a vendor score's notes. English notes live on
+// vendorScores itself and are never overwritten by this table. `sourceUpdatedAt`
+// snapshots vendorScores.updatedAt at the moment this translation was last
+// imported, so a later English edit (updatedAt newer than the snapshot) can be
+// flagged stale without needing a separate revision log.
+export const vendorScoreTranslations = pgTable("vendor_score_translations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorScoreId: varchar("vendor_score_id").notNull().references(() => vendorScores.id, { onDelete: "cascade" }),
+  language: text("language").notNull(),
+  notes: text("notes"),
+  sourceUpdatedAt: timestamp("source_updated_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (t) => ({
+  vendorScoreLanguageUniq: uniqueIndex("vendor_score_translations_score_lang_uniq").on(t.vendorScoreId, t.language),
+}));
+
 export const featureCategories = pgTable("feature_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -290,6 +316,21 @@ export const vendorFeatureSupport = pgTable("vendor_feature_support", {
   comments: text("comments"),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// Per-language overlay for a vendor's feature-support comment. Mirrors
+// vendorScoreTranslations: English comments stay on vendorFeatureSupport, this
+// table only ever holds translated text plus a staleness snapshot.
+export const vendorFeatureSupportTranslations = pgTable("vendor_feature_support_translations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorFeatureSupportId: varchar("vendor_feature_support_id").notNull().references(() => vendorFeatureSupport.id, { onDelete: "cascade" }),
+  language: text("language").notNull(),
+  comments: text("comments"),
+  sourceUpdatedAt: timestamp("source_updated_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (t) => ({
+  supportLanguageUniq: uniqueIndex("vendor_feature_support_translations_support_lang_uniq").on(t.vendorFeatureSupportId, t.language),
+}));
 
 export const researchReports = pgTable("research_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -618,6 +659,18 @@ export const insertVendorFeatureSupportSchema = createInsertSchema(vendorFeature
   updatedAt: true,
 });
 
+export const insertVendorScoreTranslationSchema = createInsertSchema(vendorScoreTranslations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVendorFeatureSupportTranslationSchema = createInsertSchema(vendorFeatureSupportTranslations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertResearchReportSchema = createInsertSchema(researchReports).omit({
   id: true,
   createdAt: true,
@@ -734,6 +787,12 @@ export type FeatureWithCategory = Feature & {
 
 export type InsertVendorFeatureSupport = z.infer<typeof insertVendorFeatureSupportSchema>;
 export type VendorFeatureSupport = typeof vendorFeatureSupport.$inferSelect;
+
+export type InsertVendorScoreTranslation = z.infer<typeof insertVendorScoreTranslationSchema>;
+export type VendorScoreTranslation = typeof vendorScoreTranslations.$inferSelect;
+
+export type InsertVendorFeatureSupportTranslation = z.infer<typeof insertVendorFeatureSupportTranslationSchema>;
+export type VendorFeatureSupportTranslation = typeof vendorFeatureSupportTranslations.$inferSelect;
 
 export type InsertResearchReport = z.infer<typeof insertResearchReportSchema>;
 export type ResearchReport = typeof researchReports.$inferSelect;

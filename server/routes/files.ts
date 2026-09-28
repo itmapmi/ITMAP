@@ -20,6 +20,21 @@ import {
   buildQuadrantPositionSheetRows,
 } from "@shared/quadrant-export";
 import { recordEvent } from "./leadGen";
+import { isSupportedTranslationLanguage, type TranslationLanguageCode } from "@shared/schema";
+
+/**
+ * Status label shown in the "- Status" reference column of a translation
+ * export. Purely informational for the translator — never read on import.
+ */
+function translationStatusLabel(sourceText: string | null | undefined, translation: { notes?: string | null; comments?: string | null; sourceUpdatedAt?: Date | string | null } | undefined, currentUpdatedAt: Date | string | null | undefined): string {
+  const hasSource = !!(sourceText && sourceText.trim() !== '');
+  if (!hasSource) return '';
+  const translatedText = translation ? (translation.notes ?? translation.comments) : null;
+  if (!translation || translatedText == null || translatedText === '') return 'Needs translation';
+  const sourceUpdatedAtMs = translation.sourceUpdatedAt ? new Date(translation.sourceUpdatedAt).getTime() : 0;
+  const currentUpdatedAtMs = currentUpdatedAt ? new Date(currentUpdatedAt).getTime() : 0;
+  return currentUpdatedAtMs > sourceUpdatedAtMs ? 'Stale — source updated' : 'Translated';
+}
 
 /**
  * Returns true if the request user may read this market.
@@ -36,6 +51,18 @@ function canReadMarket(market: any, req: any): boolean {
   if (!user) return false;
   if (user.role === "admin") return true;
   return market.ownerUserId === user.id;
+}
+
+/**
+ * Detects whether an imported sheet has a styled category-band row before
+ * the real header (e.g. ISV Ecosystem export has category spans in row 0,
+ * actual column names in row 1). Mirrors the same logic used in the Market
+ * Builder importer. Shared by the English and offline-translation import
+ * paths below.
+ */
+function sheetHasBand(sheet: any): boolean {
+  const a1 = sheet['A1'];
+  return !a1 || (a1.v !== 'Vendor Name' && a1.v !== 'Vendor Name\r\n');
 }
 
 export function registerFileRoutes(app: Express): void {
@@ -126,6 +153,13 @@ export function registerFileRoutes(app: Express): void {
       // Public markets: any authenticated user. Private markets: owner or
       // admin only — same rule as PDF exports below.
       if (!canReadMarket(market, req)) return res.status(404).json({ error: "Market not found" });
+      // Optional offline-translation export: pre-fills Notes/Comments columns
+      // with the language's existing translations (if any) alongside the
+      // English source, so a translator works from one workbook. Omitted or
+      // unrecognized language falls back to the plain English export
+      // unchanged (backward compatible with existing exports/integrations).
+      const languageParam = typeof req.query.language === 'string' ? req.query.language : undefined;
+      const translationLanguage: TranslationLanguageCode | undefined = languageParam && isSupportedTranslationLanguage(languageParam) ? languageParam : undefined;
       const vendors = await storage.getVendorsByMarket(marketId);
       const criteria = await storage.getAllCriteria();
       const executionCriteria = criteria.filter((c: any) => c.category === 'execution');
@@ -134,6 +168,12 @@ export function registerFileRoutes(app: Express): void {
       const categories = await storage.getMarketFeatureCategories(marketId);
       const features = await storage.getMarketFeatures(marketId);
       const supportMatrix = await storage.getVendorFeatureSupport(marketId);
+      const scoreTranslations = translationLanguage
+        ? await storage.getVendorScoreTranslationsForMarket(marketId, translationLanguage)
+        : new Map();
+      const supportTranslations = translationLanguage
+        ? await storage.getVendorFeatureSupportTranslationsForMarket(marketId, translationLanguage)
+        : new Map();
 
       const ecosystemFeatures = getFeaturesForDerivedScore(features, "isvEcosystem");
       const productFeatures = getFeaturesForDerivedScore(features, "productCapabilities");
@@ -143,17 +183,46 @@ export function registerFileRoutes(app: Express): void {
       // weighted-coverage roll-up so the score can be audited from the sheet.
       const derivedCriterionNames = new Set(Object.values(DERIVED_CRITERION_NAMES));
       const vendorEvalHeaders = ['Vendor Name', 'Product'];
+      const addNotesHeaders = (c: any) => {
+        if (translationLanguage) {
+          // "Source Version" snapshots this English row's updatedAt at export
+          // time. On import it becomes the translation's sourceUpdatedAt
+          // instead of whatever updatedAt happens to be at import time — so a
+          // workbook translated against older English text is correctly
+          // marked stale even if nobody touches it again before importing.
+          // Do not edit this column; it is read back on import.
+          vendorEvalHeaders.push(`${c.name} - Notes (English)`, `${c.name} - Notes (${translationLanguage})`, `${c.name} - Status`, `${c.name} - Source Version`);
+        } else {
+          vendorEvalHeaders.push(`${c.name} - Notes`);
+        }
+      };
       executionCriteria.forEach((c: any) => {
-        vendorEvalHeaders.push(c.name, `${c.name} - Notes`);
+        vendorEvalHeaders.push(c.name);
+        addNotesHeaders(c);
         if (derivedCriterionNames.has(c.name)) vendorEvalHeaders.push(`${c.name} - Feature Coverage`);
       });
-      viabilityCriteria.forEach((c: any) => vendorEvalHeaders.push(c.name, `${c.name} - Notes`));
+      viabilityCriteria.forEach((c: any) => {
+        vendorEvalHeaders.push(c.name);
+        addNotesHeaders(c);
+      });
       const vendorEvalData = vendors.map(vendor => {
         const row: any = { 'Vendor Name': vendor.name, 'Product': vendor.product || '' };
-        executionCriteria.forEach((c: any) => {
+        const fillCriterionRow = (c: any) => {
           const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === c.id);
           row[c.name] = score ? Number(score.score) : '';
-          row[`${c.name} - Notes`] = score?.notes || '';
+          if (translationLanguage) {
+            const translation = score ? scoreTranslations.get(score.id) : undefined;
+            row[`${c.name} - Notes (English)`] = score?.notes || '';
+            row[`${c.name} - Notes (${translationLanguage})`] = translation?.notes || '';
+            row[`${c.name} - Status`] = translationStatusLabel(score?.notes, translation, score?.updatedAt);
+            row[`${c.name} - Source Version`] = score?.updatedAt ? new Date(score.updatedAt).toISOString() : '';
+          } else {
+            row[`${c.name} - Notes`] = score?.notes || '';
+          }
+          return score;
+        };
+        executionCriteria.forEach((c: any) => {
+          const score = fillCriterionRow(c);
           if (derivedCriterionNames.has(c.name)) {
             const coverage = formatCoveragePercent(score?.derivedCoverage);
             row[`${c.name} - Feature Coverage`] = coverage && score?.derivedFeatureCount != null
@@ -161,11 +230,7 @@ export function registerFileRoutes(app: Express): void {
               : coverage ?? '';
           }
         });
-        viabilityCriteria.forEach((c: any) => {
-          const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === c.id);
-          row[c.name] = score ? Number(score.score) : '';
-          row[`${c.name} - Notes`] = score?.notes || '';
-        });
+        viabilityCriteria.forEach((c: any) => fillCriterionRow(c));
         return row;
       });
 
@@ -196,7 +261,14 @@ export function registerFileRoutes(app: Express): void {
         );
         orderedCategories.forEach(({ features: fs }) => {
           fs.forEach((feature: any) => {
-            headers.push(feature.name, `${feature.name} - Comments`);
+            headers.push(feature.name);
+            if (translationLanguage) {
+              // See the analogous "Source Version" comment on the Vendor
+              // Evaluation sheet above.
+              headers.push(`${feature.name} - Comments (English)`, `${feature.name} - Comments (${translationLanguage})`, `${feature.name} - Status`, `${feature.name} - Source Version`);
+            } else {
+              headers.push(`${feature.name} - Comments`);
+            }
           });
         });
 
@@ -206,7 +278,15 @@ export function registerFileRoutes(app: Express): void {
             fs.forEach((feature: any) => {
               const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
               row[feature.name] = support ? support.supportLevel : '';
-              row[`${feature.name} - Comments`] = support?.comments || '';
+              if (translationLanguage) {
+                const translation = support ? supportTranslations.get(support.id) : undefined;
+                row[`${feature.name} - Comments (English)`] = support?.comments || '';
+                row[`${feature.name} - Comments (${translationLanguage})`] = translation?.comments || '';
+                row[`${feature.name} - Status`] = translationStatusLabel(support?.comments, translation, support?.updatedAt);
+                row[`${feature.name} - Source Version`] = support?.updatedAt ? new Date(support.updatedAt).toISOString() : '';
+              } else {
+                row[`${feature.name} - Comments`] = support?.comments || '';
+              }
             });
             return row;
           })
@@ -246,7 +326,8 @@ export function registerFileRoutes(app: Express): void {
       xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildChartConfigSheetRows(provenance)), CHART_CONFIG_SHEET);
       xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildQuadrantPositionSheetRows(provenance)), QUADRANT_POSITIONS_SHEET);
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      res.setHeader('Content-Disposition', `attachment; filename="${market.name.replace(/[^a-z0-9]/gi, '_')}_export.xlsx"`);
+      const filenameSuffix = translationLanguage ? `_${translationLanguage}` : '';
+      res.setHeader('Content-Disposition', `attachment; filename="${market.name.replace(/[^a-z0-9]/gi, '_')}_export${filenameSuffix}.xlsx"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.send(buffer);
     } catch (error) {
@@ -272,6 +353,105 @@ export function registerFileRoutes(app: Express): void {
       if (!market) return res.status(404).json({ error: "Market not found" });
 
       const log = (msg: string, extra?: any) => console.log(`[import market=${marketId}] ${msg}`, extra ?? '');
+
+      // Offline-translation import: attaches translated notes/comments to
+      // EXISTING English vendor/criteria/feature rows only. Never creates
+      // vendors, features, categories, scores, or support levels — those stay
+      // exclusively on the English import path below. Matched by name against
+      // the "- Notes (<language>)" / "- Comments (<language>)" columns the
+      // translation export produces.
+      const languageParam = typeof req.body.language === 'string' ? req.body.language : undefined;
+      const translationLanguage: TranslationLanguageCode | undefined = languageParam && isSupportedTranslationLanguage(languageParam) ? languageParam : undefined;
+      if (translationLanguage) {
+        const notesSuffix = ` - Notes (${translationLanguage})`;
+        const commentsSuffix = ` - Comments (${translationLanguage})`;
+
+        const criteria = await storage.getAllCriteria();
+        const criteriaByName = new Map(criteria.map(c => [c.name, c]));
+        const existingVendors = await storage.getVendorsByMarket(marketId);
+        const vendorByName = new Map(existingVendors.map(v => [v.name, v as any]));
+        const allScores = await storage.getMarketVendorScores(marketId);
+        const scoreByKey = new Map(allScores.map(s => [`${s.vendorId}:${s.criteriaId}`, s]));
+        const features = await storage.getMarketFeatures(marketId);
+        const featureByName = new Map(features.map(f => [f.name, f]));
+        const allSupport = await storage.getVendorFeatureSupport(marketId);
+        const supportByKey = new Map(allSupport.map(s => [`${s.vendorId}:${s.featureId}`, s]));
+
+        let unknownVendors = 0, unknownCriteria = 0, noEnglishScore = 0;
+        let unknownFeatures = 0, noEnglishSupport = 0;
+        const scoreWrites: Promise<any>[] = [];
+        const supportWrites: Promise<any>[] = [];
+
+        const vendorEvalRows = xlsx.utils.sheet_to_json(workbook.Sheets['Vendor Evaluation']) as any[];
+        for (const row of vendorEvalRows) {
+          const vendor = vendorByName.get(row['Vendor Name']);
+          if (!vendor) { unknownVendors++; continue; }
+          for (const colName of Object.keys(row)) {
+            if (!colName.endsWith(notesSuffix)) continue;
+            const criterionName = colName.slice(0, -notesSuffix.length);
+            const criterion = criteriaByName.get(criterionName);
+            if (!criterion) { unknownCriteria++; continue; }
+            const raw = row[colName];
+            if (raw === '' || raw === undefined || raw === null) continue; // not yet translated — leave existing translation untouched
+            const score = scoreByKey.get(`${vendor.id}:${criterion.id}`);
+            if (!score) { noEnglishScore++; continue; }
+            // Prefer the workbook's own "Source Version" snapshot (the
+            // English updatedAt at export time) over the row's current
+            // updatedAt, so a workbook translated before a later English edit
+            // is correctly flagged stale as soon as it's imported — not only
+            // after some subsequent edit. Old workbooks without this column
+            // fall back to the current updatedAt (prior behavior).
+            const sourceVersionRaw = row[`${criterionName} - Source Version`];
+            const parsedSourceVersion = sourceVersionRaw ? new Date(sourceVersionRaw) : null;
+            const sourceUpdatedAt = parsedSourceVersion && !isNaN(parsedSourceVersion.getTime()) ? parsedSourceVersion : (score.updatedAt ?? null);
+            scoreWrites.push(storage.upsertVendorScoreTranslation({
+              vendorScoreId: score.id, language: translationLanguage, notes: String(raw), sourceUpdatedAt,
+            }));
+          }
+        }
+
+        for (const sheetName of ['Product Evaluation', 'ISV Ecosystem']) {
+          const sheet = workbook.Sheets[sheetName];
+          if (!sheet) continue;
+          const sheetOpts = sheetHasBand(sheet) ? { range: 1 } : {};
+          const sheetRows = xlsx.utils.sheet_to_json(sheet, sheetOpts) as any[];
+          for (const row of sheetRows) {
+            const vendor = vendorByName.get(row['Vendor Name']);
+            if (!vendor) { unknownVendors++; continue; }
+            for (const colName of Object.keys(row)) {
+              if (!colName.endsWith(commentsSuffix)) continue;
+              const featureName = colName.slice(0, -commentsSuffix.length);
+              const feature = featureByName.get(featureName);
+              if (!feature) { unknownFeatures++; continue; }
+              const raw = row[colName];
+              if (raw === '' || raw === undefined || raw === null) continue;
+              const support = supportByKey.get(`${vendor.id}:${feature.id}`);
+              if (!support) { noEnglishSupport++; continue; }
+              // See the analogous "Source Version" comment on the vendor
+              // score translation import above.
+              const sourceVersionRaw = row[`${featureName} - Source Version`];
+              const parsedSourceVersion = sourceVersionRaw ? new Date(sourceVersionRaw) : null;
+              const sourceUpdatedAt = parsedSourceVersion && !isNaN(parsedSourceVersion.getTime()) ? parsedSourceVersion : (support.updatedAt ?? null);
+              supportWrites.push(storage.upsertVendorFeatureSupportTranslation({
+                vendorFeatureSupportId: support.id, language: translationLanguage, comments: String(raw), sourceUpdatedAt,
+              }));
+            }
+          }
+        }
+
+        for (let i = 0; i < scoreWrites.length; i += 25) await Promise.all(scoreWrites.slice(i, i + 25));
+        for (let i = 0; i < supportWrites.length; i += 25) await Promise.all(supportWrites.slice(i, i + 25));
+
+        const stats = {
+          language: translationLanguage,
+          scoreTranslations: scoreWrites.length,
+          supportTranslations: supportWrites.length,
+          skipped: { unknownVendors, unknownCriteria, noEnglishScore, unknownFeatures, noEnglishSupport },
+          elapsedMs: Date.now() - t0,
+        };
+        log(`TRANSLATION IMPORT COMPLETE`, stats);
+        return res.json({ success: true, message: 'Translations imported successfully', translation: true, stats });
+      }
 
       // ── Step 1: Vendors + Vendor Evaluation scores ────────────────────────
       const criteria = await storage.getAllCriteria();
@@ -307,7 +487,7 @@ export function registerFileRoutes(app: Express): void {
         const vendor = vendorByName.get(row['Vendor Name']);
         if (!vendor) continue;
         for (const colName of Object.keys(row)) {
-          if (colName === 'Vendor Name' || colName === 'Product' || colName.endsWith(' - Notes')) continue;
+          if (colName === 'Vendor Name' || colName === 'Product' || / - Notes(\s\(.+\))?$| - Status$| - Source Version$/.test(colName)) continue;
           const criterion = criteriaByName.get(colName);
           if (!criterion) { unknownCriteria.add(colName); continue; }
           const raw = row[colName];
@@ -330,14 +510,6 @@ export function registerFileRoutes(app: Express): void {
       // New exports include a "Category" column that groups features. We parse the
       // header and the first row to map each feature to its category, preserving
       // the category hierarchy on re-import.
-      // Detect whether the sheet has a styled band row before the real header
-      // (e.g. ISV Ecosystem export has category spans in row 0, actual column
-      //  names in row 1). Mirrors the same logic used in the Market Builder importer.
-      const sheetHasBand = (sheet: any): boolean => {
-        const a1 = sheet['A1'];
-        return !a1 || (a1.v !== 'Vendor Name' && a1.v !== 'Vendor Name\r\n');
-      };
-
       const collectFeatureColumns = (sheetName: string): { header: string[]; featureToCategory: Map<string, string>; hasBand: boolean } => {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { header: [], featureToCategory: new Map(), hasBand: false };
@@ -364,7 +536,7 @@ export function registerFileRoutes(app: Express): void {
             if (!categoryName || categoryName === 'Category') continue;
             for (let j = 0; j < rawHeader.length; j++) {
               const h = rawHeader[j];
-              if (!h || h === 'Vendor Name' || h === 'Category' || String(h).endsWith(' - Comments')) continue;
+              if (!h || h === 'Vendor Name' || h === 'Category' || / - Comments(\s\(.+\))?$| - Status$| - Source Version$/.test(String(h))) continue;
               const val = row[j];
               if (val !== '' && val !== undefined && val !== null) {
                 featureToCategory.set(String(h), categoryName);
@@ -376,8 +548,9 @@ export function registerFileRoutes(app: Express): void {
       };
       const { header: productHeader, featureToCategory: productFeatureToCategory, hasBand: productHasBand } = collectFeatureColumns('Product Evaluation');
       const { header: ecosystemHeader, featureToCategory: ecosystemFeatureToCategory, hasBand: ecoHasBand } = collectFeatureColumns('ISV Ecosystem');
-      const productFeatureCols = productHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !h.endsWith(' - Comments'));
-      const ecosystemFeatureCols = ecosystemHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !h.endsWith(' - Comments'));
+      const isFeatureMetaColumn = (h: string) => / - Comments(\s\(.+\))?$| - Status$| - Source Version$/.test(h);
+      const productFeatureCols = productHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !isFeatureMetaColumn(h));
+      const ecosystemFeatureCols = ecosystemHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !isFeatureMetaColumn(h));
 
       let categories = await storage.getMarketFeatureCategories(marketId);
       const categoryByName = new Map<string, any>(categories.map(c => [c.name, c]));
@@ -473,7 +646,7 @@ export function registerFileRoutes(app: Express): void {
           const vendor = vendorByName.get(row['Vendor Name']);
           if (!vendor) continue;
           for (const colName of Object.keys(row)) {
-            if (colName === 'Vendor Name' || colName === 'Category' || colName.endsWith(' - Comments')) continue;
+            if (colName === 'Vendor Name' || colName === 'Category' || / - Comments(\s\(.+\))?$| - Status$| - Source Version$/.test(colName)) continue;
             const feature = featureByName.get(colName);
             if (!feature) continue;
             const raw = row[colName];
@@ -545,6 +718,24 @@ export function registerFileRoutes(app: Express): void {
     } catch (error: any) {
       console.error(`[import market=${req.params.marketId}] FAILED after ${Date.now() - t0}ms:`, error?.stack || error?.message || error);
       res.status(500).json({ error: "Failed to import market data", detail: error?.message ?? String(error) });
+    }
+  });
+
+  // Aggregate staleness counts for the admin import/export screen's language
+  // selector — lets the admin see at a glance whether a translation workbook
+  // is worth re-exporting before downloading it.
+  app.get("/api/markets/:marketId/translation-status/:language", requireAdmin, async (req, res) => {
+    try {
+      const { marketId, language } = req.params;
+      if (!isSupportedTranslationLanguage(language)) return res.status(400).json({ error: "Unsupported language" });
+      const [scores, support] = await Promise.all([
+        storage.getVendorScoreTranslationStatus(marketId, language),
+        storage.getVendorFeatureSupportTranslationStatus(marketId, language),
+      ]);
+      res.json({ language, scores, support });
+    } catch (error) {
+      console.error("Error fetching translation status:", error);
+      res.status(500).json({ error: "Failed to fetch translation status" });
     }
   });
 

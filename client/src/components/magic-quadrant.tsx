@@ -104,7 +104,7 @@ const historicalTimelineTicks = Array.from(
 );
 
 export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, mobileMode = false }: MagicQuadrantProps) {
-  const { t } = useTranslation("magicQuadrant");
+  const { t, i18n } = useTranslation("magicQuadrant");
   const { t: tc } = useTranslation("common");
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -255,7 +255,12 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   });
 
   const { data: scores, isLoading: scoresLoading } = useQuery<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>({
-    queryKey: ["/api/markets", marketId, "scores"],
+    queryKey: ["/api/markets", marketId, "scores", i18n.language],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/scores?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
     refetchOnWindowFocus: true,
     staleTime: 0, // Always refetch to ensure fresh data
   });
