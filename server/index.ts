@@ -14,19 +14,31 @@ configureProxyTrust(app);
 
 // Canonical domain enforcement.
 // In production a custom domain (e.g. itmap.ai) is served alongside the bare
-// Replit deployment domain (*.replit.app). Without this, an OAuth login can
-// strand the user on the *.replit.app host. We 301-redirect any *.replit.app
-// request to the primary custom domain so the whole session stays on one host.
-// Dev/preview hosts use *.replit.dev and are never matched, so the preview pane
-// keeps working.
+// Replit deployment domain (*.replit.app), and possibly additional custom
+// domains added purely as redirects (e.g. itmap.com, bought separately and
+// pointed at the same deployment so visitors land on the canonical domain).
+// Without this, an OAuth login can strand the user on a non-canonical host.
+// We 301-redirect any *.replit.app request, or any host explicitly listed in
+// REDIRECT_DOMAINS, to the primary custom domain so the whole session stays
+// on one host. Dev/preview hosts use *.replit.dev and are never matched, so
+// the preview pane keeps working.
 const PRIMARY_DOMAIN = (process.env.PRIMARY_DOMAIN || "itmap.ai")
   .toLowerCase()
   .replace(/^https?:\/\//, "")
   .replace(/\/.*$/, "")
   .split(":")[0];
+// Secondary domains that should always redirect to PRIMARY_DOMAIN. itmap.com
+// was purchased after itmap.ai specifically to redirect visitors to itmap.ai;
+// it must be added and verified in the Publishing tool's Domains tab for the
+// DNS/TLS to resolve at all — this middleware only decides where to send
+// traffic once it arrives.
+const REDIRECT_DOMAINS = (process.env.REDIRECT_DOMAINS || "itmap.com,www.itmap.com,www.itmap.ai")
+  .split(",")
+  .map(d => d.trim().toLowerCase())
+  .filter(Boolean);
 app.use((req, res, next) => {
   const host = (req.get("host") || "").toLowerCase().split(":")[0];
-  if (PRIMARY_DOMAIN && host.endsWith(".replit.app") && host !== PRIMARY_DOMAIN) {
+  if (PRIMARY_DOMAIN && host !== PRIMARY_DOMAIN && (host.endsWith(".replit.app") || REDIRECT_DOMAINS.includes(host))) {
     return res.redirect(301, `https://${PRIMARY_DOMAIN}${req.originalUrl}`);
   }
   next();
