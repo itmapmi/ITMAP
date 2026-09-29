@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FileDown, Building2, Flame, Radar, ChevronRight } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import {
   PanelShell, GlassCard, BandBadge, fullName, timeAgo,
   BAND_META, type LeadRow,
@@ -24,7 +26,9 @@ const WINDOWS = [
 const stripMarket = (n: string | null | undefined) => (n ?? "").replace(/^ITMAP for /i, "");
 
 export default function LeadGenMyVendorPage() {
+  const { hasFeature, isLoading: authLoading } = useAuth();
   const [days, setDays] = useState(90);
+  const canAccess = !authLoading && hasFeature("lead_gen");
 
   const qs = new URLSearchParams({ days: String(days), sort: "intent", limit: "200" });
   const { data, isLoading, error } = useQuery<MyLeadsResponse>({
@@ -34,8 +38,13 @@ export default function LeadGenMyVendorPage() {
       if (!res.ok) throw new Error(String(res.status));
       return res.json();
     },
+    enabled: canAccess,
     retry: false,
   });
+
+  if (!authLoading && !hasFeature("lead_gen")) {
+    return <LockedFeaturePanel featureKey="lead_gen" variant="dark" />;
+  }
 
   const rows = data?.rows ?? [];
   const hot = rows.filter((r) => r.intent.band === "hot").length;

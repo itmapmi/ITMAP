@@ -16,11 +16,18 @@ import {
   type LeadGenEventType,
 } from "@shared/schema";
 import { resolveGeo } from "../geoResolver";
+import { requireFeature } from "../featureAccess";
 import {
   vendorScopeIds,
   vendorScopeDetails,
   requireVendorScope,
 } from "../lib/vendorScope";
+
+// Vendor-facing Lead Generator surface requires both a vendor seat AND an
+// explicit admin grant of the "lead_gen" feature (see shared/features.ts).
+// Fact Review is intentionally excluded — it stays gated on vendor scope
+// alone (see the comment above those routes further down).
+const leadGenMeGuard = [requireVendorScope, requireFeature("lead_gen")];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -739,7 +746,7 @@ export function registerLeadGenRoutes(app: Express): void {
   // assigned markets, not only activity attributed to the assigned vendors.
 
   // Scope info for the signed-in vendor seat (used to render the panel header).
-  app.get("/api/lead-gen/me/scope", requireVendorScope, async (req: Request, res: Response) => {
+  app.get("/api/lead-gen/me/scope", leadGenMeGuard, async (req: Request, res: Response) => {
     try {
       const { vendors, markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
@@ -752,7 +759,7 @@ export function registerLeadGenRoutes(app: Express): void {
 
   // Ranked leads across the entire visitor pool of the signed-in seat's
   // assigned market(s) — not just events attributed to the seat's own vendor.
-  app.get("/api/lead-gen/me/leads", requireVendorScope, async (req: Request, res: Response) => {
+  app.get("/api/lead-gen/me/leads", leadGenMeGuard, async (req: Request, res: Response) => {
     try {
       const { markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
@@ -771,7 +778,7 @@ export function registerLeadGenRoutes(app: Express): void {
   });
 
   // Export the signed-in vendor seat's market-wide visitor pool.
-  app.get("/api/lead-gen/me/leads/export/:fmt", requireVendorScope, async (req: Request, res: Response) => {
+  app.get("/api/lead-gen/me/leads/export/:fmt", leadGenMeGuard, async (req: Request, res: Response) => {
     try {
       const { markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
@@ -870,7 +877,7 @@ export function registerLeadGenRoutes(app: Express): void {
   // ── Vendor-facing single lead detail (mirrors the admin detail/export above,
   //    scoped to visitors who actually appear in the signed-in seat's assigned
   //    market(s) so a vendor can't probe arbitrary user IDs) ──
-  app.get("/api/lead-gen/me/leads/:userId/export/:fmt", requireVendorScope, async (req: Request, res: Response) => {
+  app.get("/api/lead-gen/me/leads/:userId/export/:fmt", leadGenMeGuard, async (req: Request, res: Response) => {
     try {
       const detail = await buildScopedVendorLeadDetail(req, req.params.userId);
       if (!detail) return res.status(404).json({ error: "Lead not found" });
@@ -881,7 +888,7 @@ export function registerLeadGenRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/lead-gen/me/leads/:userId", requireVendorScope, async (req: Request, res: Response) => {
+  app.get("/api/lead-gen/me/leads/:userId", leadGenMeGuard, async (req: Request, res: Response) => {
     try {
       const detail = await buildScopedVendorLeadDetail(req, req.params.userId);
       if (!detail) return res.status(404).json({ error: "Lead not found" });
