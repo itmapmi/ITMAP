@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Flag, CheckCircle, Clock, XCircle, AlertCircle, ChevronDown, ChevronUp, ClipboardCheck } from "lucide-react";
-import { PanelShell, GlassCard } from "./_shared";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,20 @@ type FlagTarget =
   | { type: "feature"; row: FactRow }
   | { type: "vendor-evaluation"; row: VendorEvaluationRow };
 
+// ── Page shell (light theme, matches the market detail page) ──────────────────
+
+function Page({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>
+    </div>
+  );
+}
+
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</div>;
+}
+
 interface FactMarketGroup {
   vendor: { id: string; name: string; marketId: string | null };
   market: { id: string; name: string } | null;
@@ -68,7 +81,7 @@ const HARVEY_COLORS = [
   "text-orange-500",
   "text-yellow-500",
   "text-blue-500",
-  "text-green-500",
+  "text-green-600",
 ];
 
 function HarveyBall({ level, size = 18 }: { level: number; size?: number }) {
@@ -88,18 +101,18 @@ function HarveyBall({ level, size = 18 }: { level: number; size?: number }) {
 function FlagStatusChip({ flag }: { flag: FactFlag }) {
   if (flag.status === "approved")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-xs font-medium text-emerald-400">
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
         <CheckCircle className="h-3 w-3" /> Approved
       </span>
     );
   if (flag.status === "rejected")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-2 py-0.5 text-xs font-medium text-red-400">
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-xs font-medium text-red-700">
         <XCircle className="h-3 w-3" /> Rejected
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-medium text-amber-400">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
       <Clock className="h-3 w-3" /> Pending review
     </span>
   );
@@ -134,53 +147,53 @@ function FactSection({
 
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">{title}</h3>
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-500">{title}</h3>
       <div className="space-y-2">
         {categories.map(([category, catRows]) => {
           const isOpen = collapsed[category] === true;
           const pendingCount = catRows.filter((r) => r.flag?.status === "pending").length;
           return (
-            <GlassCard key={category} className="overflow-hidden">
+            <Card key={category} className="overflow-hidden">
               <button
-                className="flex w-full items-center justify-between px-4 py-3 hover:bg-white/5 transition"
+                className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50 transition"
                 onClick={() => toggle(category)}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-white">{category}</span>
-                  <span className="text-xs text-slate-500">({catRows.length})</span>
+                  <span className="text-sm font-semibold text-slate-900">{category}</span>
+                  <span className="text-xs text-slate-400">({catRows.length})</span>
                   {pendingCount > 0 && (
-                    <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-xs text-amber-400">
+                    <span className="rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-xs text-amber-700">
                       {pendingCount} pending
                     </span>
                   )}
                 </div>
                 {isOpen
-                  ? <ChevronUp className="h-4 w-4 text-slate-500 shrink-0" />
-                  : <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />}
+                  ? <ChevronUp className="h-4 w-4 text-slate-400 shrink-0" />
+                  : <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />}
               </button>
 
               {isOpen && (
-                <div className="divide-y divide-white/5 border-t border-white/5">
+                <div className="divide-y divide-slate-100 border-t border-slate-100">
                   {catRows.map((row) => (
                     <div key={row.featureId} className="flex items-start gap-3 px-4 py-3">
                       <div className="mt-0.5"><HarveyBall level={row.supportLevel} /></div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium text-white">{row.featureName}</span>
+                          <span className="text-sm font-medium text-slate-900">{row.featureName}</span>
                           {row.hasSupport ? (
                             <span className="text-xs text-slate-500">{HARVEY_LABELS[row.supportLevel] ?? row.supportLevel}</span>
                           ) : (
-                            <span className="text-xs italic text-slate-600">Not yet evaluated</span>
+                            <span className="text-xs italic text-slate-400">Not yet evaluated</span>
                           )}
                         </div>
                         {row.comments && (
-                          <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-slate-500">{row.comments}</p>
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-slate-600">{row.comments}</p>
                         )}
                         {row.flag && (
                           <div className="mt-1.5 space-y-1">
                             <FlagStatusChip flag={row.flag} />
                             {row.flag.status === "rejected" && row.flag.adminNotes && (
-                              <p className="text-xs text-red-400">{row.flag.adminNotes}</p>
+                              <p className="text-xs text-red-600">{row.flag.adminNotes}</p>
                             )}
                           </div>
                         )}
@@ -189,19 +202,19 @@ function FactSection({
                         {row.hasSupport && !row.flag ? (
                           <button
                             onClick={() => onFlag(row)}
-                            className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500 transition hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
                           >
                             <Flag className="h-3 w-3" /> Flag
                           </button>
                         ) : row.flag ? (
-                          <span className="text-xs text-slate-600">Flagged</span>
+                          <span className="text-xs text-slate-400">Flagged</span>
                         ) : null}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </GlassCard>
+            </Card>
           );
         })}
       </div>
@@ -230,47 +243,47 @@ function VendorEvaluationSection({
 
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">Vendor Evaluation</h3>
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-500">Vendor Evaluation</h3>
       <div className="space-y-2">
         {Object.entries(byCategory).map(([category, categoryRows]) => {
           const isOpen = collapsed[category] === true;
           const pendingCount = categoryRows.filter((row) => row.flag?.status === "pending").length;
           return (
-            <GlassCard key={category} className="overflow-hidden">
+            <Card key={category} className="overflow-hidden">
               <button
-                className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-white/5"
+                className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-slate-50"
                 onClick={() => toggle(category)}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold capitalize text-white">{category}</span>
-                  <span className="text-xs text-slate-500">({categoryRows.length})</span>
+                  <span className="text-sm font-semibold capitalize text-slate-900">{category}</span>
+                  <span className="text-xs text-slate-400">({categoryRows.length})</span>
                   {pendingCount > 0 && (
-                    <span className="rounded-full border border-amber-500/30 bg-amber-500/20 px-1.5 py-0.5 text-xs text-amber-400">
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">
                       {pendingCount} pending
                     </span>
                   )}
                 </div>
                 {isOpen
-                  ? <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" />
-                  : <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />}
+                  ? <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
+                  : <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />}
               </button>
 
               {isOpen && (
-                <div className="divide-y divide-white/5 border-t border-white/5">
+                <div className="divide-y divide-slate-100 border-t border-slate-100">
                   {categoryRows.map((row) => (
                     <div key={row.vendorScoreId} className="flex items-start gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <span className="text-sm font-medium text-white">{row.criterionName}</span>
+                        <span className="text-sm font-medium text-slate-900">{row.criterionName}</span>
                         {row.comments ? (
-                          <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-slate-500">{row.comments}</p>
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-slate-600">{row.comments}</p>
                         ) : (
-                          <p className="mt-0.5 text-xs italic text-slate-600">No write-up available yet.</p>
+                          <p className="mt-0.5 text-xs italic text-slate-400">No write-up available yet.</p>
                         )}
                         {row.flag && (
                           <div className="mt-1.5 space-y-1">
                             <FlagStatusChip flag={row.flag} />
                             {row.flag.status === "rejected" && row.flag.adminNotes && (
-                              <p className="text-xs text-red-400">{row.flag.adminNotes}</p>
+                              <p className="text-xs text-red-600">{row.flag.adminNotes}</p>
                             )}
                           </div>
                         )}
@@ -279,19 +292,19 @@ function VendorEvaluationSection({
                         {!row.flag ? (
                           <button
                             onClick={() => onFlag(row)}
-                            className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500 transition hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-600"
                           >
                             <Flag className="h-3 w-3" /> Flag
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-600">Flagged</span>
+                          <span className="text-xs text-slate-400">Flagged</span>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </GlassCard>
+            </Card>
           );
         })}
       </div>
@@ -350,15 +363,15 @@ export default function FactReviewPage() {
   const closeFlag = () => { setFlagTarget(null); setFlagLinks(""); setFlagNotes(""); };
 
   return (
-    <PanelShell>
+    <Page>
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="flex items-center gap-2.5 text-2xl font-bold text-white">
+        <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900">
           <span className="rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 p-2">
             <ClipboardCheck className="h-5 w-5 text-white" />
           </span>
           Fact Review
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-slate-500">
           Review the write-ups for your vendor evaluation, product evaluation, and ecosystem evaluation.
         </p>
       </motion.div>
@@ -367,31 +380,31 @@ export default function FactReviewPage() {
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-white/5" />
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
             ))}
           </div>
         ) : !factData ? (
-          <GlassCard className="p-8 text-center">
-            <AlertCircle className="mx-auto mb-3 h-8 w-8 text-slate-500" />
-            <p className="text-sm text-slate-400">No feature data found for your vendor.</p>
-          </GlassCard>
+          <Card className="p-8 text-center">
+            <AlertCircle className="mx-auto mb-3 h-8 w-8 text-slate-400" />
+            <p className="text-sm text-slate-500">No feature data found for your vendor.</p>
+          </Card>
         ) : (
           <>
-            <GlassCard className="p-4">
+            <Card className="p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
-                <p className="text-sm text-slate-400">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600" />
+                <p className="text-sm text-slate-600">
                   These are the current evaluation write-ups recorded in our database. If you believe any entry is
-                  inaccurate, click <strong className="text-white">Flag</strong> to submit evidence and notes.
+                  inaccurate, click <strong className="text-slate-900">Flag</strong> to submit evidence and notes.
                   Our analysts will review your submission.
                 </p>
               </div>
-            </GlassCard>
+            </Card>
 
             {factData.markets.length === 0 && (
-              <GlassCard className="p-8 text-center">
+              <Card className="p-8 text-center">
                 <p className="text-sm text-slate-500">No feature data found for your vendor yet.</p>
-              </GlassCard>
+              </Card>
             )}
 
             {factData.markets.map((group) => {
@@ -401,13 +414,13 @@ export default function FactReviewPage() {
                   {factData.markets.length > 1 && group.market && (
                     <div className="flex items-center gap-2 pt-2">
                       <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Market</span>
-                      <span className="text-sm font-semibold text-cyan-400">{stripMarket(group.market.name)}</span>
+                      <span className="text-sm font-semibold text-cyan-600">{stripMarket(group.market.name)}</span>
                     </div>
                   )}
                   {factData.markets.length === 1 && group.market && (
-                    <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
                       <span>Market:</span>
-                      <span className="font-medium text-white">{stripMarket(group.market.name)}</span>
+                      <span className="font-medium text-slate-900">{stripMarket(group.market.name)}</span>
                     </div>
                   )}
                   <VendorEvaluationSection
@@ -417,9 +430,9 @@ export default function FactReviewPage() {
                   <FactSection rows={group.productRows} title="Product Evaluation" onFlag={(row) => setFlagTarget({ type: "feature", row })} />
                   <FactSection rows={group.ecosystemRows} title="Ecosystem Evaluation" onFlag={(row) => setFlagTarget({ type: "feature", row })} />
                   {!hasRows && (
-                    <GlassCard className="p-6 text-center">
+                    <Card className="p-6 text-center">
                       <p className="text-sm text-slate-500">No features defined for this market yet.</p>
-                    </GlassCard>
+                    </Card>
                   )}
                 </div>
               );
@@ -430,51 +443,51 @@ export default function FactReviewPage() {
 
       {/* Flag dialog */}
       <Dialog open={!!flagTarget} onOpenChange={(o) => { if (!o) closeFlag(); }}>
-        <DialogContent className="max-w-md bg-slate-900 border border-white/10 text-white">
+        <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900">
           <DialogHeader>
-            <DialogTitle className="text-white">Flag a Correction</DialogTitle>
+            <DialogTitle className="text-slate-900">Flag a Correction</DialogTitle>
           </DialogHeader>
           {flagTarget && (
             <div className="space-y-4 py-2">
-              <div className="rounded-lg bg-white/5 p-3 text-sm space-y-1">
-                <p className="text-slate-400">
+              <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm space-y-1">
+                <p className="text-slate-500">
                   {flagTarget.type === "feature" ? "Feature" : "Criterion"}:
-                  <span className="ml-1 font-medium text-white">
+                  <span className="ml-1 font-medium text-slate-900">
                     {flagTarget.type === "feature" ? flagTarget.row.featureName : flagTarget.row.criterionName}
                   </span>
                 </p>
-                <p className="text-slate-400">
+                <p className="text-slate-500">
                   Category:
-                  <span className="ml-1 text-slate-300">{flagTarget.row.categoryName}</span>
+                  <span className="ml-1 text-slate-700">{flagTarget.row.categoryName}</span>
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-slate-300">Evidence links (optional)</Label>
+                <Label className="text-slate-600">Evidence links (optional)</Label>
                 <Textarea
                   value={flagLinks}
                   onChange={(e) => setFlagLinks(e.target.value)}
                   placeholder="URLs or references supporting your correction…"
                   rows={2}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 resize-none"
+                  className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 resize-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-slate-300">Notes (optional)</Label>
+                <Label className="text-slate-600">Notes (optional)</Label>
                 <Textarea
                   value={flagNotes}
                   onChange={(e) => setFlagNotes(e.target.value)}
                   placeholder="Explain what is inaccurate in this write-up…"
                   rows={3}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 resize-none"
+                  className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 resize-none"
                 />
               </div>
               <p className="text-xs text-slate-500">Add evidence links or notes before submitting.</p>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" className="border-white/10 text-slate-300" onClick={closeFlag}>Cancel</Button>
+            <Button variant="outline" className="border-slate-200 text-slate-600" onClick={closeFlag}>Cancel</Button>
             <Button
               onClick={submitFlag}
               disabled={flagMutation.isPending}
@@ -485,6 +498,6 @@ export default function FactReviewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PanelShell>
+    </Page>
   );
 }
