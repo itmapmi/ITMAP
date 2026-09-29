@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
+import { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES, LANGUAGE_STORAGE_KEY, type SupportedLanguageCode } from "@shared/languages";
 
 // Every locale namespace JSON file is picked up automatically, so adding a
 // new namespace only requires dropping a JSON file into locales/<lng>/ —
@@ -19,18 +20,8 @@ for (const path in modules) {
   resources[lng][ns] = modules[path]!.default;
 }
 
-export const SUPPORTED_LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "fr", label: "Français" },
-  { code: "de", label: "Deutsch" },
-  { code: "pt-BR", label: "Português (Brasil)" },
-  { code: "ja", label: "日本語" },
-  { code: "ko", label: "한국어" },
-] as const;
-
-export type SupportedLanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
-
-export const LANGUAGE_STORAGE_KEY = "itmap_language";
+export { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES, LANGUAGE_STORAGE_KEY };
+export type { SupportedLanguageCode };
 
 i18n
   .use(LanguageDetector)
