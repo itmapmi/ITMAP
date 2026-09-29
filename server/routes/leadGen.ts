@@ -29,6 +29,12 @@ import {
 // alone (see the comment above those routes further down).
 const leadGenMeGuard = [requireVendorScope, requireFeature("lead_gen")];
 
+// GET /api/lead-gen/me/scope is NOT part of the gated Lead Generator surface:
+// home.tsx and navigation.tsx call it for every vendor seat to resolve the
+// vendor's linked-company name (dashboard "linked" status, nav seat label),
+// regardless of whether they've been granted "lead_gen". Gate it on vendor
+// scope alone so those general-purpose reads keep working for all vendors.
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // UUID regex for validating marketId / vendorId fields.
@@ -746,7 +752,7 @@ export function registerLeadGenRoutes(app: Express): void {
   // assigned markets, not only activity attributed to the assigned vendors.
 
   // Scope info for the signed-in vendor seat (used to render the panel header).
-  app.get("/api/lead-gen/me/scope", leadGenMeGuard, async (req: Request, res: Response) => {
+  app.get("/api/lead-gen/me/scope", requireVendorScope, async (req: Request, res: Response) => {
     try {
       const { vendors, markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });

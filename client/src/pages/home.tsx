@@ -89,7 +89,7 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
   },
   {
     icon: <CheckCircle2 className="h-5 w-5" />,
-    href: "/lead-gen/me/fact-review",
+    href: "/fact-review",
     featureKey: "fact_review",
     accent: "violet",
     // Only shown when admin has linked this user to a vendor AND that vendor

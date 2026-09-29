@@ -262,7 +262,9 @@ function Router() {
         <Route path="/lead-gen/vendors/:vendorId">{() => <ProtectedRoute component={LeadGenVendorPage} requireAdmin={true} />}</Route>
         <Route path="/lead-gen/me">{() => <ProtectedRoute component={LeadGenMyVendorPage} />}</Route>
         <Route path="/market-trends/me">{() => <ProtectedRoute component={MarketTrendsMyVendorPage} />}</Route>
-        <Route path="/lead-gen/me/fact-review">{() => <ProtectedRoute component={FactReviewPage} />}</Route>
+        <Route path="/fact-review">{() => <ProtectedRoute component={FactReviewPage} />}</Route>
+        {/* Old URL kept as a redirect so existing bookmarks/links keep working. */}
+        <Route path="/lead-gen/me/fact-review">{() => <Redirect to="/fact-review" replace />}</Route>
         <Route path="/lead-gen/me/:userId">{() => <ProtectedRoute component={LeadGenMyLeadDetailPage} />}</Route>
         <Route path="/rfp-responder">{() => <ProtectedRoute component={RfpResponderPage} />}</Route>
         <Route path="/rfp-responder/sessions/:id">{() => <ProtectedRoute component={RfpSessionDetailPage} />}</Route>

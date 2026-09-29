@@ -283,8 +283,8 @@ export default function Navigation() {
                       </DropdownMenuItem>
                     )}
                     {isVendorScoped && !isAdmin && (
-                      <DropdownMenuItem asChild className={`cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                        <Link href="/lead-gen/me/fact-review"><Star className="mr-2 h-4 w-4" />{t("auth.factReview")}</Link>
+                      <DropdownMenuItem asChild className={`cursor-pointer ${location === "/fact-review" ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
+                        <Link href="/fact-review"><Star className="mr-2 h-4 w-4" />{t("auth.factReview")}</Link>
                       </DropdownMenuItem>
                     )}
                     {isVendorScoped && !isAdmin && hasFeature("rfp") && (
