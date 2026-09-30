@@ -77,3 +77,17 @@ mtime_ms = 1790750867894
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:c340604c-5721-42e2-9455-6060a3539512/e1f53258-2bb6-470e-b56f-e4e8388cde4f/f7370cbb-dd44-40c1-87e6-345ebc26eefa"
 storage_version_token = "1790750985293343"
 content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+[[outputs]]
+id = "niICY6-j8Yt-zP8pRjy1q"
+uri = "file://outputs/B2B_Marketing_Automation_German_Translation_Full_Layout.xlsx"
+type = "table"
+title = "German translation workbook — full layout with scores"
+description = "Keeps the score and feature-support columns alongside 96 German score notes and 1,488 German feature comments; upload with Deutsch selected."
+logical_id = "6d9ecfad-8961-4489-9af9-f65beacbdcfb"
+content_hash = "sha256:3c97050144a6fabd104ed54b7c4eca26b7f46f0ec1ebac6568e65f0e4fb28b16"
+size = 2464561
+mtime_ms = 1790751256902
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:c340604c-5721-42e2-9455-6060a3539512/6d9ecfad-8961-4489-9af9-f65beacbdcfb/ac250da8-7923-4187-80e3-8043db0da17e"
+storage_version_token = "1790751266093818"
+content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
