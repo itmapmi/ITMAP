@@ -56,3 +56,4 @@
 - [Percentage-only vendor analytics pattern](percentage-only-vendor-analytics.md) — strip raw counts server-side (not just UI); top-N+Other bucket; denominator from an uncapped query.
 - [Buyer-vs-vendor scoping in hasFeatureAccess](buyer-vendor-rbac-grant-scope.md) — plain buyers always pass requireFeature regardless of grants; news/intelligence_feed/cve_intelligence are free for vendors too — a non-vendor-scoped "no grant" test fixture is a no-op.
 - [Vendor "view any market" analytics pattern](market-trends-any-market-access.md) — open a vendor-scoped marketId route via canReadMarket (404), not seat-ownership; add zero-row floors via an opt-in flag, never flip the shared query default.
+- [Geo language vs manual choice](geo-language-preference.md) — auto-detected languages must not persist as explicit choices; recheck geo after network changes while honoring manual selection.

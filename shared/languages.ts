@@ -19,3 +19,6 @@ export type SupportedLanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"]
 export const SUPPORTED_LANGUAGE_CODES: SupportedLanguageCode[] = SUPPORTED_LANGUAGES.map((l) => l.code);
 
 export const LANGUAGE_STORAGE_KEY = "itmap_language";
+// Unlike the old key (which also stored automatic guesses), this key is written
+// only when the visitor explicitly chooses a language.
+export const MANUAL_LANGUAGE_STORAGE_KEY = "itmap_manual_language";

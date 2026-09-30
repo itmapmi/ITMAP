@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SUPPORTED_LANGUAGES, type SupportedLanguageCode } from "@/i18n";
+import { MANUAL_LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES, type SupportedLanguageCode } from "@/i18n";
 
 interface LanguageSwitcherProps {
   /** Dark trigger for the main site chrome (default); light for admin-style surfaces. */
@@ -16,9 +16,8 @@ interface LanguageSwitcherProps {
 
 /**
  * Language switcher shown in the site navigation. Manual selection is
- * persisted to localStorage by i18next-browser-languagedetector (see
- * client/src/i18n/index.ts `detection.caches`), so it's remembered across
- * sessions once the user picks one; before that, the browser language wins.
+ * persisted only for an explicit selection; automatic geo/browser detection
+ * remains free to update on future visits.
  */
 export function LanguageSwitcher({ variant = "dark", className = "" }: LanguageSwitcherProps) {
   const { i18n } = useTranslation();
@@ -49,7 +48,10 @@ export function LanguageSwitcher({ variant = "dark", className = "" }: LanguageS
         {SUPPORTED_LANGUAGES.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => i18n.changeLanguage(lang.code as SupportedLanguageCode)}
+            onClick={() => {
+              localStorage.setItem(MANUAL_LANGUAGE_STORAGE_KEY, lang.code);
+              void i18n.changeLanguage(lang.code as SupportedLanguageCode);
+            }}
             className={
               isDark
                 ? "flex items-center justify-between text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"

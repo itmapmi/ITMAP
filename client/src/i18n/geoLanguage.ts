@@ -1,8 +1,7 @@
 /**
  * client/src/i18n/geoLanguage.ts
  *
- * Suggests a default UI language for brand-new visitors (no stored
- * preference yet) based on the server's coarse IP geolocation. Bounded by a
+ * Suggests a default UI language based on the server's coarse IP geolocation. Bounded by a
  * short timeout so a slow/failed network call never blocks the app from
  * rendering for long — it just falls back to the existing browser-language
  * default.
@@ -16,7 +15,7 @@ export async function detectGeoLanguage(): Promise<SupportedLanguageCode | null>
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch("/api/geo-language", { signal: controller.signal });
+    const res = await fetch("/api/geo-language", { signal: controller.signal, cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     const language = data?.language;

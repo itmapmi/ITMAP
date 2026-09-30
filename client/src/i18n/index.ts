@@ -1,7 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
-import { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES, LANGUAGE_STORAGE_KEY, type SupportedLanguageCode } from "@shared/languages";
+import { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES, MANUAL_LANGUAGE_STORAGE_KEY, type SupportedLanguageCode } from "@shared/languages";
 
 // Every locale namespace JSON file is picked up automatically, so adding a
 // new namespace only requires dropping a JSON file into locales/<lng>/ —
@@ -20,7 +20,7 @@ for (const path in modules) {
   resources[lng][ns] = modules[path]!.default;
 }
 
-export { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES, LANGUAGE_STORAGE_KEY };
+export { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES, MANUAL_LANGUAGE_STORAGE_KEY };
 export type { SupportedLanguageCode };
 
 i18n
@@ -38,8 +38,9 @@ i18n
     returnEmptyString: true,
     detection: {
       order: ["localStorage", "navigator"],
-      lookupLocalStorage: LANGUAGE_STORAGE_KEY,
-      caches: ["localStorage"],
+      lookupLocalStorage: MANUAL_LANGUAGE_STORAGE_KEY,
+      // Geo and browser defaults must not be mistaken for a manual choice.
+      caches: [],
     },
   });
 

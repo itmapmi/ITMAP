@@ -1,14 +1,14 @@
 /**
  * server/routes/geoLanguage.ts
  *
- * Suggests a default UI language for first-time visitors based on coarse
+ * Suggests a default UI language for visitors based on coarse
  * IP geolocation (server/geoResolver.ts). Only covers the handful of
  * countries that map unambiguously onto one of the site's six languages —
  * everything else returns `language: null` and the client falls back to
  * its existing browser-language / English default.
  *
  * This never overrides a language the visitor already picked — the client
- * only calls this endpoint when no stored preference exists yet.
+ * only applies this response when no manual preference exists.
  */
 import type { Express, Request, Response } from "express";
 import { resolveGeo } from "../geoResolver";
@@ -30,6 +30,7 @@ const COUNTRY_TO_LANGUAGE: Record<string, SupportedLanguageCode> = {
 
 export function registerGeoLanguageRoutes(app: Express): void {
   app.get("/api/geo-language", async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
     try {
       const ip = (req.ip ?? req.socket?.remoteAddress ?? "").trim();
       const geo = await resolveGeo(ip);
