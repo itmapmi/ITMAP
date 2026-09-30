@@ -206,7 +206,6 @@ const HarveyBall = ({
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
               <h2 id="mobile-product-picker-title" className="text-sm font-bold text-[#0f1418]">{t("mobile.productsToCompare")}</h2>
-              <span className="ml-auto font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("mobile.chooseExactlyTwo")}</span>
             </div>
 
             {allVendors && allVendors.length > 0 ? (
