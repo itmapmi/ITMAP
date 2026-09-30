@@ -3,27 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
-import { getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
+import { getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
 import { categoryTranslationUnavailable, featureCategoryName } from "@/lib/feature-category-localization";
+import { maximumFeatureCategoryScore, rankFeatureCategory } from "@/lib/feature-category-scoring";
 
 type Category = FeatureWithCategory["category"];
-type RankedVendor = { vendor: Vendor; score: number | null; recorded: number };
-
-function rankVendors(vendors: Vendor[], features: FeatureWithCategory[], support: Map<string, number>): RankedVendor[] {
-  return vendors.map(vendor => {
-    let score = 0;
-    let recorded = 0;
-    for (const feature of features) {
-      const level = support.get(`${vendor.id}-${feature.id}`);
-      if (level === undefined) continue;
-      recorded++;
-      score += supportLevelContribution(level);
-    }
-    return { vendor, score: recorded ? Number(score.toFixed(2)) : null, recorded };
-  }).sort((a, b) =>
-    (b.score ?? -1) - (a.score ?? -1) || a.vendor.name.localeCompare(b.vendor.name)
-  );
-}
 
 export default function FeatureRankings({
   marketId,
@@ -108,8 +92,12 @@ export default function FeatureRankings({
             {categories.map(({ category, features: categoryFeatures }, index) => {
               const isOpen = openCategories.has(category.id);
               const panelId = `ranking-category-${category.id}`;
-              const maximum = categoryFeatures.length;
-              const ranked = isOpen ? rankVendors(vendors, categoryFeatures, support) : [];
+              const maximum = maximumFeatureCategoryScore(categoryFeatures);
+              const ranked = isOpen ? rankFeatureCategory(
+                categoryFeatures,
+                vendors,
+                (vendorId, featureId) => support.get(`${vendorId}-${featureId}`),
+              ) : [];
               return (
                 <div key={category.id} className={`border transition-colors ${isOpen ? "border-[#8bc8e9] shadow-[0_8px_28px_rgba(8,127,202,0.09)]" : "border-[#dfe8ed] hover:border-[#a5c7d9]"}`}>
                   <button

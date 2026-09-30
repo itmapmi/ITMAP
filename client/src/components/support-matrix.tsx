@@ -18,6 +18,7 @@ import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/
 import { formatCoveragePercent, getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
 import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 import { featureCategoryName, categoryTranslationUnavailable } from "@/lib/feature-category-localization";
+import { maximumFeatureCategoryScore, scoreFeatureCategory } from "@/lib/feature-category-scoring";
 
 interface SupportMatrixProps {
   marketId: string;
@@ -888,14 +889,11 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
 
   // Calculate category totals for each vendor
   const calculateCategoryTotals = (categoryFeatures: FeatureWithCategory[], vendors: Vendor[]) => {
-    return vendors.map(vendor => {
-      const total = categoryFeatures.reduce((sum, feature) => {
-        const supportKey = `${vendor.id}-${feature.id}`;
-        const supportData = supportLookup.get(supportKey) || { level: 0 };
-        return sum + getSupportScore(supportData.level);
-      }, 0);
-      return { vendorId: vendor.id, total: Number(total.toFixed(2)) };
-    });
+    return scoreFeatureCategory(
+      categoryFeatures,
+      vendors,
+      (vendorId, featureId) => supportLookup.get(`${vendorId}-${featureId}`)?.level,
+    );
   };
 
   // Calculate overall totals across all features for each vendor
@@ -912,7 +910,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
 
   // Calculate maximum possible score (all features at full support)
   const calculateMaximumScore = (allFeatures: FeatureWithCategory[]) => {
-    return allFeatures.length * 1.0; // 1.0 is the score for full support
+    return maximumFeatureCategoryScore(allFeatures);
   };
 
   const getSupportText = (level: number) => {
