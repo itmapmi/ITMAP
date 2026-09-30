@@ -40,6 +40,7 @@
 - [Markets desktop palette parity](markets-desktop-palette.md) — mobile Markets must use desktop semantic colors, retaining only data-bearing chart/status colors.
 - [Mobile mockup graduation fidelity](mobile-mockup-graduation-fidelity.md) — approved mobile designs require complete production branches, not partial restyling of desktop UI.
 - [Async comparison auto-scroll](async-comparison-auto-scroll.md) — selection can precede evidence loading; re-scroll after results render or the browser stops at the short placeholder’s scroll limit.
+- [Exclusive category scroll anchoring](exclusive-category-scroll-anchoring.md) — closing the previous panel shifts the clicked heading upward; scroll it into view after render, clear of sticky tabs.
 - [Google OAuth callback host + signup marker](google-oauth-callback-host.md) — derive callback from request host (PUBLIC_BASE_URL is prod even in dev); new-account signal lives in session, not URL; email_verified must be exactly true.
 - [Company-email profile gate](company-email-gate.md) — gate lives inside requireFeature after RBAC; client matches `company_email_required` in error text; unverified claims are not unique.
 - [Admin company-email overrides](admin-company-email-overrides.md) — support actions need dedicated token-free storage fns; keep the unique-index guard; curl admin routes via HTTPS dev domain (Secure cookie).

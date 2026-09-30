@@ -17,7 +17,7 @@ export default function FeatureRankings({
   onOpenCompare: () => void;
 }) {
   const { t, i18n } = useTranslation("featureRankings");
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const { data: vendors, isLoading: vendorsLoading, isError: vendorsError } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
   });
@@ -61,14 +61,11 @@ export default function FeatureRankings({
   const error = vendorsError || featuresError || supportError;
 
   return (
-    <section className="overflow-hidden border border-[#dfe8ed] bg-white shadow-[0_6px_24px_rgba(15,20,24,0.06)]" aria-labelledby="feature-rankings-heading">
-      <header className="relative overflow-hidden bg-[#101c29] px-5 py-7 text-white sm:px-8 sm:py-9">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border border-[#53c7f3]/20 shadow-[0_0_0_34px_rgba(83,199,243,0.04),0_0_0_80px_rgba(83,199,243,0.03)]" />
-        <div className="relative">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#66d4ff]">{t("eyebrow")}</p>
-          <h2 id="feature-rankings-heading" className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{t("title")}</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-[#b9cbd5]">{t("description")}</p>
-        </div>
+    <section className="overflow-hidden rounded-none border border-[#dfe8ed] bg-white shadow-[0_5px_16px_rgba(15,20,24,0.06)]" aria-labelledby="feature-rankings-heading">
+      <header className="border-b border-[#dfe8ed] bg-white px-4 py-5 sm:px-7">
+        <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">{t("eyebrow")}</p>
+        <h2 id="feature-rankings-heading" className="mt-1 text-xl font-semibold tracking-tight text-[#0f1418]">{t("title")}</h2>
+        <p className="mt-2 max-w-xl text-xs leading-5 text-[#66737b]">{t("description")}</p>
       </header>
 
       <div className="px-4 py-5 sm:px-7 sm:py-7">
@@ -90,7 +87,7 @@ export default function FeatureRankings({
               <p role="alert" className="text-sm text-amber-700">{t("translationUnavailable")}</p>
             )}
             {categories.map(({ category, features: categoryFeatures }, index) => {
-              const isOpen = openCategories.has(category.id);
+              const isOpen = openCategoryId === category.id;
               const panelId = `ranking-category-${category.id}`;
               const maximum = maximumFeatureCategoryScore(categoryFeatures);
               const ranked = isOpen ? rankFeatureCategory(
@@ -104,13 +101,14 @@ export default function FeatureRankings({
                     type="button"
                     aria-expanded={isOpen}
                     aria-controls={panelId}
-                    className={`flex min-h-16 w-full items-center gap-3 px-3 py-3 text-left sm:gap-5 sm:px-5 ${isOpen ? "bg-[#eaf5fa]" : "bg-white hover:bg-[#f7fafb]"}`}
-                    onClick={() => setOpenCategories(current => {
-                      const next = new Set(current);
-                      if (next.has(category.id)) next.delete(category.id);
-                      else next.add(category.id);
-                      return next;
-                    })}
+                    className={`flex min-h-16 w-full scroll-mt-44 items-center gap-3 px-3 py-3 text-left sm:gap-5 sm:px-5 ${isOpen ? "bg-[#eaf5fa]" : "bg-white hover:bg-[#f7fafb]"}`}
+                    onClick={(event) => {
+                      if (openCategoryId && openCategoryId !== category.id) {
+                        const button = event.currentTarget;
+                        requestAnimationFrame(() => button.scrollIntoView({ block: "start", inline: "nearest" }));
+                      }
+                      setOpenCategoryId(current => current === category.id ? null : category.id);
+                    }}
                   >
                     <span className="font-mono text-xs font-bold text-[#087fca]">{String(index + 1).padStart(2, "0")}</span>
                     <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-[#172a37] sm:text-base">{featureCategoryName(category)}</span>

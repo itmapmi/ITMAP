@@ -318,20 +318,18 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     setSelectedVendors(new Set());
   };
 
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = (categoryId: string, button?: HTMLButtonElement) => {
+    const openingAnother = collapsedCategories.has(categoryId)
+      && ecosystemFeatures.some(feature => feature.category.id !== categoryId && !collapsedCategories.has(feature.category.id));
     setCollapsedCategories(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
+      const wasCollapsed = prev.has(categoryId);
+      const allCollapsed = new Set(ecosystemFeatures.map(feature => feature.category.id));
+      if (wasCollapsed) allCollapsed.delete(categoryId);
+      return allCollapsed;
     });
-  };
-
-  const expandAllCategories = () => {
-    setCollapsedCategories(new Set());
+    if (openingAnother && button) {
+      requestAnimationFrame(() => button.scrollIntoView({ block: "start", inline: "nearest" }));
+    }
   };
 
   const collapseAllCategories = () => {
@@ -694,10 +692,10 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 <section key={category.id} className="border-t border-[#dfe8ed]">
                   <button
                     type="button"
-                    onClick={() => toggleCategory(category.id)}
+                    onClick={(event) => toggleCategory(category.id, event.currentTarget)}
                     aria-expanded={isOpen}
                     aria-controls={panelId}
-                    className="flex min-h-[54px] w-full items-center justify-between bg-[#e6f0f5] px-3 py-2 text-left"
+                    className="flex min-h-[54px] w-full scroll-mt-44 items-center justify-between bg-[#e6f0f5] px-3 py-2 text-left"
                   >
                     <span>
                       <strong className="block text-xs text-[#0f1418]">{featureCategoryName(category)}</strong>
@@ -934,26 +932,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               </svg>
               {t("selection.changeSelection")}
             </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={expandAllCategories}
-                className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
-              >
-                <ChevronDown className="h-4 w-4" />
-                {t("categories.expandAll")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={collapseAllCategories}
-                className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
-              >
-                <ChevronRight className="h-4 w-4" />
-                {t("categories.collapseAll")}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={collapseAllCategories}
+              className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+            >
+              <ChevronRight className="h-4 w-4" />
+              {t("categories.collapseAll")}
+            </Button>
             <Button
               variant={showVendorSelection ? "default" : "outline"}
               size="sm"
@@ -1100,8 +1087,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                         {isMobile ? (
                           <div className="px-4">
                             <button
-                              onClick={() => toggleCategory(category.id)}
-                              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50 w-full justify-start"
+                              onClick={(event) => toggleCategory(category.id, event.currentTarget)}
+                                className="flex w-full scroll-mt-44 items-center justify-start gap-2 rounded-lg p-2 text-lg font-semibold text-gray-900 transition-colors hover:bg-white/50 hover:text-green-600"
                             >
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                               {featureCategoryName(category)}
@@ -1120,8 +1107,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                           >
                             <div className="flex items-center gap-3 col-span-2">
                               <button
-                                onClick={() => toggleCategory(category.id)}
-                                className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50"
+                                onClick={(event) => toggleCategory(category.id, event.currentTarget)}
+                                  className="flex scroll-mt-44 items-center gap-2 rounded-lg p-2 text-lg font-semibold text-gray-900 transition-colors hover:bg-white/50 hover:text-green-600"
                               >
                                 {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                 {featureCategoryName(category)}
