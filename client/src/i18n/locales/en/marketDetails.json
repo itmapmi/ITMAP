@@ -7,8 +7,8 @@
   "tabs": {
     "marketSections": "Market sections",
     "vendorEvaluation": {
-      "mobile": "Vendor Eval",
-      "desktop": "Vendor Evaluation"
+      "mobile": "Vendor Map",
+      "desktop": "Vendor Map"
     },
     "compareProducts": {
       "mobile": "Compare",
@@ -24,8 +24,8 @@
     },
     "mobile": {
       "vendor-evaluation": {
-        "label": "Vendor Eval",
-        "fullLabel": "Vendor Evaluation"
+        "label": "Vendor Map",
+        "fullLabel": "Vendor Map"
       },
       "support-matrix": {
         "label": "Compare",
