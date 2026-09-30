@@ -6,6 +6,7 @@
   },
   "tabs": {
     "marketSections": "Seções de Mercado",
+    "featureRankings": "Classificação de recursos",
     "vendorEvaluation": {
       "mobile": "Avaliação de Forn.",
       "desktop": "Avaliação de Fornecedores"
@@ -30,6 +31,10 @@
       "support-matrix": {
         "label": "Comparar",
         "fullLabel": "Comparar Produtos"
+      },
+      "feature-rankings": {
+        "label": "Classificação de recursos",
+        "fullLabel": "Classificação de recursos"
       },
       "ecosystem-support": {
         "label": "Interop",

@@ -1,6 +1,7 @@
 {
   "heading": "Ökosystemunterstützung",
   "headingEvaluation": "Ökosystembewertung",
+  "mobileFeatureScoresHeading": "Punktzahlen und Kommentare zu Ökosystemfunktionen",
   "description": "Drittanbieter-Integrationen und Ökosystempartnerschaften",
   "messages": {
     "success": "Erfolg",
@@ -10,6 +11,7 @@
   },
   "selection": {
     "stepHeading": "01 · Produkte zum Vergleichen",
+    "twoProductsSelectedTitle": "Zwei Produkte ausgewählt",
     "exactlyTwoTitle": "Wählen Sie genau 2",
     "deselectOneDescription": "Wählen Sie ein Produkt ab, bevor Sie ein anderes auswählen.",
     "twoProductsDescription": "Wählen Sie zwei Produkte. Jede Ökosystemzeile hält beide Unterstützungsdatensätze zusammen.",

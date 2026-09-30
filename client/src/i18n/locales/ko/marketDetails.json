@@ -6,6 +6,7 @@
   },
   "tabs": {
     "marketSections": "시장 섹션",
+    "featureRankings": "기능 순위",
     "vendorEvaluation": {
       "mobile": "벤더 평가",
       "desktop": "벤더 평가"
@@ -30,6 +31,10 @@
       "support-matrix": {
         "label": "비교",
         "fullLabel": "제품 비교"
+      },
+      "feature-rankings": {
+        "label": "기능 순위",
+        "fullLabel": "기능 순위"
       },
       "ecosystem-support": {
         "label": "상호운용성",

@@ -6,6 +6,7 @@
   },
   "tabs": {
     "marketSections": "市場セクション",
+    "featureRankings": "機能ランキング",
     "vendorEvaluation": {
       "mobile": "ベンダー評価",
       "desktop": "ベンダー評価"
@@ -30,6 +31,10 @@
       "support-matrix": {
         "label": "比較",
         "fullLabel": "製品比較"
+      },
+      "feature-rankings": {
+        "label": "機能ランキング",
+        "fullLabel": "機能ランキング"
       },
       "ecosystem-support": {
         "label": "相互運用性",

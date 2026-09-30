@@ -1,6 +1,7 @@
 {
   "heading": "エコシステムサポート",
   "headingEvaluation": "エコシステム評価",
+  "mobileFeatureScoresHeading": "エコシステム機能のスコアと解説",
   "description": "サードパーティ統合とエコシステムパートナーシップ",
   "messages": {
     "success": "成功",
@@ -10,6 +11,7 @@
   },
   "selection": {
     "stepHeading": "01 · 比較する製品",
+    "twoProductsSelectedTitle": "2つの製品を選択しました",
     "exactlyTwoTitle": "ちょうど2つ選択",
     "deselectOneDescription": "別の製品を選択する前に1つの製品を選択解除してください。",
     "twoProductsDescription": "2つの製品を選択してください。各エコシステム行は両方のサポート記録を一緒に保持します。",
@@ -123,5 +125,6 @@
     "pdfReport": "PDFレポート",
     "generateTitle": "ISVエコシステムレポートを生成",
     "generateDescription": "ISVエコシステムPDFレポートに含めるベンダーを選択"
-  }
+  },
+  "categoryTranslationUnavailable": "カテゴリの翻訳は一時的に利用できません。カテゴリ名は英語で表示されます。"
 }

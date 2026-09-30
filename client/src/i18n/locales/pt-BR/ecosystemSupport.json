@@ -1,6 +1,7 @@
 {
   "heading": "Suporte ao Ecossistema",
   "headingEvaluation": "Avaliação do ecossistema",
+  "mobileFeatureScoresHeading": "Pontuações e comentários dos recursos do ecossistema",
   "description": "Integrações de terceiros e parcerias de ecossistema",
   "messages": {
     "success": "Sucesso",
@@ -10,6 +11,7 @@
   },
   "selection": {
     "stepHeading": "01 · Produtos para comparar",
+    "twoProductsSelectedTitle": "Dois produtos selecionados",
     "exactlyTwoTitle": "Escolha exatamente 2",
     "deselectOneDescription": "Desmarque um produto antes de selecionar outro.",
     "twoProductsDescription": "Selecione dois produtos. Cada linha do ecossistema mantém ambos os registros de suporte juntos.",
@@ -123,5 +125,6 @@
     "pdfReport": "Relatório PDF",
     "generateTitle": "Gerar Relatório do Ecossistema ISV",
     "generateDescription": "Selecione fornecedores para incluir no relatório PDF do ecossistema ISV"
-  }
+  },
+  "categoryTranslationUnavailable": "A tradução das categorias está temporariamente indisponível; os nomes das categorias serão exibidos em inglês."
 }

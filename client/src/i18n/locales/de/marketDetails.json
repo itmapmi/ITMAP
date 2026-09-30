@@ -6,6 +6,7 @@
   },
   "tabs": {
     "marketSections": "Marktbereiche",
+    "featureRankings": "Rangliste der Produktfunktionen",
     "vendorEvaluation": {
       "mobile": "Anbieterbewertung",
       "desktop": "Anbieterbewertung"
@@ -30,6 +31,10 @@
       "support-matrix": {
         "label": "Vergleichen",
         "fullLabel": "Produkte vergleichen"
+      },
+      "feature-rankings": {
+        "label": "Funktionsrangliste",
+        "fullLabel": "Rangliste der Produktfunktionen"
       },
       "ecosystem-support": {
         "label": "Interop",

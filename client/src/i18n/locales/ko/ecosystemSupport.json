@@ -1,6 +1,7 @@
 {
   "heading": "생태계 지원",
   "headingEvaluation": "생태계 평가",
+  "mobileFeatureScoresHeading": "생태계 기능 점수 및 해설",
   "description": "타사 통합 및 생태계 파트너십",
   "messages": {
     "success": "성공",
@@ -10,6 +11,7 @@
   },
   "selection": {
     "stepHeading": "01 · 비교할 제품",
+    "twoProductsSelectedTitle": "제품 2개 선택됨",
     "exactlyTwoTitle": "정확히 2개 선택",
     "deselectOneDescription": "다른 제품을 선택하기 전에 하나의 제품을 선택 해제하세요.",
     "twoProductsDescription": "두 제품을 선택하세요. 각 생태계 행은 두 지원 기록을 함께 유지합니다.",
@@ -123,5 +125,6 @@
     "pdfReport": "PDF 보고서",
     "generateTitle": "ISV 생태계 보고서 생성",
     "generateDescription": "ISV 생태계 PDF 보고서에 포함할 공급업체를 선택하세요"
-  }
+  },
+  "categoryTranslationUnavailable": "카테고리 번역을 일시적으로 사용할 수 없습니다. 카테고리 이름은 영어로 표시됩니다."
 }
