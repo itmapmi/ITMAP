@@ -106,6 +106,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
+  const supportSectionRef = useRef<HTMLElement>(null);
+  const previousSelectionCount = useRef(0);
+  const pendingScrollAfterLoad = useRef(false);
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -119,7 +122,6 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     supportLevel: number;
     unavailable?: boolean;
   } | null>(null);
-  const [mobileOpenCategory, setMobileOpenCategory] = useState<string | null>(null);
   const [expandedNoteKey] = useState<string | null>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -155,7 +157,31 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   // the final score row reads these rather than recomputing.
   const isvEcosystemScores = useDerivedCriterionScores(marketId, "isvEcosystem");
 
-  const isLoading = featuresLoading || vendorsLoading || supportLoading;
+  const evaluationLoading = featuresLoading || supportLoading;
+  const isLoading = vendorsLoading || (!mobileMode && evaluationLoading);
+
+  useEffect(() => {
+    const count = selectedVendors.size;
+    if (mobileMode && previousSelectionCount.current < MOBILE_VENDOR_CAP && count === MOBILE_VENDOR_CAP) {
+      pendingScrollAfterLoad.current = evaluationLoading;
+      recordHighIntentAction("ecosystem_comparison_opened", {
+        marketId,
+        metadata: { vendorCount: count },
+      });
+      supportSectionRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    } else if (mobileMode && count === MOBILE_VENDOR_CAP && pendingScrollAfterLoad.current && !evaluationLoading) {
+      pendingScrollAfterLoad.current = false;
+      supportSectionRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+    if (count < MOBILE_VENDOR_CAP) pendingScrollAfterLoad.current = false;
+    previousSelectionCount.current = count;
+  }, [evaluationLoading, marketId, mobileMode, selectedVendors]);
 
   // Handler for generating ecosystem report
   const handleGenerateReport = async (selectedVendorIds: string[]) => {
@@ -343,78 +369,8 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     );
   }
 
-  // The dedicated markets-mobile route uses the approved two-product picker.
-  if (mobileMode && (showVendorSelection || selectedVendors.size !== MOBILE_VENDOR_CAP)) {
-    return (
-      <Card className="overflow-hidden rounded-none border-[#d6dcd6] bg-[#f8f8f3] shadow-none">
-        <CardHeader className="border-b border-[#d6dcd6] bg-white px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">{t("selection.stepHeading")}</p>
-              <CardTitle className="mt-1 text-base text-[#18394b]">{t("selection.exactlyTwoTitle")}</CardTitle>
-            </div>
-          </div>
-          <CardDescription className="text-xs leading-5 text-[#647579]">
-            {t("selection.twoProductsDescription")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-4">
-          {allVendors && allVendors.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("selection.productsToCompare")}>
-                {allVendors.map((vendor) => {
-                  const active = selectedVendors.has(vendor.id);
-                  return (
-                    <button
-                      type="button"
-                      key={vendor.id}
-                      onClick={() => toggleVendor(vendor.id)}
-                      aria-pressed={active}
-                      className={`flex min-h-20 items-start gap-2 border p-2.5 text-left ${
-                        active
-                          ? "border-[#16877c] bg-[#edf5f0] text-[#18394b] shadow-[inset_3px_0_#16877c]"
-                          : "border-[#cfd7d1] bg-white text-[#647579]"
-                      }`}
-                      data-testid={`vendor-card-${vendor.id}`}
-                    >
-                      <span className={`grid h-[21px] w-[21px] shrink-0 place-items-center border ${
-                        active ? "border-[#16877c] bg-[#16877c] text-white" : "border-[#bccac3]"
-                      }`}>
-                        {active && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
-                      </span>
-                      <span className="min-w-0">
-                        <strong className="block break-words text-xs">{vendor.name}</strong>
-                        <span className="mt-1 block break-words text-[10px] leading-[1.3] text-[#748285]">
-                          {vendor.product || t("selection.productNameUnavailable")}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-4 border border-[#d6dcd6] bg-white p-3">
-                <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-[#647579]">{t("support.levelsHeading")}</p>
-                <p className="mt-2 text-[11px] leading-5 text-[#647579]">{t("support.legendCompact")}</p>
-              </div>
-              <Button
-                onClick={handleProceedWithSelection}
-                disabled={selectedVendors.size !== MOBILE_VENDOR_CAP}
-                className="mt-4 min-h-11 w-full rounded-none bg-[#18394b] text-white hover:bg-[#102c3b]"
-                data-testid="proceed-with-selection-button"
-              >
-                {t("selection.compareCount", { count: selectedVendors.size })}
-              </Button>
-            </>
-          ) : (
-            <p className="py-8 text-center text-sm text-[#647579]">{t("selection.noProducts")}</p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
   // Show vendor selection interface first
-  if (showVendorSelection || selectedVendors.size === 0) {
+  if (!mobileMode && (showVendorSelection || selectedVendors.size === 0)) {
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -523,16 +479,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     );
   }
 
-  if (!ecosystemFeatures || !vendors || !supportMatrix) {
-    if (mobileMode) {
-      return (
-        <section className="border border-slate-200 bg-white p-5 font-[Montserrat]" role="status">
-          <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-wider text-sky-600">{t("headingEvaluation")}</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-950">{t("empty.supportUnavailableHeading")}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">{t("empty.noStoredSupportRecords")}</p>
-        </section>
-      );
-    }
+  if (!mobileMode && (!ecosystemFeatures || !vendors || !supportMatrix)) {
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -549,16 +496,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     );
   }
 
-  if (ecosystemFeatures.length === 0) {
-    if (mobileMode) {
-      return (
-        <section className="border border-dashed border-slate-300 bg-slate-50 p-6 text-center font-[Montserrat]">
-          <Network className="mx-auto h-6 w-6 text-sky-500" />
-          <p className="mt-3 text-sm font-semibold text-slate-950">{t("empty.noFeaturesStoredHeading")}</p>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">{t("empty.noStoredFeatureEvaluations")}</p>
-        </section>
-      );
-    }
+  if (!mobileMode && ecosystemFeatures.length === 0) {
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -583,7 +521,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
   // Create support lookup map with notes
   const supportLookup = new Map<string, { level: number; notes?: string }>();
-  supportMatrix.forEach(support => {
+  supportMatrix?.forEach(support => {
     const key = `${support.vendorId}-${support.featureId}`;
     supportLookup.set(key, { 
       level: support.supportLevel, 
@@ -612,7 +550,6 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     const categories = Object.values(featuresByCategory).sort(
       (a, b) => a.category.displayOrder - b.category.displayOrder,
     );
-    const openCategory = mobileOpenCategory ?? categories[0]?.category.id ?? null;
 
     const openNotes = (vendor: Vendor, feature: FeatureWithCategory) => {
       const record = supportLookup.get(`${vendor.id}-${feature.id}`);
@@ -622,45 +559,130 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         featureName: feature.name,
         supportLevel: record?.level ?? 0,
         unavailable: !record,
-        notes: record?.notes?.trim() || t("notes.noStoredCommentary"),
+        notes: !record ? t("notes.supportRecordUnavailable") : record.notes?.trim() || t("notes.noStoredCommentary"),
       });
     };
 
     return (
-      <Card className="overflow-hidden rounded-none border-[#d6dcd6] bg-[#f8f8f3] shadow-none">
-        <CardHeader className="border-b border-[#d6dcd6] bg-white px-4 py-4">
+      <Card className="overflow-hidden rounded-none border-[#dfe8ed] bg-white shadow-[0_5px_16px_rgba(15,20,24,0.06)]">
+        <CardHeader className="border-b border-[#dfe8ed] bg-white px-4 py-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">{t("evaluation.stepHeading")}</p>
-              <CardTitle className="mt-1 text-base text-[#18394b]">{t("headingEvaluation")}</CardTitle>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">{t("headingEvaluation")}</p>
+              <CardTitle className="mt-1 text-xl text-[#0f1418]">{t("heading")}</CardTitle>
+              <CardDescription className="mt-2 text-xs leading-5 text-[#66737b]">{t("selection.twoProductsDescription")}</CardDescription>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
-              className="hidden h-9 shrink-0 rounded-none border-[#cfd7d1] px-2 text-[11px]"
+              className="hidden shrink-0 rounded-none border-[#dfe8ed] px-2 text-[11px]"
               data-testid="button-generate-ecosystem-report"
             >
               {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
               {t("reports.pdf")}
             </Button>
           </div>
-          <Button
-            variant="ghost"
-            onClick={() => setShowVendorSelection(true)}
-            className="h-auto w-fit p-0 text-[11px] font-bold text-[#16877c] hover:bg-transparent"
-            data-testid="back-to-vendor-selection-button"
-          >
-            {t("selection.changeProducts")}
-          </Button>
         </CardHeader>
-        <CardContent className="p-4">
-          {categoryTranslationUnavailable(features) && (
-            <p role="alert" className="mb-3 text-sm text-amber-700">{t("categoryTranslationUnavailable")}</p>
+        <CardContent className="space-y-7 p-4">
+          {features && categoryTranslationUnavailable(ecosystemFeatures) && (
+            <p role="alert" className="text-sm text-amber-700">{t("categoryTranslationUnavailable")}</p>
           )}
-          <div className="border border-[#d6dcd6] bg-white">
-            <div className="grid grid-cols-3 bg-[#18394b] text-[#f8f6ee]">
-              <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9ac4c1]">{t("table.feature")}</span>
+          <section aria-labelledby="mobile-ecosystem-picker-title">
+            <div className="flex items-end border-b border-[#dfe8ed] pb-2">
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
+              <h2 id="mobile-ecosystem-picker-title" className="text-sm font-bold text-[#0f1418]">{t("selection.productsToCompare")}</h2>
+              <span className="ml-auto font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("selection.exactlyTwoTitle")}</span>
+            </div>
+            {allVendors && allVendors.length > 0 ? (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label={t("selection.productsToCompare")}>
+                  {allVendors.map((vendor) => {
+                    const active = selectedVendors.has(vendor.id);
+                    return (
+                      <button
+                        type="button"
+                        key={vendor.id}
+                        onClick={() => {
+                          if (!active) {
+                            track("vendor_selected", {
+                              marketId,
+                              vendorId: vendor.id,
+                              metadata: { context: "ecosystem_evaluation", vendorName: vendor.name },
+                            });
+                          }
+                          toggleVendor(vendor.id);
+                        }}
+                        aria-pressed={active}
+                        className={`min-h-20 border p-2 text-left transition-colors ${
+                          active
+                            ? "border-[#13a8f0] bg-[#dcebf6] text-[#0f1418] shadow-[inset_3px_0_#13a8f0]"
+                            : "border-[#dfe8ed] bg-white text-[#66737b]"
+                        }`}
+                        data-testid={`vendor-card-${vendor.id}`}
+                      >
+                        <span className="flex items-start gap-2">
+                          <span className={`grid h-[21px] w-[21px] shrink-0 place-items-center border ${
+                            active ? "border-[#13a8f0] bg-[#13a8f0] text-white" : "border-[#b9cbd5]"
+                          }`}>
+                            {active && <Check className="h-3 w-3" aria-hidden="true" />}
+                          </span>
+                          <span className="min-w-0">
+                            <strong className="block break-words text-xs leading-4">{vendor.name}</strong>
+                            <small className="mt-1 block break-words text-[10px] leading-[1.3] text-[#66737b]">
+                              {vendor.product || t("selection.productNameUnavailable")}
+                            </small>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-[#66737b]">
+                  {t("selection.compareCount", { count: selectedVendors.size })}
+                </p>
+              </>
+            ) : (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-4 text-center text-xs text-[#66737b]">
+                {t("selection.noProducts")}
+              </div>
+            )}
+            <div className="mt-3 grid grid-cols-5 gap-1 border border-[#dfe8ed] bg-[#f7f9f9] p-2">
+              {(["none", "limited", "partial", "good", "full"] as const).map((level, index) => (
+                <span key={level} className="text-center font-mono text-[8px] uppercase text-[#66737b]">
+                  <i className="mx-auto mb-1 block h-2 w-2 rounded-full" style={{ background: ["#e6e6e6", "#f7b51e", "#00b890", "#18bf72", "#13a8f0"][index] }} />
+                  {index} {t(`support.legend.${level}`)}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <section ref={supportSectionRef} aria-labelledby="mobile-ecosystem-support-title" className="scroll-mt-32">
+            <div className="flex items-end border-b border-[#dfe8ed] pb-2">
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
+              <h2 id="mobile-ecosystem-support-title" className="text-sm font-bold text-[#0f1418]">{t("heading")} &amp; {t("notes.storedCommentary")}</h2>
+            </div>
+            {selectedVendors.size !== MOBILE_VENDOR_CAP ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center">
+                <p className="text-xs font-bold text-[#0f1418]">{t("selection.exactlyTwoTitle")}</p>
+                <p className="mt-1 text-[11px] text-[#66737b]">{t("selection.twoProductsDescription")}</p>
+              </div>
+            ) : evaluationLoading ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]" role="status">
+                {t("headingEvaluation")}…
+              </div>
+            ) : !supportMatrix ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]">
+                {t("empty.noStoredSupportRecords")}
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]">
+                {t("empty.noStoredFeatureEvaluations")}
+              </div>
+            ) : (
+              <div className="mt-3 border border-[#dfe8ed] bg-white">
+            <div className="grid grid-cols-3 bg-[#0f1418] text-white">
+              <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9bbbd0]">{t("table.feature")}</span>
               {vendors.map((vendor) => (
                 <span key={vendor.id} className="border-r border-white/15 p-2">
                   <strong className="block break-words text-[11px] leading-tight text-white">{vendor.name}</strong>
@@ -671,56 +693,55 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               ))}
             </div>
             {categories.map(({ category, features: categoryFeatures }) => {
-              const isOpen = openCategory === category.id;
+               const isOpen = !collapsedCategories.has(category.id);
               const panelId = `ecosystem-category-${category.id}`;
               return (
-                <section key={category.id} className="border-t border-[#dfe3dd]">
+                <section key={category.id} className="border-t border-[#dfe8ed]">
                   <button
                     type="button"
-                    onClick={() => setMobileOpenCategory(isOpen ? "" : category.id)}
+                    onClick={() => toggleCategory(category.id)}
                     aria-expanded={isOpen}
                     aria-controls={panelId}
-                    className="flex min-h-[54px] w-full items-center justify-between bg-[#edf3ed] px-3 py-2 text-left"
+                    className="flex min-h-[54px] w-full items-center justify-between bg-[#e6f0f5] px-3 py-2 text-left"
                   >
                     <span>
-                      <strong className="block text-xs text-[#18394b]">{featureCategoryName(category)}</strong>
-                      <small className="mt-1 block text-[10px] text-[#718083]">{t("evaluation.storedRows", { count: categoryFeatures.length })}</small>
+                      <strong className="block text-xs text-[#0f1418]">{featureCategoryName(category)}</strong>
+                      <small className="mt-1 block text-[10px] text-[#66737b]">{t("evaluation.storedRows", { count: categoryFeatures.length })}</small>
                     </span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                   </button>
                   {isOpen && (
                     <div id={panelId}>
                       {categoryFeatures.map((feature) => (
-                        <article key={feature.id} className="border-t border-[#e1e4de] p-3">
-                          <h3 className="m-0 text-xs font-semibold text-[#18394b]">{feature.name}</h3>
-                          <p className="mb-2.5 mt-1 text-[11px] leading-[1.4] text-[#718082]">
+                        <article key={feature.id} className="border-t border-[#dfe8ed] p-3">
+                          <h3 className="m-0 text-xs font-semibold text-[#0f1418]">{feature.name}</h3>
+                          <p className="mb-2.5 mt-1 text-[11px] leading-[1.4] text-[#66737b]">
                             {feature.description || t("evaluation.noCriteriaForFeature")}
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             {vendors.map((vendor) => {
                               const record = supportLookup.get(`${vendor.id}-${feature.id}`);
                               return (
-                                <div key={vendor.id} className="min-w-0 border border-[#d5ddd6] bg-white p-2">
-                                  <span className="mb-1.5 block break-words font-mono text-[10px] font-bold text-[#18394b]">{vendor.name}</span>
-                                  {record ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={`text-2xl leading-none ${
-                                        record.level === 4 ? "text-green-600" :
-                                        record.level === 3 ? "text-blue-500" :
-                                        record.level === 2 ? "text-yellow-500" :
-                                        record.level === 1 ? "text-orange-500" : "text-gray-300"
-                                      }`} aria-label={t("support.accessibleLevel", { level: record.level })}>
-                                        {["○", "◔", "◑", "◕", "●"][record.level] ?? "○"}
-                                      </span>
-                                      <b className="font-mono text-[11px] text-[#16877c]">{record.level} / 4</b>
-                                    </div>
-                                  ) : (
-                                    <p className="m-0 min-h-6 text-[10px] font-bold text-[#9a5a42]">{t("selection.unavailable")}</p>
-                                  )}
+                                <div key={vendor.id} className="min-w-0 border border-[#dfe8ed] bg-white p-2">
+                                  <span className="mb-1.5 block break-words font-mono text-[10px] font-bold text-[#0f1418]">{vendor.name}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      role="img"
+                                      aria-label={record ? t("support.accessibleLevel", { level: record.level }) : t("selection.unavailable")}
+                                      className={`block h-7 w-7 shrink-0 rounded-full border-[2px] ${record ? "border-[#00b890]" : "border-dashed border-[#b9cbd5]"}`}
+                                      style={record ? {
+                                        background: `conic-gradient(#00b890 ${record.level * 25}%, #e6e6e6 0)`,
+                                        boxShadow: "inset 0 0 0 3px #fff",
+                                      } : undefined}
+                                    />
+                                    <b className="font-mono text-[10px] text-[#087fca]">
+                                      {record ? `${record.level} / 4` : t("selection.unavailable")}
+                                    </b>
+                                  </div>
                                   <button
                                     type="button"
                                     onClick={() => openNotes(vendor, feature)}
-                                    className="mt-2 min-h-8 w-full border border-[#b9d8ec] bg-[#dcebf6] px-1 text-[10px] font-bold text-[#087fca]"
+                                    className="mt-2 min-h-9 w-full border border-[#b9d8ec] bg-[#dcebf6] px-1 text-[10px] font-bold text-[#087fca]"
                                     aria-label={t("notes.viewNotesFor", { vendor: vendor.name, feature: feature.name })}
                                   >
                                     {t("notes.viewNotes")}
@@ -736,14 +757,16 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 </section>
               );
             })}
-          </div>
+              </div>
+            )}
+          </section>
         </CardContent>
 
         <Dialog open={!!selectedNotes} onOpenChange={(open) => !open && setSelectedNotes(null)}>
-          <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-md flex-col gap-0 overflow-hidden rounded-none border-[#d6dcd6] p-0">
-            <DialogHeader className="border-b border-[#d6dcd6] bg-[#f4f5ef] px-4 py-4 pr-12">
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">{t("notes.evaluationNotes")}</p>
-              <DialogTitle className="text-left text-base text-[#18394b]">{selectedNotes?.featureName}</DialogTitle>
+          <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm flex-col gap-0 overflow-hidden rounded-none border-[#dfe8ed] p-0">
+            <DialogHeader className="border-b border-[#dfe8ed] p-4 pr-10 text-left">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#66737b]">{t("notes.evaluationNotes")}</p>
+              <DialogTitle className="mt-1 text-base text-[#0f1418]">{selectedNotes?.featureName}</DialogTitle>
             </DialogHeader>
             {selectedNotes && (
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-testid="ecosystem-notes-body">

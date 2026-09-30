@@ -281,7 +281,7 @@ const HarveyBall = ({
             </div>
           </section>
 
-          <section ref={supportSectionRef} aria-labelledby="mobile-product-support-title" className="scroll-mt-28">
+          <section ref={supportSectionRef} aria-labelledby="mobile-product-support-title" className="scroll-mt-32">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
               <h2 id="mobile-product-support-title" className="text-sm font-bold text-[#0f1418]">
@@ -476,6 +476,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
   const supportSectionRef = useRef<HTMLElement>(null);
   const previousSelectionCount = useRef(0);
+  const pendingScrollAfterLoad = useRef(false);
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(true); // Show selection by default
@@ -492,17 +493,6 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const [expandedNoteKey] = useState<string | null>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  useEffect(() => {
-    const count = selectedVendors.size;
-    if (mobileMode && previousSelectionCount.current < MOBILE_VENDOR_CAP && count === MOBILE_VENDOR_CAP) {
-      supportSectionRef.current?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "start",
-      });
-    }
-    previousSelectionCount.current = count;
-  }, [mobileMode, selectedVendors]);
 
   // Mobile detection
   const isMobile = useIsMobile();
@@ -542,6 +532,25 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   // loading in the background while the visitor chooses products.
   const evaluationLoading = featuresLoading || supportLoading;
   const isLoading = vendorsLoading || (!mobileMode && !showVendorSelection && evaluationLoading);
+
+  useEffect(() => {
+    const count = selectedVendors.size;
+    if (mobileMode && previousSelectionCount.current < MOBILE_VENDOR_CAP && count === MOBILE_VENDOR_CAP) {
+      pendingScrollAfterLoad.current = evaluationLoading;
+      supportSectionRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    } else if (mobileMode && count === MOBILE_VENDOR_CAP && pendingScrollAfterLoad.current && !evaluationLoading) {
+      pendingScrollAfterLoad.current = false;
+      supportSectionRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+    if (count < MOBILE_VENDOR_CAP) pendingScrollAfterLoad.current = false;
+    previousSelectionCount.current = count;
+  }, [evaluationLoading, mobileMode, selectedVendors]);
 
   // Handler for generating product evaluation report
   const handleGenerateReport = async (selectedVendorIds: string[]) => {
