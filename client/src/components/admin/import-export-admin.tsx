@@ -328,7 +328,8 @@ export default function ImportExportAdmin() {
                 <>
                   <p className="font-semibold">Translation import:</p>
                   <ul className="text-xs pl-4 list-disc space-y-1">
-                    <li>Fill the "Notes ({language})" and "Comments ({language})" columns; English columns are reference only</li>
+                    <li>Start from "Export to Excel" with this language selected; fill only the "Notes ({language})" and "Comments ({language})" columns</li>
+                    <li>Do not translate or rename column headers, vendor names, criteria names, or feature names in this workbook</li>
                     <li>This workbook does not translate market names, feature names or other page content</li>
                     <li>Vendors, criteria and features must already exist — none are created</li>
                     <li>Scores and support levels are never changed by this import</li>
