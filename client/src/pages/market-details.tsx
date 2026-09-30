@@ -76,12 +76,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // 4th clearly cut off at the edge (the visual cue that the strip scrolls).
 // Full section names remain as each section's own heading.
 const MOBILE_SECTION_TABS: Array<[value: string, number: string]> = [
-  ["vendor-evaluation", "01"],
-  ["support-matrix", "02"],
-  ["ecosystem-support", "03"],
+  ["support-matrix", "01"],
+  ["ecosystem-support", "02"],
+  ["vendor-evaluation", "03"],
   ["vendor-intelligence", "04"],
   ["research-reports", "05"],
 ];
+const DEFAULT_MARKET_SECTION = "support-matrix";
 const MOBILE_MARKET_SECTIONS = MOBILE_SECTION_TABS.map(([value]) => value);
 
 export default function MarketDetails() {
@@ -111,11 +112,11 @@ export default function MarketDetails() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
-    if (!mobileMode || typeof window === "undefined") return "vendor-evaluation";
+    if (!mobileMode || typeof window === "undefined") return DEFAULT_MARKET_SECTION;
     const requested = new URLSearchParams(window.location.search).get("section");
     return requested && MOBILE_MARKET_SECTIONS.includes(requested)
       ? requested
-      : "vendor-evaluation";
+      : DEFAULT_MARKET_SECTION;
   });
   // Old ?section=ai-chat links (from before chat became a floating button)
   // still open the chat, just as an overlay on the default section.
@@ -164,14 +165,12 @@ export default function MarketDetails() {
 
   useEffect(() => {
     if (!mobileMode) {
-      setActiveTab("vendor-evaluation");
+      setActiveTab(DEFAULT_MARKET_SECTION);
       return;
     }
     if (typeof window === "undefined") return;
     const requested = new URLSearchParams(window.location.search).get("section");
-    if (requested && MOBILE_MARKET_SECTIONS.includes(requested)) {
-      setActiveTab(requested);
-    }
+    setActiveTab(requested && MOBILE_MARKET_SECTIONS.includes(requested) ? requested : DEFAULT_MARKET_SECTION);
   }, [mobileMode, location]);
 
   const { data: market, isLoading, error } = useQuery<LocalizedMarket>({
@@ -502,28 +501,28 @@ export default function MarketDetails() {
             <Skeleton className="h-10 w-32" />
           </div>
           
-          <Tabs defaultValue="vendor-evaluation" className="w-full">
+          <Tabs defaultValue={DEFAULT_MARKET_SECTION} className="w-full">
             <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
-              <TabsTrigger value="vendor-evaluation" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {t(isMobile ? "tabs.vendorEvaluation.mobile" : "tabs.vendorEvaluation.desktop")}
-              </TabsTrigger>
               <TabsTrigger value="support-matrix" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
               </TabsTrigger>
               <TabsTrigger value="ecosystem-support" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {t(isMobile ? "tabs.supportMatrix.mobile" : "tabs.supportMatrix.desktop")}
               </TabsTrigger>
+              <TabsTrigger value="vendor-evaluation" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
+                {t(isMobile ? "tabs.vendorEvaluation.mobile" : "tabs.vendorEvaluation.desktop")}
+              </TabsTrigger>
               <TabsTrigger value="research-methodology" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {t(isMobile ? "tabs.methodology.mobile" : "tabs.methodology.desktop")}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="vendor-evaluation" className="mt-6">
-              <ChartLoading />
-            </TabsContent>
-
             <TabsContent value="support-matrix" className="mt-6">
               <SkeletonCard lines={6} className="h-80" />
+            </TabsContent>
+
+            <TabsContent value="vendor-evaluation" className="mt-6">
+              <ChartLoading />
             </TabsContent>
 
             {/* Hidden for now - will be enabled later */}
@@ -795,14 +794,14 @@ export default function MarketDetails() {
                 </div>
               ) : (
               <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
-                <TabsTrigger value="vendor-evaluation" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-vendor-evaluation">
-                  {t(isMobile ? "tabs.vendorEvaluation.mobile" : "tabs.vendorEvaluation.desktop")}
-                </TabsTrigger>
                 <TabsTrigger value="support-matrix" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-support-matrix">
                   {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
                 </TabsTrigger>
                 <TabsTrigger value="ecosystem-support" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-ecosystem-support">
                   {t(isMobile ? "tabs.supportMatrix.mobile" : "tabs.supportMatrix.desktop")}
+                </TabsTrigger>
+                <TabsTrigger value="vendor-evaluation" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-vendor-evaluation">
+                  {t(isMobile ? "tabs.vendorEvaluation.mobile" : "tabs.vendorEvaluation.desktop")}
                 </TabsTrigger>
 
                 <DropdownMenu>
