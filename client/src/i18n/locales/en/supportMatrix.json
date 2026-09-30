@@ -40,7 +40,7 @@
   "mobile": {
     "eyebrow": "Product evaluation",
     "title": "Compare Products",
-    "description": "Compare two stored product-support records feature by feature.",
+    "description": "Compare two products feature by feature",
     "productsToCompare": "Products to compare",
     "chooseExactlyTwo": "Choose exactly 2",
     "twoProductsSelected": "Two products selected. Both columns remain visible below.",
