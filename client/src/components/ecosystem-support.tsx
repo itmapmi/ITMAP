@@ -570,7 +570,6 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             <div>
               <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">{t("headingEvaluation")}</p>
               <CardTitle className="mt-1 text-xl text-[#0f1418]">{t("heading")}</CardTitle>
-              <CardDescription className="mt-2 text-xs leading-5 text-[#66737b]">{t("selection.twoProductsDescription")}</CardDescription>
             </div>
             <Button
               variant="outline"
@@ -665,7 +664,6 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             {selectedVendors.size !== MOBILE_VENDOR_CAP ? (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center">
                 <p className="text-xs font-bold text-[#0f1418]">{t("selection.exactlyTwoTitle")}</p>
-                <p className="mt-1 text-[11px] text-[#66737b]">{t("selection.twoProductsDescription")}</p>
               </div>
             ) : evaluationLoading ? (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]" role="status">
