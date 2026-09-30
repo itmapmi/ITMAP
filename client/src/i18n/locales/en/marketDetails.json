@@ -6,6 +6,7 @@
   },
   "tabs": {
     "marketSections": "Market sections",
+    "featureRankings": "Feature rankings",
     "vendorEvaluation": {
       "mobile": "Vendor Map",
       "desktop": "Vendor Map"
@@ -30,6 +31,10 @@
       "support-matrix": {
         "label": "Compare",
         "fullLabel": "Compare Products"
+      },
+      "feature-rankings": {
+        "label": "Feature rankings",
+        "fullLabel": "Feature rankings"
       },
       "ecosystem-support": {
         "label": "Interop",

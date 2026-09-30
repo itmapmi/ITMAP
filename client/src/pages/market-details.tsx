@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
 import SupportMatrix from "@/components/support-matrix";
+import FeatureRankings from "@/components/feature-rankings";
 import EcosystemSupport from "@/components/ecosystem-support";
 import ResearchMethodology from "@/components/research-methodology";
 import { NewPlayers } from "@/components/new-players";
@@ -77,10 +78,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Full section names remain as each section's own heading.
 const MOBILE_SECTION_TABS: Array<[value: string, number: string]> = [
   ["support-matrix", "01"],
-  ["ecosystem-support", "02"],
-  ["vendor-evaluation", "03"],
-  ["vendor-intelligence", "04"],
-  ["research-reports", "05"],
+  ["feature-rankings", "02"],
+  ["ecosystem-support", "03"],
+  ["vendor-evaluation", "04"],
+  ["vendor-intelligence", "05"],
+  ["research-reports", "06"],
 ];
 const DEFAULT_MARKET_SECTION = "support-matrix";
 const MOBILE_MARKET_SECTIONS = MOBILE_SECTION_TABS.map(([value]) => value);
@@ -506,6 +508,9 @@ export default function MarketDetails() {
               <TabsTrigger value="support-matrix" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
               </TabsTrigger>
+              <TabsTrigger value="feature-rankings" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
+                {t("tabs.featureRankings")}
+              </TabsTrigger>
               <TabsTrigger value="ecosystem-support" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {t(isMobile ? "tabs.supportMatrix.mobile" : "tabs.supportMatrix.desktop")}
               </TabsTrigger>
@@ -518,6 +523,9 @@ export default function MarketDetails() {
             </TabsList>
 
             <TabsContent value="support-matrix" className="mt-6">
+              <SkeletonCard lines={6} className="h-80" />
+            </TabsContent>
+            <TabsContent value="feature-rankings" className="mt-6">
               <SkeletonCard lines={6} className="h-80" />
             </TabsContent>
 
@@ -797,6 +805,9 @@ export default function MarketDetails() {
                 <TabsTrigger value="support-matrix" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-support-matrix">
                   {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
                 </TabsTrigger>
+                <TabsTrigger value="feature-rankings" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-feature-rankings">
+                  {t("tabs.featureRankings")}
+                </TabsTrigger>
                 <TabsTrigger value="ecosystem-support" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-ecosystem-support">
                   {t(isMobile ? "tabs.supportMatrix.mobile" : "tabs.supportMatrix.desktop")}
                 </TabsTrigger>
@@ -1009,6 +1020,12 @@ export default function MarketDetails() {
             {showOwnerControls && !hasProductPhase
               ? <PhasePlaceholder phase="Product" />
               : <SupportMatrix marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} mobileMode={mobileMode} />}
+          </TabsContent>
+
+          <TabsContent value="feature-rankings" className="mt-6">
+            {showOwnerControls && !hasProductPhase
+              ? <PhasePlaceholder phase="Product" />
+              : <FeatureRankings marketId={resolvedId!} onOpenCompare={() => selectMarketSection("support-matrix")} />}
           </TabsContent>
 
           <TabsContent value="ecosystem-support" className="mt-6">
