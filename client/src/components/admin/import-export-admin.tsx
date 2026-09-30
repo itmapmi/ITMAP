@@ -318,7 +318,7 @@ export default function ImportExportAdmin() {
             </CardTitle>
             <CardDescription>
               {isTranslation
-                ? "Upload the translated workbook back — only the language columns are read"
+                ? "Upload the translated workbook back — only translated score notes and feature comments are imported"
                 : "Upload a pre-filled Excel file to populate market data"}
             </CardDescription>
           </CardHeader>
@@ -328,7 +328,8 @@ export default function ImportExportAdmin() {
                 <>
                   <p className="font-semibold">Translation import:</p>
                   <ul className="text-xs pl-4 list-disc space-y-1">
-                    <li>Reads only the "(…)" language columns for this language</li>
+                    <li>Fill the "Notes ({language})" and "Comments ({language})" columns; English columns are reference only</li>
+                    <li>This workbook does not translate market names, feature names or other page content</li>
                     <li>Vendors, criteria and features must already exist — none are created</li>
                     <li>Scores and support levels are never changed by this import</li>
                     <li>Blank cells are left untouched, not cleared</li>

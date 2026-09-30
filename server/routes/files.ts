@@ -361,6 +361,9 @@ export function registerFileRoutes(app: Express): void {
       // the "- Notes (<language>)" / "- Comments (<language>)" columns the
       // translation export produces.
       const languageParam = typeof req.body.language === 'string' ? req.body.language : undefined;
+      if (req.body.language !== undefined && (!languageParam || !isSupportedTranslationLanguage(languageParam))) {
+        return res.status(400).json({ error: 'Unsupported translation language. The workbook was not imported.' });
+      }
       const translationLanguage: TranslationLanguageCode | undefined = languageParam && isSupportedTranslationLanguage(languageParam) ? languageParam : undefined;
       if (translationLanguage) {
         const notesSuffix = ` - Notes (${translationLanguage})`;
@@ -379,10 +382,21 @@ export function registerFileRoutes(app: Express): void {
 
         let unknownVendors = 0, unknownCriteria = 0, noEnglishScore = 0;
         let unknownFeatures = 0, noEnglishSupport = 0;
-        const scoreWrites: Promise<any>[] = [];
-        const supportWrites: Promise<any>[] = [];
+        const scoreWrites: Parameters<typeof storage.upsertVendorScoreTranslation>[0][] = [];
+        const supportWrites: Parameters<typeof storage.upsertVendorFeatureSupportTranslation>[0][] = [];
+        let filledCells = 0;
+        let matchingHeaders = 0;
+
+        const countTranslationHeaders = (sheet: any, suffix: string, band: boolean) => {
+          const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, range: band ? 1 : 0 }) as any[][];
+          matchingHeaders += (rows[0] ?? []).filter((value: any) => typeof value === 'string' && value.endsWith(suffix)).length;
+        };
 
         const vendorEvalRows = xlsx.utils.sheet_to_json(workbook.Sheets['Vendor Evaluation']) as any[];
+        countTranslationHeaders(workbook.Sheets['Vendor Evaluation'], notesSuffix, false);
+        filledCells += vendorEvalRows.reduce((count, row) =>
+          count + Object.entries(row).filter(([name, value]) =>
+            name.endsWith(notesSuffix) && value != null && String(value).trim() !== '').length, 0);
         for (const row of vendorEvalRows) {
           const vendor = vendorByName.get(row['Vendor Name']);
           if (!vendor) { unknownVendors++; continue; }
@@ -392,7 +406,7 @@ export function registerFileRoutes(app: Express): void {
             const criterion = criteriaByName.get(criterionName);
             if (!criterion) { unknownCriteria++; continue; }
             const raw = row[colName];
-            if (raw === '' || raw === undefined || raw === null) continue; // not yet translated — leave existing translation untouched
+            if (raw === '' || raw === undefined || raw === null || String(raw).trim() === '') continue; // not yet translated — leave existing translation untouched
             const score = scoreByKey.get(`${vendor.id}:${criterion.id}`);
             if (!score) { noEnglishScore++; continue; }
             // Prefer the workbook's own "Source Version" snapshot (the
@@ -404,9 +418,9 @@ export function registerFileRoutes(app: Express): void {
             const sourceVersionRaw = row[`${criterionName} - Source Version`];
             const parsedSourceVersion = sourceVersionRaw ? new Date(sourceVersionRaw) : null;
             const sourceUpdatedAt = parsedSourceVersion && !isNaN(parsedSourceVersion.getTime()) ? parsedSourceVersion : (score.updatedAt ?? null);
-            scoreWrites.push(storage.upsertVendorScoreTranslation({
+            scoreWrites.push({
               vendorScoreId: score.id, language: translationLanguage, notes: String(raw), sourceUpdatedAt,
-            }));
+            });
           }
         }
 
@@ -414,7 +428,11 @@ export function registerFileRoutes(app: Express): void {
           const sheet = workbook.Sheets[sheetName];
           if (!sheet) continue;
           const sheetOpts = sheetHasBand(sheet) ? { range: 1 } : {};
+          countTranslationHeaders(sheet, commentsSuffix, sheetHasBand(sheet));
           const sheetRows = xlsx.utils.sheet_to_json(sheet, sheetOpts) as any[];
+          filledCells += sheetRows.reduce((count, row) =>
+            count + Object.entries(row).filter(([name, value]) =>
+              name.endsWith(commentsSuffix) && value != null && String(value).trim() !== '').length, 0);
           for (const row of sheetRows) {
             const vendor = vendorByName.get(row['Vendor Name']);
             if (!vendor) { unknownVendors++; continue; }
@@ -424,7 +442,7 @@ export function registerFileRoutes(app: Express): void {
               const feature = featureByName.get(featureName);
               if (!feature) { unknownFeatures++; continue; }
               const raw = row[colName];
-              if (raw === '' || raw === undefined || raw === null) continue;
+              if (raw === '' || raw === undefined || raw === null || String(raw).trim() === '') continue;
               const support = supportByKey.get(`${vendor.id}:${feature.id}`);
               if (!support) { noEnglishSupport++; continue; }
               // See the analogous "Source Version" comment on the vendor
@@ -432,15 +450,28 @@ export function registerFileRoutes(app: Express): void {
               const sourceVersionRaw = row[`${featureName} - Source Version`];
               const parsedSourceVersion = sourceVersionRaw ? new Date(sourceVersionRaw) : null;
               const sourceUpdatedAt = parsedSourceVersion && !isNaN(parsedSourceVersion.getTime()) ? parsedSourceVersion : (support.updatedAt ?? null);
-              supportWrites.push(storage.upsertVendorFeatureSupportTranslation({
+              supportWrites.push({
                 vendorFeatureSupportId: support.id, language: translationLanguage, comments: String(raw), sourceUpdatedAt,
-              }));
+              });
             }
           }
         }
 
-        for (let i = 0; i < scoreWrites.length; i += 25) await Promise.all(scoreWrites.slice(i, i + 25));
-        for (let i = 0; i < supportWrites.length; i += 25) await Promise.all(supportWrites.slice(i, i + 25));
+        if (scoreWrites.length + supportWrites.length === 0) {
+          const error = matchingHeaders === 0
+            ? `No ${translationLanguage} translation columns found. Export this market with ${translationLanguage} selected, fill the "Notes (${translationLanguage})" and "Comments (${translationLanguage})" columns, then import that workbook.`
+            : filledCells === 0
+              ? `The ${translationLanguage} translation columns are empty. Fill at least one "Notes (${translationLanguage})" or "Comments (${translationLanguage})" cell before importing.`
+              : `None of the ${filledCells} filled ${translationLanguage} cells matched existing vendor scores or feature support in this market. Check that the workbook was exported from the selected market and that vendor, criterion and feature names have not changed.`;
+          log('TRANSLATION IMPORT REJECTED (nothing to update)', {
+            language: translationLanguage, filledCells, matchingHeaders,
+            skipped: { unknownVendors, unknownCriteria, noEnglishScore, unknownFeatures, noEnglishSupport },
+          });
+          return res.status(400).json({ error });
+        }
+
+        for (let i = 0; i < scoreWrites.length; i += 25) await Promise.all(scoreWrites.slice(i, i + 25).map(input => storage.upsertVendorScoreTranslation(input)));
+        for (let i = 0; i < supportWrites.length; i += 25) await Promise.all(supportWrites.slice(i, i + 25).map(input => storage.upsertVendorFeatureSupportTranslation(input)));
 
         const stats = {
           language: translationLanguage,
