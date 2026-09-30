@@ -123,5 +123,6 @@
     "pdfReport": "PDF Report",
     "generateTitle": "Generate ISV Ecosystem Report",
     "generateDescription": "Select vendors to include in the ISV Ecosystem PDF report"
-  }
+  },
+  "categoryTranslationUnavailable": "Category translation is temporarily unavailable; showing English category names."
 }

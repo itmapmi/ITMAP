@@ -82,7 +82,7 @@ import {
   insertVendorFeatureSupportSchema, insertVendorLabelPositionSchema,
   insertResearchReportSchema, isSupportedTranslationLanguage,
 } from "@shared/schema";
-import { translatePublicMarkets } from "../i18n/translateMarket";
+import { translatePublicMarkets, translatePublicFeatureCategoryNames } from "../i18n/translateMarket";
 
 function requestedMarketLanguage(req: Request) {
   const language = req.query.language;
@@ -817,8 +817,26 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets/:marketId/features", requireMarketAccess, async (req, res) => {
     try {
+      let language;
+      try { language = requestedMarketLanguage(req); }
+      catch { return res.status(400).json({ error: 'Unsupported market translation language' }); }
       const features = await storage.getMarketFeatures(req.params.marketId);
-      res.json(features);
+      const market = (req as any).market;
+      if (!language || market.visibility === 'private') return res.json(features);
+      const categories = Array.from(new Map(features.map(feature => [feature.category.id, feature.category])).values());
+      try {
+        const names = await translatePublicFeatureCategoryNames(categories, language);
+        return res.json(features.map(feature => ({
+          ...feature,
+          category: { ...feature.category, localizedName: names.get(feature.category.id) },
+        })));
+      } catch (translationError) {
+        console.error('Feature category translation unavailable:', translationError instanceof Error ? translationError.message : translationError);
+        return res.json(features.map(feature => ({
+          ...feature,
+          category: { ...feature.category, translationUnavailable: true },
+        })));
+      }
     } catch (error) {
       console.error("Error fetching features:", error);
       res.status(500).json({ error: "Failed to fetch features" });

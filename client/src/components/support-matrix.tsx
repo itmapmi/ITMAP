@@ -17,6 +17,7 @@ import { recordHighIntentAction } from "@/lib/high-intent";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 import { formatCoveragePercent, getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
 import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
+import { featureCategoryName, categoryTranslationUnavailable } from "@/lib/feature-category-localization";
 
 interface SupportMatrixProps {
   marketId: string;
@@ -196,6 +197,9 @@ const HarveyBall = ({
         </CardHeader>
 
         <CardContent className="space-y-7 p-4">
+          {categoryTranslationUnavailable(productCapabilityFeatures) && (
+            <p role="alert" className="text-sm text-amber-700">{t("categoryTranslationUnavailable")}</p>
+          )}
           <section aria-labelledby="mobile-product-picker-title">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
@@ -318,7 +322,7 @@ const HarveyBall = ({
                         className="flex min-h-[54px] w-full items-center justify-between bg-[#e6f0f5] px-3 py-2 text-left"
                       >
                         <span>
-                          <strong className="block text-xs text-[#0f1418]">{category.name}</strong>
+                          <strong className="block text-xs text-[#0f1418]">{featureCategoryName(category)}</strong>
                           <small className="mt-0.5 block text-[10px] text-[#66737b]">{t("mobile.storedRows", { count: categoryFeatures.length })}</small>
                         </span>
                         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -486,7 +490,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const { toast } = useToast();
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
-    queryKey: ["/api/markets", marketId, "features"],
+    queryKey: ["/api/markets", marketId, "features", i18n.language],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/features?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
@@ -1063,6 +1072,9 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       </CardHeader>
       
       <CardContent className="p-0">
+        {categoryTranslationUnavailable(features) && (
+          <p role="alert" className="px-4 py-2 text-sm text-amber-700">{t("categoryTranslationUnavailable")}</p>
+        )}
         {vendors.length === 0 ? (
           <div className="text-center py-16 px-6">
             <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
@@ -1152,7 +1164,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                               className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-white/50 w-full justify-start"
                             >
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                              {category.name}
+                              {featureCategoryName(category)}
                               <Badge variant="outline" className="ml-2 text-xs">
                                 {t("matrix.featureCount", { count: categoryFeatures.length })}
                               </Badge>
@@ -1172,7 +1184,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                 className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-white/50"
                               >
                                 {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                                {category.name}
+                                {featureCategoryName(category)}
                                 <Badge variant="outline" className="ml-2 text-xs">
                                   {t("matrix.featureCount", { count: categoryFeatures.length })}
                                 </Badge>

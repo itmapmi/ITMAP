@@ -138,5 +138,6 @@
       "title": "Choose exactly 2 products",
       "description": "Deselect one product before selecting another."
     }
-  }
+  },
+  "categoryTranslationUnavailable": "Category translation is temporarily unavailable; showing English category names."
 }

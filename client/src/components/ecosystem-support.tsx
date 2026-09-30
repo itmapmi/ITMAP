@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
+import { featureCategoryName, categoryTranslationUnavailable } from "@/lib/feature-category-localization";
 import { formatCoveragePercent, getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
 import { useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
@@ -127,7 +128,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   const isMobile = useIsMobile();
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
-    queryKey: ["/api/markets", marketId, "features"],
+    queryKey: ["/api/markets", marketId, "features", i18n.language],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/features?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
@@ -649,6 +655,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
           </Button>
         </CardHeader>
         <CardContent className="p-4">
+          {categoryTranslationUnavailable(features) && (
+            <p role="alert" className="mb-3 text-sm text-amber-700">{t("categoryTranslationUnavailable")}</p>
+          )}
           <div className="border border-[#d6dcd6] bg-white">
             <div className="grid grid-cols-3 bg-[#18394b] text-[#f8f6ee]">
               <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9ac4c1]">{t("table.feature")}</span>
@@ -674,7 +683,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                     className="flex min-h-[54px] w-full items-center justify-between bg-[#edf3ed] px-3 py-2 text-left"
                   >
                     <span>
-                      <strong className="block text-xs text-[#18394b]">{category.name}</strong>
+                      <strong className="block text-xs text-[#18394b]">{featureCategoryName(category)}</strong>
                       <small className="mt-1 block text-[10px] text-[#718083]">{t("evaluation.storedRows", { count: categoryFeatures.length })}</small>
                     </span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
@@ -985,6 +994,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       </CardHeader>
       
       <CardContent className="p-0">
+        {categoryTranslationUnavailable(features) && (
+          <p role="alert" className="px-4 py-2 text-sm text-amber-700">{t("categoryTranslationUnavailable")}</p>
+        )}
         {vendors.length === 0 ? (
           <div className="text-center py-16 px-6">
             <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
@@ -1074,7 +1086,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                               className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50 w-full justify-start"
                             >
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                              {category.name}
+                              {featureCategoryName(category)}
                               <Badge variant="outline" className="ml-2 text-xs">
                                 {t("evaluation.featureCount", { count: categoryFeatures.length })}
                               </Badge>
@@ -1094,7 +1106,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                 className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50"
                               >
                                 {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                                {category.name}
+                                {featureCategoryName(category)}
                                 <Badge variant="outline" className="ml-2 text-xs">
                                   {t("evaluation.featureCount", { count: categoryFeatures.length })}
                                 </Badge>

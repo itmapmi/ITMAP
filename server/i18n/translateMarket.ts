@@ -45,11 +45,12 @@ async function googleTranslate(texts: string[], language: TranslationLanguageCod
  * per-field source hash invalidates only translations whose English text changed.
  * Private market text must never be passed to this function.
  */
-export async function translatePublicMarkets(
+async function translatePublicTexts(
   markets: MarketText[],
   language: TranslationLanguageCode,
+  contentType: 'market_google' | 'feature_category_google',
 ): Promise<Map<string, MarketTranslation>> {
-  const cached = await Promise.all(markets.map(m => getContentTranslation('market_google', m.id, language)));
+  const cached = await Promise.all(markets.map(m => getContentTranslation(contentType, m.id, language)));
   const results = new Map<string, MarketTranslation>();
   const pending: Array<{ id: string; field: keyof MarketTranslation; source: string }> = [];
   const hashes = new Map<string, Record<string, string>>();
@@ -87,7 +88,7 @@ export async function translatePublicMarkets(
 
   await Promise.all(markets.filter(m => pending.some(p => p.id === m.id)).map(async market => {
     await upsertContentTranslation({
-      contentType: 'market_google',
+      contentType,
       contentId: market.id,
       language,
       translatedFields: results.get(market.id)!,
@@ -95,4 +96,20 @@ export async function translatePublicMarkets(
     });
   }));
   return results;
+}
+
+export function translatePublicMarkets(markets: MarketText[], language: TranslationLanguageCode) {
+  return translatePublicTexts(markets, language, 'market_google');
+}
+
+/** Category names are display-only; feature grouping and workbook matching use English. */
+export async function translatePublicFeatureCategoryNames(
+  categories: Array<{ id: string; name: string }>,
+  language: TranslationLanguageCode,
+): Promise<Map<string, string>> {
+  const texts = categories.map(category => ({
+    ...category, shortDescription: null, description: null, category: null,
+  }));
+  const translated = await translatePublicTexts(texts, language, 'feature_category_google');
+  return new Map(categories.map(category => [category.id, translated.get(category.id)?.name || category.name]));
 }

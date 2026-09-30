@@ -123,5 +123,6 @@
     "pdfReport": "PDF-Bericht",
     "generateTitle": "ISV-Ökosystembericht erstellen",
     "generateDescription": "Wählen Sie Anbieter aus, die im ISV-Ökosystem-PDF-Bericht enthalten sein sollen"
-  }
+  },
+  "categoryTranslationUnavailable": "Die Übersetzung der Kategorien ist vorübergehend nicht verfügbar; die Kategorienamen werden auf Englisch angezeigt."
 }

@@ -138,5 +138,6 @@
       "title": "Wählen Sie genau 2 Produkte",
       "description": "Wählen Sie ein Produkt ab, bevor Sie ein anderes auswählen."
     }
-  }
+  },
+  "categoryTranslationUnavailable": "Die Übersetzung der Kategorien ist vorübergehend nicht verfügbar; die Kategorienamen werden auf Englisch angezeigt."
 }

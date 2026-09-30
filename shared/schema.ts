@@ -341,7 +341,7 @@ export const vendorFeatureSupportTranslations = pgTable("vendor_feature_support_
 // Signals and articles are treated as immutable once published, so unlike the
 // vendor score/feature-support translations above, there is no staleness
 // tracking here — a cached translation is reused forever.
-export const CONTENT_TRANSLATION_TYPES = ["vendor_signal", "news_article", "market_google"] as const;
+export const CONTENT_TRANSLATION_TYPES = ["vendor_signal", "news_article", "market_google", "feature_category_google"] as const;
 export type ContentTranslationType = (typeof CONTENT_TRANSLATION_TYPES)[number];
 export function isContentTranslationType(value: unknown): value is ContentTranslationType {
   return typeof value === "string" && (CONTENT_TRANSLATION_TYPES as readonly string[]).includes(value);
