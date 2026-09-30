@@ -154,6 +154,7 @@ const HarveyBall = ({
     handleGenerateReport,
     isGenerating,
     evaluationLoading,
+    supportSectionRef,
   } = mobileContext || {};
 
   if (mobileMode) {
@@ -280,7 +281,7 @@ const HarveyBall = ({
             </div>
           </section>
 
-          <section aria-labelledby="mobile-product-support-title">
+          <section ref={supportSectionRef} aria-labelledby="mobile-product-support-title" className="scroll-mt-28">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
               <h2 id="mobile-product-support-title" className="text-sm font-bold text-[#0f1418]">
@@ -473,6 +474,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
+  const supportSectionRef = useRef<HTMLElement>(null);
+  const previousSelectionCount = useRef(0);
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(true); // Show selection by default
@@ -489,6 +492,17 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const [expandedNoteKey] = useState<string | null>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    const count = selectedVendors.size;
+    if (mobileMode && previousSelectionCount.current < MOBILE_VENDOR_CAP && count === MOBILE_VENDOR_CAP) {
+      supportSectionRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+    previousSelectionCount.current = count;
+  }, [mobileMode, selectedVendors]);
 
   // Mobile detection
   const isMobile = useIsMobile();
@@ -930,6 +944,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
           handleGenerateReport,
           isGenerating,
           evaluationLoading,
+          supportSectionRef,
         }}
       />
     );
