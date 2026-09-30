@@ -153,6 +153,7 @@ const HarveyBall = ({
     showVendorModal,
     handleGenerateReport,
     isGenerating,
+    evaluationLoading,
   } = mobileContext || {};
 
   if (mobileMode) {
@@ -291,6 +292,10 @@ const HarveyBall = ({
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center">
                 <p className="text-xs font-bold text-[#0f1418]">{t("mobile.comparisonUnavailable")}</p>
                 <p className="mt-1 text-[11px] text-[#66737b]">{t("mobile.chooseExactlyTwoAbove")}</p>
+              </div>
+            ) : evaluationLoading ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]" role="status">
+                {t("loading.description")}
               </div>
             ) : sortedCategories.length === 0 ? (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]">
@@ -489,8 +494,15 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
+  const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
+    queryKey: ["/api/markets", marketId, "vendors"],
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features", i18n.language],
+    enabled: !!allVendors,
     queryFn: async () => {
       const res = await fetch(`/api/markets/${marketId}/features?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
       if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
@@ -498,14 +510,9 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     },
   });
 
-  const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/markets", marketId, "vendors"],
-    staleTime: 0,
-    refetchOnMount: true,
-  });
-
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<VendorFeatureSupport[]>({
     queryKey: ["/api/markets", marketId, "feature-support", i18n.language],
+    enabled: !!allVendors,
     queryFn: async () => {
       const res = await fetch(`/api/markets/${marketId}/feature-support?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
       if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
@@ -517,7 +524,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   // matrix); the score row below reads these rather than recomputing.
   const productCapabilityScores = useDerivedCriterionScores(marketId, "productCapabilities");
 
-  const isLoading = featuresLoading || vendorsLoading || supportLoading;
+  // The picker only needs vendors. Large feature/support responses can keep
+  // loading in the background while the visitor chooses products.
+  const evaluationLoading = featuresLoading || supportLoading;
+  const isLoading = vendorsLoading || (!mobileMode && !showVendorSelection && evaluationLoading);
 
   // Handler for generating product evaluation report
   const handleGenerateReport = async (selectedVendorIds: string[]) => {
@@ -919,6 +929,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
           showVendorModal,
           handleGenerateReport,
           isGenerating,
+          evaluationLoading,
         }}
       />
     );
