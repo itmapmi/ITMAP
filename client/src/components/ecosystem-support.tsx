@@ -296,7 +296,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       } else {
         if (mobileMode && newSet.size >= MOBILE_VENDOR_CAP) {
           toast({
-            title: t("selection.exactlyTwoTitle"),
+            title: t("selection.twoProductsSelectedTitle"),
             description: t("selection.deselectOneDescription"),
           });
           return prev;
@@ -591,7 +591,6 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
               <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
               <h2 id="mobile-ecosystem-picker-title" className="text-sm font-bold text-[#0f1418]">{t("selection.productsToCompare")}</h2>
-              <span className="ml-auto font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("selection.exactlyTwoTitle")}</span>
             </div>
             {allVendors && allVendors.length > 0 ? (
               <>
@@ -662,9 +661,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               <h2 id="mobile-ecosystem-support-title" className="text-sm font-bold text-[#0f1418]">{t("heading")} &amp; {t("notes.storedCommentary")}</h2>
             </div>
             {selectedVendors.size !== MOBILE_VENDOR_CAP ? (
-              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center">
-                <p className="text-xs font-bold text-[#0f1418]">{t("selection.exactlyTwoTitle")}</p>
-              </div>
+              null
             ) : evaluationLoading ? (
               <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]" role="status">
                 {t("headingEvaluation")}…

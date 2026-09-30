@@ -10,9 +10,9 @@
   },
   "selection": {
     "stepHeading": "01 · Products to compare",
-    "exactlyTwoTitle": "Choose exactly 2",
+    "twoProductsSelectedTitle": "Two products selected",
     "deselectOneDescription": "Deselect one product before selecting another.",
-    "productsToCompare": "Products to compare",
+    "productsToCompare": "Select any two products to compare",
     "productNameUnavailable": "Product name unavailable",
     "productUnavailable": "Product unavailable",
     "unavailable": "Unavailable",
