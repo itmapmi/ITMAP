@@ -1,6 +1,7 @@
 {
   "heading": "Ecosystem Support",
   "headingEvaluation": "Ecosystem evaluation",
+  "mobileFeatureScoresHeading": "Ecosystem features scores & commentary",
   "description": "Third-party integrations and ecosystem partnerships",
   "messages": {
     "success": "Success",
