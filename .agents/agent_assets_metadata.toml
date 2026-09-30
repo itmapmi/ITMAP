@@ -6,51 +6,74 @@ id = "WqI81APRQd-aMYcr5nejy"
 uri = "file://docs/partner-api.md"
 type = "text"
 title = "ITMAP Partner API — Integration Guide"
+logical_id = "9aacff43-cd2e-4d85-b4ce-c68bbd29abf1"
 
 [[outputs]]
 id = "gOF3d-IoNG0PqxYhHyBFo"
 uri = "file://docs/ITMAP-Partner-API-Guide.docx"
 type = "word_document"
 title = "ITMAP Partner API Guide (Word)"
+logical_id = "acb77f2b-aee4-4b5c-9cf4-5bdd01bc5f75"
 
 [[outputs]]
 id = "A7gIlfBrYiBZTkB5pCzLY"
 uri = "file://client/public/og-image.png"
 type = "image"
 title = "og-image.png (1200×630)"
+logical_id = "734b2d3f-bc30-4ecc-b76b-124b16bfee9c"
 
 [[outputs]]
 id = "WMqycpxsPOdD4lj9jDnot"
 uri = "file://screenshots/itmap-logo-variants.png"
 type = "image"
 title = "ITMAP Logo Options"
+logical_id = "45a4344e-d26e-4715-9cca-3d2de6be8795"
 
 [[outputs]]
 id = "FV4q60VaRwMd94k0-gOEh"
 uri = "file://screenshots/itmap-logo-wide-bold-white.png"
 type = "image"
 title = "ITMAP Logo — Wide Bold White"
+logical_id = "cfa5beee-a973-4d21-84d6-ed721a94095b"
 
 [[outputs]]
 id = "Zacc_6jxvgELAND0_FxAW"
 uri = "file://attached_assets/ITMAP_logo_transparent_1755237362280.png"
 type = "image"
 title = "ITMAP LinkedIn Logo"
+logical_id = "dadbff11-0dfc-411d-9678-acb1399fb16f"
 
 [[outputs]]
 id = "xGWOKnKyuq6XbTBiq5Jg2"
 uri = "file://itmap-linkedin-logo.png"
 type = "image"
 title = "ITMAP LinkedIn Logo (1024×1024 PNG)"
+logical_id = "4c8dc969-48e5-451c-aed5-a093303dbf38"
 
 [[outputs]]
 id = "jBk8slk6n6QqFf7XlvtBk"
 uri = "file://fact-check-responses.docx"
 type = "word_document"
 title = "Vendor Fact-Check Responses — NeuralTrust"
+logical_id = "f0386539-6b13-4c52-8bf0-04754b14e0c6"
 
 [[outputs]]
 id = "l4YcRpaluxFLMQYu7gly9"
 uri = "file://neuraltrust-fact-check-responses.docx"
 type = "word_document"
 title = "NeuralTrust Fact-Check Responses — All 49 Submissions"
+logical_id = "049eb243-216c-4c66-b79c-7bfd9512fbd6"
+
+[[outputs]]
+id = "J_2hmcFU0sQtrEUw6iXxB"
+uri = "file://outputs/B2B_Marketing_Automation_German_Translation_Import.xlsx"
+type = "table"
+title = "German translation import workbook"
+description = "Ready to upload with Deutsch selected; 96 score-note translations and 1,488 feature-comment translations mapped to the existing market."
+logical_id = "e1f53258-2bb6-470e-b56f-e4e8388cde4f"
+content_hash = "sha256:7ed9abe0856917ba7be905da0956e6bc1933d0d464178dbe62f3b77b0c6c6085"
+size = 3572586
+mtime_ms = 1790750867894
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:c340604c-5721-42e2-9455-6060a3539512/e1f53258-2bb6-470e-b56f-e4e8388cde4f/f7370cbb-dd44-40c1-87e6-345ebc26eefa"
+storage_version_token = "1790750985293343"
+content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
