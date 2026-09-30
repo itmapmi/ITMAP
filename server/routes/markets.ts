@@ -82,6 +82,14 @@ import {
   insertVendorFeatureSupportSchema, insertVendorLabelPositionSchema,
   insertResearchReportSchema, isSupportedTranslationLanguage,
 } from "@shared/schema";
+import { translatePublicMarkets } from "../i18n/translateMarket";
+
+function requestedMarketLanguage(req: Request) {
+  const language = req.query.language;
+  if (language === undefined || language === 'en') return undefined;
+  if (!isSupportedTranslationLanguage(language)) throw new Error('Unsupported market translation language');
+  return language;
+}
 
 export function registerMarketRoutes(app: Express): void {
 
@@ -89,6 +97,9 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets", async (req, res) => {
     try {
+      let language;
+      try { language = requestedMarketLanguage(req); }
+      catch { return res.status(400).json({ error: 'Unsupported market translation language' }); }
       const isAuth = req.isAuthenticated();
       const user = isAuth ? (req.user as any) : null;
       const isAdmin = !!user && user.role === 'admin';
@@ -102,7 +113,15 @@ export function registerMarketRoutes(app: Express): void {
             if (m.visibility === "private") return user && m.ownerUserId === user.id;
             return m.isVisible !== false;
           });
-      res.json(filteredMarkets);
+      if (!language) return res.json(filteredMarkets);
+      const publicMarkets = filteredMarkets.filter(m => m.visibility !== 'private');
+      try {
+        const translations = await translatePublicMarkets(publicMarkets, language);
+        return res.json(filteredMarkets.map(m => ({ ...m, localized: translations.get(m.id) })));
+      } catch (translationError) {
+        console.error('Market translation unavailable:', translationError instanceof Error ? translationError.message : translationError);
+        return res.json(filteredMarkets.map(m => ({ ...m, translationUnavailable: m.visibility !== 'private' })));
+      }
     } catch (error) {
       console.error("Error fetching markets:", error);
       res.status(500).json({ error: "Failed to fetch markets" });
@@ -192,6 +211,9 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets/:id", async (req, res) => {
     try {
+      let language;
+      try { language = requestedMarketLanguage(req); }
+      catch { return res.status(400).json({ error: 'Unsupported market translation language' }); }
       const param = req.params.id;
       const market = storage.isUuid(param)
         ? await storage.getMarketById(param)
@@ -203,7 +225,14 @@ export function registerMarketRoutes(app: Express): void {
       if (market.visibility === "private" && !isAdmin && (!user || market.ownerUserId !== user.id)) {
         return res.status(404).json({ error: "Market not found" });
       }
-      res.json(market);
+      if (!language || market.visibility === 'private') return res.json(market);
+      try {
+        const translations = await translatePublicMarkets([market], language);
+        return res.json({ ...market, localized: translations.get(market.id) });
+      } catch (translationError) {
+        console.error('Market translation unavailable:', translationError instanceof Error ? translationError.message : translationError);
+        return res.json({ ...market, translationUnavailable: true });
+      }
     } catch (error) {
       console.error("Error fetching market:", error);
       res.status(500).json({ error: "Failed to fetch market" });

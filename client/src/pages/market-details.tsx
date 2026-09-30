@@ -43,6 +43,7 @@ import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
 import { useTranslation } from "react-i18next";
+import { marketTitle, marketDescription, type LocalizedMarket } from "@/lib/market-localization";
 import { formatDate } from "@/lib/i18n-format";
 
 function useCreateRfpForMarket(pathPrefix: string) {
@@ -84,7 +85,8 @@ const MOBILE_SECTION_TABS: Array<[value: string, number: string]> = [
 const MOBILE_MARKET_SECTIONS = MOBILE_SECTION_TABS.map(([value]) => value);
 
 export default function MarketDetails() {
-  const { t } = useTranslation("marketDetails");
+  const { t, i18n } = useTranslation("marketDetails");
+  const language = i18n.resolvedLanguage || "en";
   // Registered at both /markets/:marketId (and its legacy /market/:marketId
   // alias) and their /mobile/... mirrors — see shared/mobile-paths.ts and
   // App.tsx. mobileMode reflects which URL is actually active, so behavior
@@ -172,8 +174,8 @@ export default function MarketDetails() {
     }
   }, [mobileMode, location]);
 
-  const { data: market, isLoading, error } = useQuery<Market>({
-    queryKey: ["/api/markets", marketId],
+  const { data: market, isLoading, error } = useQuery<LocalizedMarket>({
+    queryKey: [`/api/markets/${marketId}?language=${encodeURIComponent(language)}`],
     enabled: !!marketId,
   });
 
@@ -205,10 +207,10 @@ export default function MarketDetails() {
   }, [market, marketId, pathPrefix]);
 
   // Per-page SEO: update canonical / title / og tags once the market name is known.
-  const cleanMarketTitle = market?.name.replace(/^ITMAP for /i, "") ?? "";
+  const cleanMarketTitle = market ? marketTitle(market).replace(/^ITMAP for /i, "") : "";
   useSeo(market ? {
     title: t("seo.title", { marketName: cleanMarketTitle }),
-    description: (market as any).shortDescription || market.description ||
+    description: market.localized?.shortDescription || marketDescription(market) ||
       t("seo.description", { marketName: cleanMarketTitle }),
     path: `/markets/${marketId}`,
   } : { title: t("seo.defaultTitle"), path: `/markets/${marketId ?? ""}` });
@@ -578,9 +580,9 @@ export default function MarketDetails() {
           transition={{ duration: 0.5 }}
           className="bg-white rounded-xl shadow-sm p-6 mb-6"
         >
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{market.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{marketTitle(market)}</h1>
           {market.description && (
-            <p className="text-gray-600 leading-relaxed max-w-3xl">{market.description}</p>
+            <p className="text-gray-600 leading-relaxed max-w-3xl">{marketDescription(market)}</p>
           )}
           {market.category && (
             <span className="mt-3 inline-block text-xs font-medium bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
@@ -663,12 +665,13 @@ export default function MarketDetails() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
+            <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{marketTitle(market)}</h2>
+            {market.translationUnavailable && <p role="alert" className="mt-2 text-sm text-amber-700">{t("states.translationUnavailable", "Translation is temporarily unavailable; showing the English market definition.")}</p>}
             {mobileMode ? (
               <div className="mt-3 border border-slate-200 bg-slate-50 p-3 font-[Montserrat]">
                 <div className="flex items-start justify-between gap-3">
                   <p className={`text-sm leading-relaxed text-slate-600 ${mobileDefinitionOpen ? "" : "line-clamp-2"}`}>
-                    {market.description || t("states.noStoredDefinition")}
+                    {marketDescription(market) || t("states.noStoredDefinition")}
                   </p>
                   <button type="button" className="grid h-11 w-11 shrink-0 place-items-center text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label={t("buttons.toggleFullDefinition")}>
                     <ChevronDown className={`h-4 w-4 transition-transform ${mobileDefinitionOpen ? "rotate-180" : ""}`} />
@@ -679,7 +682,7 @@ export default function MarketDetails() {
                 </button>
               </div>
             ) : (
-              <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : ''}`}>{market.description}</p>
+              <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : ''}`}>{marketDescription(market)}</p>
             )}
           </motion.div>
           <motion.div

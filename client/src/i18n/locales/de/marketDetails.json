@@ -58,7 +58,8 @@
     "unableToFetchMarket": "Marktdetails konnten nicht abgerufen werden. Bitte versuchen Sie es später erneut.",
     "marketNotFound": "Markt nicht gefunden",
     "requestedMarketNotFound": "Der angeforderte Markt konnte nicht gefunden werden.",
-    "noStoredDefinition": "Keine gespeicherte Marktdefinition verfügbar."
+    "noStoredDefinition": "Keine gespeicherte Marktdefinition verfügbar.",
+    "translationUnavailable": "Die Übersetzung ist vorübergehend nicht verfügbar; die Marktdefinition wird auf Englisch angezeigt."
   },
   "buttons": {
     "backToMarkets": "Zurück zu den Märkten",

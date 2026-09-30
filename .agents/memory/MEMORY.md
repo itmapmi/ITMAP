@@ -58,3 +58,4 @@
 - [Vendor "view any market" analytics pattern](market-trends-any-market-access.md) — open a vendor-scoped marketId route via canReadMarket (404), not seat-ownership; add zero-row floors via an opt-in flag, never flip the shared query default.
 - [Geo language vs manual choice](geo-language-preference.md) — auto-detected languages must not persist as explicit choices; recheck geo after network changes while honoring manual selection.
 - [Translation import validation](translation-import-validation.md) — a zero-write translation upload must fail visibly; an invalid language must never fall through to the English market-data import.
+- [Market page translation boundary](market-page-translation-boundary.md) — translate public market copy as an overlay; keep English identities for URLs and never send private reports to a translation provider.

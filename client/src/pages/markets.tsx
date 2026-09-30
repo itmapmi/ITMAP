@@ -9,7 +9,8 @@ import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock, FileText, Plus, Search, X } from "lucide-react";
-import type { Market } from "@shared/schema";
+import { useTranslation } from "react-i18next";
+import { marketTitle, marketDescription, type LocalizedMarket } from "@/lib/market-localization";
 
 export const FREE_MARKET_ID = "130ee3b2-16b1-4803-a8f0-8c4ed3a61d96";
 
@@ -27,14 +28,16 @@ const fadeUp = {
 interface VendorIndexEntry { id: string; vendorNames: string[] }
 
 export default function Markets() {
+  const { t, i18n } = useTranslation("markets");
+  const language = i18n.resolvedLanguage || "en";
   useSeo({
-    title: "Markets — ITMAP | Browse Enterprise IT Vendor Markets",
-    description: "Browse every enterprise IT market on ITMAP — vendor rankings, feature support matrices, ecosystem coverage, and AI-driven market forecasts.",
+    title: t("seoTitle"),
+    description: t("seoDescription"),
     path: "/markets",
   });
   const { isAuthenticated, user } = useAuth();
   const { teaserActive } = useTeaserGate();
-  const { data: markets, isLoading, error } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const { data: markets, isLoading, error } = useQuery<LocalizedMarket[]>({ queryKey: [`/api/markets?language=${encodeURIComponent(language)}`] });
   const { data: vendorIndex } = useQuery<VendorIndexEntry[]>({ queryKey: ["/api/markets/vendor-index"] });
 
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -69,6 +72,7 @@ export default function Markets() {
   const categories = useMemo(() => {
     return Array.from(new Set(publicMarkets.map(m => m.category).filter(Boolean))).sort() as string[];
   }, [publicMarkets]);
+  const categoryLabels = useMemo(() => new Map(publicMarkets.map(m => [m.category, m.localized?.category || m.category])), [publicMarkets]);
 
   const filtered = useMemo(() => {
     let list = publicMarkets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
@@ -79,6 +83,8 @@ export default function Markets() {
       if (cleanName(m.name).toLowerCase().includes(q)) return true;
       if (m.shortDescription?.toLowerCase().includes(q)) return true;
       if (m.description?.toLowerCase().includes(q)) return true;
+      if (marketTitle(m).toLowerCase().includes(q)) return true;
+      if (marketDescription(m)?.toLowerCase().includes(q)) return true;
       // Match on any vendor name in this market
       return (vendorMap[m.id] ?? []).some(v => v.includes(q));
     });
@@ -96,8 +102,8 @@ export default function Markets() {
     return (
       <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-400 mb-2">Error Loading Markets</h1>
-          <p className="text-slate-500">Unable to fetch market data. Please try again later.</p>
+          <h1 className="text-2xl font-bold text-red-400 mb-2">{t("errorTitle")}</h1>
+          <p className="text-slate-500">{t("errorDescription")}</p>
         </div>
       </div>
     );
@@ -105,6 +111,9 @@ export default function Markets() {
 
   return (
     <div className="min-h-screen bg-[#1e2130] text-white">
+      {markets?.some(m => m.translationUnavailable) && (
+        <div role="alert" className="bg-amber-950 px-6 py-3 text-sm text-amber-200 text-center">{t("translationUnavailable")}</div>
+      )}
       {/* Hero */}
       <div className="relative py-20 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(14,165,233,0.08)_0%,transparent_60%)]" />
@@ -116,13 +125,13 @@ export default function Markets() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-5">
-              <Globe2 className="h-4 w-4" /> Market Coverage
+              <Globe2 className="h-4 w-4" /> {t("coverage")}
             </div>
             <h1 className="text-5xl sm:text-6xl font-bold text-white mb-5 leading-tight">
-              Explore Markets
+              {t("title")}
             </h1>
             <p className="text-xl text-slate-400 max-w-2xl leading-relaxed">
-              Independent, AI-powered vendor evaluations across the enterprise technology stack — updated continuously.
+              {t("subtitle")}
             </p>
           </motion.div>
 
@@ -135,9 +144,9 @@ export default function Markets() {
               className="flex flex-wrap gap-8 mt-12"
             >
               {[
-                { icon: <BarChart3 className="h-4 w-4 text-cyan-400" />, value: markets.length, label: "Markets" },
-                { icon: <TrendingUp className="h-4 w-4 text-violet-400" />, value: categories.length, label: "Categories" },
-                { icon: <Globe2 className="h-4 w-4 text-cyan-400" />, value: filtered.length, label: "Showing" },
+                { icon: <BarChart3 className="h-4 w-4 text-cyan-400" />, value: markets.length, label: t("markets") },
+                { icon: <TrendingUp className="h-4 w-4 text-violet-400" />, value: categories.length, label: t("categories") },
+                { icon: <Globe2 className="h-4 w-4 text-cyan-400" />, value: filtered.length, label: t("showing") },
               ].map(s => (
                 <div key={s.label} className="flex items-center gap-3">
                   <div className="p-2 bg-slate-900 border border-white/5 rounded-lg">{s.icon}</div>
@@ -166,7 +175,7 @@ export default function Markets() {
               data-testid="tab-all-markets"
             >
               <span className="inline-flex items-center gap-2">
-                <Globe2 className="h-4 w-4" /> All Markets
+                 <Globe2 className="h-4 w-4" /> {t("allMarkets")}
               </span>
             </button>
             <button
@@ -179,7 +188,7 @@ export default function Markets() {
               data-testid="tab-my-reports"
             >
               <span className="inline-flex items-center gap-2">
-                <FileText className="h-4 w-4" /> My Reports
+                 <FileText className="h-4 w-4" /> {t("myReports")}
                 {myMarkets.length > 0 && (
                   <span className="text-[11px] bg-violet-500/20 text-violet-300 border border-violet-400/30 rounded-full px-2 py-0.5">
                     {myMarkets.length}
@@ -195,14 +204,14 @@ export default function Markets() {
           <div>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-white">Your private reports</h2>
+                <h2 className="text-xl font-semibold text-white">{t("privateReports")}</h2>
                 <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5" /> Only you can see these.
+                  <Lock className="h-3.5 w-3.5" /> {t("onlyYou")}
                 </p>
               </div>
               <Link href="/me/market-builder">
                 <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 gap-2">
-                  <Plus className="h-4 w-4" /> Build New Report
+                  <Plus className="h-4 w-4" /> {t("buildNew")}
                 </Button>
               </Link>
             </div>
@@ -216,13 +225,13 @@ export default function Markets() {
             ) : myMarkets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-12 text-center">
                 <Sparkles className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No reports yet</h3>
+                <h3 className="text-lg font-semibold text-white mb-2">{t("noReports")}</h3>
                 <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-                  Build your own private market report with AI-powered vendor evaluation, scoring, and commentary.
+                  {t("buildDescription")}
                 </p>
                 <Link href="/me/market-builder">
                   <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 gap-2">
-                    <Plus className="h-4 w-4" /> Build Your First Report
+                    <Plus className="h-4 w-4" /> {t("buildFirst")}
                   </Button>
                 </Link>
               </div>
@@ -244,7 +253,7 @@ export default function Markets() {
                               <FileText className="h-5 w-5 text-violet-300" />
                             </div>
                             <span className="text-[10px] uppercase tracking-wide font-semibold text-violet-300 bg-violet-500/15 border border-violet-400/30 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-                              <Lock className="h-3 w-3" /> Private
+                               <Lock className="h-3 w-3" /> {t("private")}
                             </span>
                           </div>
                           <h3 className="font-semibold text-white mb-3 group-hover:text-violet-200 transition-colors leading-snug flex-grow">
@@ -254,9 +263,9 @@ export default function Markets() {
                             {market.shortDescription || market.description}
                           </p>
                           <div className="flex items-center justify-between mt-auto">
-                            <span className="text-xs text-slate-500">Your report</span>
+                             <span className="text-xs text-slate-500">{t("yourReport")}</span>
                             <span className="text-xs text-violet-300 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              Open <ChevronRight className="h-3 w-3" />
+                               {t("open")} <ChevronRight className="h-3 w-3" />
                             </span>
                           </div>
                         </div>
@@ -283,7 +292,7 @@ export default function Markets() {
               <Input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search markets or vendors…"
+                 placeholder={t("searchPlaceholder")}
                 className="pl-10 pr-10 bg-slate-900 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-cyan-500/40 focus-visible:border-cyan-500/50 rounded-xl h-11"
               />
               {searchQuery && (
@@ -300,7 +309,7 @@ export default function Markets() {
             {categories.length > 0 && (
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5 text-slate-500 text-sm mr-1">
-                  <Filter className="h-3.5 w-3.5" /> Filter:
+                   <Filter className="h-3.5 w-3.5" /> {t("filter")}
                 </div>
                 {["all", ...categories].map(cat => (
                   <button
@@ -312,7 +321,7 @@ export default function Markets() {
                         : "bg-slate-900 border border-white/5 text-slate-400 hover:text-white hover:border-white/15"
                     }`}
                   >
-                    {cat === "all" ? "All Categories" : cat}
+                     {cat === "all" ? t("allCategories") : categoryLabels.get(cat) || cat}
                   </button>
                 ))}
               </div>
@@ -352,7 +361,7 @@ export default function Markets() {
                           <div className="flex items-center gap-2">
                             {market.category && (
                               <span className="text-xs font-medium text-violet-400 bg-violet-400/10 border border-violet-400/20 px-2.5 py-1 rounded-full">
-                                {market.category}
+                                 {market.localized?.category || market.category}
                               </span>
                             )}
                             {!isAuthenticated && !isFree && !teaserActive && (
@@ -361,27 +370,27 @@ export default function Markets() {
                           </div>
                         </div>
                         <h3 className="font-semibold text-white mb-3 group-hover:text-cyan-300 transition-colors leading-snug flex-grow">
-                          {cleanName(market.name)}
+                           {cleanName(marketTitle(market))}
                         </h3>
                         <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-5">
-                          {market.shortDescription || market.description}
+                           {market.localized?.shortDescription || marketDescription(market)}
                         </p>
                         <div className="flex items-center justify-between mt-auto">
                           {(market as any).isInReview ? (
                             <div className="flex items-center gap-1.5">
                               <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                              <span className="text-xs font-medium text-amber-400">In Review</span>
+                                 <span className="text-xs font-medium text-amber-400">{t("inReview")}</span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5">
                               <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
                               <span className="text-xs text-slate-500">
-                                Live Data{isFree ? " · No login required" : ""}
+                                 {t("liveData")}{isFree ? ` · ${t("noLogin")}` : ""}
                               </span>
                             </div>
                           )}
                           <span className="text-xs text-cyan-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {isAuthenticated || isFree || teaserActive ? "Explore" : "Sign in"} <ChevronRight className="h-3 w-3" />
+                             {isAuthenticated || isFree || teaserActive ? t("explore") : t("signIn")} <ChevronRight className="h-3 w-3" />
                           </span>
                         </div>
                       </div>
@@ -396,9 +405,9 @@ export default function Markets() {
             <div className="w-16 h-16 bg-slate-900 border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="h-7 w-7 text-slate-600" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">No markets found</h3>
+             <h3 className="text-lg font-semibold text-white mb-2">{t("noMarkets")}</h3>
             <p className="text-slate-500 mb-5">
-              {searchQuery ? `No results for "${searchQuery}".` : "Try adjusting your filter."}
+               {searchQuery ? t("noResults", { query: searchQuery }) : t("adjustFilter")}
             </p>
             <div className="flex items-center justify-center gap-3">
               {searchQuery && (
@@ -407,7 +416,7 @@ export default function Markets() {
                   onClick={() => setSearchQuery("")}
                   className="border-white/10 text-slate-300 hover:text-white bg-transparent"
                 >
-                  Clear Search
+                   {t("clearSearch")}
                 </Button>
               )}
               {selectedCategory !== "all" && (
@@ -416,7 +425,7 @@ export default function Markets() {
                   onClick={() => setSelectedCategory("all")}
                   className="border-white/10 text-slate-300 hover:text-white bg-transparent"
                 >
-                  Clear Filter
+                   {t("clearFilter")}
                 </Button>
               )}
             </div>
@@ -427,19 +436,19 @@ export default function Markets() {
           <motion.div {...fadeUp} className="mt-16 relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-12 text-center overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.06)_0%,transparent_70%)]" />
             <div className="relative">
-              <h3 className="text-2xl font-bold text-white mb-3">Ready to go deeper?</h3>
+               <h3 className="text-2xl font-bold text-white mb-3">{t("goDeeper")}</h3>
               <p className="text-slate-400 mb-8 max-w-lg mx-auto">
-                Sign in for full vendor scores, feature matrices, news impact analysis, AI chat, and downloadable research reports.
+                 {t("goDeeperDescription")}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/register">
                   <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-8">
-                    Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
+                     {t("getFreeAccess")} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="/login">
                   <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white bg-transparent">
-                    Sign In
+                     {t("signIn")}
                   </Button>
                 </Link>
               </div>
