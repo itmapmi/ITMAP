@@ -168,7 +168,16 @@ export async function buildRankedLeads(opts: RankedLeadsOptions): Promise<{ tota
 }
 
 export interface LeadDetail {
-  user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    companyName: string | null;
+    designation: string | null;
+    companyEmail: string | null;
+    companyEmailVerified: boolean;
+  };
   intent: IntentResult;
   totalEvents: number;
   logins: number;
@@ -251,7 +260,16 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
     .sort((a, b) => b.intent.score - a.intent.score);
 
   return {
-    user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email },
+    user: {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      companyName: user.companyName?.trim() ? user.companyName : null,
+      designation: user.designation?.trim() ? user.designation : null,
+      companyEmail: user.companyEmail?.trim() ? user.companyEmail : null,
+      companyEmailVerified: user.companyEmailVerified ?? false,
+    },
     intent,
     totalEvents,
     logins: login?.logins ?? 0,

@@ -17,7 +17,16 @@ import {
 import { LEAD_GEN_EVENT_DEFS } from "@shared/schema";
 
 interface LeadDetail {
-  user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    companyName: string | null;
+    designation: string | null;
+    companyEmail: string | null;
+    companyEmailVerified: boolean;
+  };
   intent: IntentResult;
   totalEvents: number;
   logins: number;
@@ -136,6 +145,9 @@ export default function LeadDetailView({ userId, apiBase, backHref, backLabel, v
   const m = BAND_META[data.intent.band];
   const name = fullName(data.user);
   const sparkData = data.activityByDay.map((d) => d.count);
+  const companyName = data.user.companyName?.trim();
+  const designation = data.user.designation?.trim();
+  const companyEmail = data.user.companyEmail?.trim();
 
   // Sort type breakdown by intent weight (high-value actions first), then count.
   const sortedTypeBreakdown = [...data.typeBreakdown].sort((a, b) => {
@@ -159,14 +171,41 @@ export default function LeadDetailView({ userId, apiBase, backHref, backLabel, v
 
       {/* Hero */}
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
-        <GlassCard className="flex items-center gap-6 p-6 lg:col-span-2">
+        <GlassCard className="flex flex-col items-start gap-6 p-6 sm:flex-row sm:items-center lg:col-span-2">
           <IntentGauge score={data.intent.score} band={data.intent.band} />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-2xl font-bold text-white">{name}</h1>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="break-words text-2xl font-bold text-white">{name}</h1>
               <BandBadge band={data.intent.band} />
             </div>
-            {data.user.email && <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-400"><Mail className="h-3.5 w-3.5" /> {data.user.email}</p>}
+            {data.user.email && <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-400"><Mail className="h-3.5 w-3.5 shrink-0" /> <span className="break-all">{data.user.email}</span></p>}
+            {(companyName || designation || companyEmail) && (
+              <dl className="mt-4 grid gap-3 border-t border-white/10 pt-3 text-sm sm:grid-cols-2" data-testid="lead-company-profile">
+                {companyName && (
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-500">Company</dt>
+                    <dd className="mt-0.5 break-words text-slate-200" data-testid="lead-company-name">{companyName}</dd>
+                  </div>
+                )}
+                {designation && (
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-500">Designation</dt>
+                    <dd className="mt-0.5 break-words text-slate-200" data-testid="lead-designation">{designation}</dd>
+                  </div>
+                )}
+                {companyEmail && (
+                  <div className="min-w-0 sm:col-span-2">
+                    <dt className="text-xs text-slate-500">Company email</dt>
+                    <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <a href={`mailto:${companyEmail}`} className="break-all text-slate-200 hover:text-cyan-300" data-testid="lead-company-email">{companyEmail}</a>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${data.user.companyEmailVerified ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}>
+                        {data.user.companyEmailVerified ? "Verified" : "Not verified"}
+                      </span>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            )}
             <div className="mt-4 flex flex-wrap gap-5">
               <Stat icon={<Activity className="h-4 w-4 text-cyan-400" />} value={data.totalEvents} label="events" />
               <Stat icon={<LogIn className="h-4 w-4 text-violet-400" />} value={data.logins} label="logins" />
