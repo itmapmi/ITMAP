@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingProgress } from "@/components/ui/loading-progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Eye, ChevronDown, ChevronRight, FileText, RefreshCw, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown, Lock, Check } from "lucide-react";
@@ -498,13 +498,13 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
+  const { data: allVendors, isLoading: vendorsLoading, isError: vendorsError } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
     staleTime: 0,
     refetchOnMount: true,
   });
 
-  const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
+  const { data: features, isLoading: featuresLoading, isError: featuresError } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features", i18n.language],
     enabled: !!allVendors,
     queryFn: async () => {
@@ -514,7 +514,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     },
   });
 
-  const { data: supportMatrix, isLoading: supportLoading } = useQuery<VendorFeatureSupport[]>({
+  const { data: supportMatrix, isLoading: supportLoading, isError: supportError } = useQuery<VendorFeatureSupport[]>({
     queryKey: ["/api/markets", marketId, "feature-support", i18n.language],
     enabled: !!allVendors,
     queryFn: async () => {
@@ -528,10 +528,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   // matrix); the score row below reads these rather than recomputing.
   const productCapabilityScores = useDerivedCriterionScores(marketId, "productCapabilities");
 
-  // The picker only needs vendors. Large feature/support responses can keep
-  // loading in the background while the visitor chooses products.
+  // The desktop picker only needs vendors. The mobile comparison workspace
+  // needs feature/support data too; keep its initial state loading, not empty.
   const evaluationLoading = featuresLoading || supportLoading;
-  const isLoading = vendorsLoading || (!mobileMode && !showVendorSelection && evaluationLoading);
+  const needsEvaluation = mobileMode || !showVendorSelection;
+  const isLoading = vendorsLoading || (needsEvaluation && evaluationLoading);
+  const loadFailed = vendorsError || (needsEvaluation && (featuresError || supportError));
 
   useEffect(() => {
     const count = selectedVendors.size;
@@ -709,30 +711,14 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   };
 
   if (isLoading) {
+    return <LoadingProgress label={t("common:common.loading")} />;
+  }
+
+  if (loadFailed) {
     return (
-      <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
-          <CardTitle className="flex items-center gap-2">
-            <LayoutGrid className="h-5 w-5 text-blue-500" />
-            {t("heading.productEvaluation")}
-          </CardTitle>
-          <CardDescription>{t("loading.description")}</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex space-x-4">
-                <Skeleton className="h-8 w-48" />
-                <div className="flex space-x-2">
-                  {[...Array(3)].map((_, j) => (
-                    <Skeleton key={j} className="h-8 w-8 rounded-full" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <p role="alert" className="px-4 py-8 text-sm text-red-700">
+        {t("common:common.error")}
+      </p>
     );
   }
 

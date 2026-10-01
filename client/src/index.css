@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes loading-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
 /* Hide TinyMCE setup dialogs */
 .tox-dialog-wrap[aria-label*="setup"],
 .tox-dialog-wrap[aria-label*="Finish setting up"],
