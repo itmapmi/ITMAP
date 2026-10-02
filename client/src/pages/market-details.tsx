@@ -793,6 +793,7 @@ export default function MarketDetails() {
             onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
             mobileMode={mobileMode}
             showComparison={false}
+            showCriteriaWeights={activeTab === "vendor-evaluation"}
             mobileSelectedVendors={mobileMode ? mobileSelectedVendorIds : undefined}
             onMobileSelectedVendorsChange={mobileMode ? setMobileSelectedVendorIds : undefined}
           />

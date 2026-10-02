@@ -43,6 +43,7 @@ interface MagicQuadrantProps {
   enableDrag?: boolean;
   onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
   showComparison?: boolean;
+  showCriteriaWeights?: boolean;
   mobileSelectedVendors?: string[];
   onMobileSelectedVendorsChange?: (vendorIds: string[]) => void;
   /** True only on the /mobile/* route — hides the Timeline and Criteria
@@ -105,7 +106,7 @@ const historicalTimelineTicks = Array.from(
   (_, index) => index * HISTORICAL_TICK_INTERVAL,
 );
 
-export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, showComparison = true, mobileMode = false, mobileSelectedVendors: controlledMobileSelectedVendors, onMobileSelectedVendorsChange }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, showComparison = true, showCriteriaWeights = true, mobileMode = false, mobileSelectedVendors: controlledMobileSelectedVendors, onMobileSelectedVendorsChange }: MagicQuadrantProps) {
   const { t, i18n } = useTranslation("magicQuadrant");
   const { t: tc } = useTranslation("common");
   const svgRef = useRef<SVGSVGElement>(null);
@@ -138,6 +139,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const mobilePinchOrigin = useRef({ distance: 0, scale: 1, x: 0, y: 0 });
   const mobileDragMoved = useRef(false);
   const [mobileCriteriaOpen, setMobileCriteriaOpen] = useState(false);
+  useEffect(() => {
+    if (!showCriteriaWeights) setMobileCriteriaOpen(false);
+  }, [showCriteriaWeights]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -1273,7 +1277,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           </Card>
         </div>
 
-        {!mobileMode && (
+        {!mobileMode && showCriteriaWeights && (
           <div className="lg:col-span-1">
             <details className="group">
               <summary data-testid="criteria-weights-disclosure" className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm [&::-webkit-details-marker]:hidden">
@@ -1364,7 +1368,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         </div>
       )}
 
-      {mobileMode && (
+      {mobileMode && showCriteriaWeights && (
         <section className="mt-5 font-[Montserrat]">
           <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
             <div>
@@ -1373,6 +1377,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             </div>
             <button
               type="button"
+              data-testid="criteria-weights-disclosure"
               className="flex min-h-11 items-center gap-1 px-2 font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-sky-600"
               onClick={() => setMobileCriteriaOpen(value => !value)}
               aria-expanded={mobileCriteriaOpen}
