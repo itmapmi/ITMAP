@@ -21,13 +21,19 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** Campaign visitors who click Compare Products expect feature-by-feature evidence by default. The user subsequently requested a consistent quadrant across every tab on both desktop and mobile.
 
-**How to apply:** On mobile, start with the quadrant; its market-name heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. Keep the desktop definition collapsed by default above the quadrant. On desktop, center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
+**How to apply:** On mobile, start with the quadrant; its market-name heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. On desktop, put Read full definition beside the market title and hide all definition text until expanded. Center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it and make the weights panel internally scrollable rather than pushing the tab list below the fold. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
 
-**Market heading source of truth:** Graphic headings on both devices and the desktop heading above the graphic use the exact market name stored in Admin → Markets.
+**Market heading source of truth:** The mobile graphic heading, desktop heading above the graphic, and exported graphic title use the exact market name stored in Admin → Markets. Do not repeat the market name inside the desktop graphic card.
 
-**Why:** The user requested identical wording to the admin market name, overriding the earlier mobile “IT Map for” prefix and display-name transformations for these headings.
+**Why:** The user requested identical wording to the admin market name, overriding the earlier mobile “IT Map for” prefix and display-name transformations. They subsequently requested removing the duplicate desktop chart title while retaining it in exports.
 
 **How to apply:** Preserve the saved name verbatim for these headings, including any prefix already in the saved name. Do not add or strip prefixes or substitute a localized name; keep definition text localization and existing URLs unchanged.
+
+**Desktop first-view compactness:** The desktop graph should be 75% of its earlier size, with readable labels and the chart plus section tabs visible on initial entry, including when account banners appear.
+
+**Why:** The user explicitly wanted to see the graph and underlying comparison options without scrolling.
+
+**How to apply:** Reduce desktop layout size and spacing without shrinking label fonts or changing the drawing/scoring algorithms. Preserve mobile layout, stored definitions, timeline controls, and market titles in exports.
 
 **Explicit category-ranking exception:** The user requested a Feature rankings tab beside Compare Products. Ranking vendors by their existing product-feature support totals is allowed; it is a view of stored evidence, not a new inferred recommendation.
 

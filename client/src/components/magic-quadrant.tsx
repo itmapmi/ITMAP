@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import * as d3 from "d3";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1080,11 +1080,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
-        <div className={!mobileMode && !showCriteriaWeights
-          ? "w-full lg:col-span-4 lg:mx-auto lg:w-[calc(75%_-_0.5rem)]"
+        <div className={!mobileMode
+          ? `flex justify-center ${showCriteriaWeights ? "lg:col-span-3" : "lg:col-span-4"}`
           : "lg:col-span-3"}>
-          <Card className={mobileMode ? "rounded-none border border-slate-200 bg-slate-50 shadow-[0_5px_16px_rgba(15,20,24,.06)] font-[Montserrat]" : "bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
-            <CardHeader className={mobileMode ? "p-3.5 pb-2" : `${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
+          <Card className={mobileMode
+            ? "rounded-none border border-slate-200 bg-slate-50 shadow-[0_5px_16px_rgba(15,20,24,.06)] font-[Montserrat]"
+            : "w-full max-w-[596px] bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
+            <CardHeader className={mobileMode ? "p-3.5 pb-2" : "flex flex-row items-center justify-end p-2 pb-0"}>
               {mobileMode ? (
                 mobileHeaderContent ?? (
                 <div className="w-full">
@@ -1093,7 +1095,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                   </div>
                 </div>
                 )
-              ) : <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>}
+              ) : null}
               <div className="flex items-center gap-2">
               {!mobileMode && isWhatIf && (
                 <span
@@ -1108,7 +1110,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               <button
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
-                className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
                 title={t("chart.exportTooltip")}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1119,7 +1121,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               )}
               </div>
             </CardHeader>
-            <CardContent className={mobileMode ? "px-3.5 pb-3.5" : undefined}>
+            <CardContent className={mobileMode ? "px-3.5 pb-3.5" : "px-3 pb-2 pt-0"}>
               <div ref={containerRef} className="relative w-full">
                 {mobileMode && (
                   <div className="mb-2 flex items-center justify-between gap-2">
@@ -1241,12 +1243,19 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 {/* Timeline slider: too fiddly for touch and not a mobile
                     priority — hidden on the /mobile/* experience. */}
                 {!mobileMode && (
-                  <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
-                    <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  <div className={`mt-2 ${isMobile ? 'px-2' : 'px-4'}`}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <label className={`block font-medium text-gray-700 mb-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                       {isMobile
                         ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${t("timeline.weeksAgoShort", { weeks: weeksAgo })})` : ` (${t("timeline.now")})`}`
                         : `${t("timeline.historicalView")} - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${t(weeksAgo === 1 ? "timeline.weekAgo" : "timeline.weeksAgo", { weeks: weeksAgo })})` : ` (${t("timeline.current")})`}`}
                     </label>
+                    <div className={`flex gap-2 text-gray-500 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+                      <span>{formatDate(startDate, !isMobile)}</span>
+                      <span aria-hidden="true">–</span>
+                      <span>{formatDate(today, !isMobile)}</span>
+                    </div>
+                    </div>
                     <div className="relative py-1">
                       <div
                         aria-hidden="true"
@@ -1271,10 +1280,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                         data-testid="timeline-slider"
                       />
                     </div>
-                    <div className={`flex justify-between text-gray-500 mt-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
-                      <span>{formatDate(startDate, !isMobile)}</span>
-                      <span>{formatDate(today, !isMobile)}</span>
-                    </div>
                   </div>
                 )}
               </div>
@@ -1289,7 +1294,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 {t("criteriaWeights.title")}
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" />
               </summary>
-              <Card className="mt-2 flex h-full flex-col border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
+              <Card className="mt-2 flex h-full flex-col lg:max-h-[450px] lg:overflow-y-auto border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
                 <CardHeader className={isMobile ? "pb-3" : ""}>
                   <p className="text-xs leading-snug text-gray-500" data-testid="text-weights-note">
                     {isWhatIf

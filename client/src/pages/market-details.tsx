@@ -675,63 +675,49 @@ export default function MarketDetails() {
   }
 
   return (
-    <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", mobileMode ? "py-2" : "py-8")}>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
       <motion.div 
-        className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}
+        className={cn("bg-white rounded-xl shadow-sm", mobileMode ? (isMobile ? "p-4" : "p-6") : "px-3 py-2")}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {!mobileMode && <FadeInSection className="mb-6 space-y-4">
+        {!mobileMode && <FadeInSection className={cn("mb-2 space-y-2", isMobile && "mb-6 space-y-4")}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
-            {market.translationUnavailable && <p role="alert" className="mt-2 text-sm text-amber-700">{t("states.translationUnavailable", "Translation is temporarily unavailable; showing the English market definition.")}</p>}
-            <div className={cn(
-              "mt-3",
-              mobileMode
-                ? "border border-slate-200 bg-slate-50 p-3 font-[Montserrat]"
-                : "max-w-4xl"
-            )}>
-                <div className="flex items-start justify-between gap-3">
-                  <p className={cn(
-                    "leading-relaxed",
-                    mobileMode ? "text-sm text-slate-600" : "text-gray-600",
-                    !mobileDefinitionOpen && "line-clamp-2"
-                  )}>
-                    {marketDescription(market) || t("states.noStoredDefinition")}
-                  </p>
-                  <button type="button" data-testid="market-definition-toggle" className={cn("grid h-11 w-11 shrink-0 place-items-center", mobileMode ? "text-sky-600" : "text-slate-500")} onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label={t("buttons.toggleFullDefinition")}>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", mobileDefinitionOpen && "rotate-180")} />
-                  </button>
-                </div>
-                <button type="button" className={cn(
-                  "mt-1 text-sky-600",
-                  mobileMode ? "font-[Menlo] text-[10px] font-bold uppercase tracking-wider" : "text-xs font-semibold"
-                )} onClick={() => setMobileDefinitionOpen(value => !value)}>
-                  {mobileDefinitionOpen ? t("buttons.hideDefinition") : t("buttons.readFullDefinition")}
-                </button>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
+              <button
+                type="button"
+                data-testid="market-definition-toggle"
+                className="inline-flex min-h-8 items-center gap-1.5 text-sm font-semibold text-sky-700 hover:text-sky-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2"
+                onClick={() => setMobileDefinitionOpen(value => !value)}
+                aria-expanded={mobileDefinitionOpen}
+                aria-controls="desktop-market-definition"
+              >
+                {mobileDefinitionOpen ? t("buttons.hideDefinition") : t("buttons.readFullDefinition")}
+                <ChevronDown className={cn("h-4 w-4 transition-transform", mobileDefinitionOpen && "rotate-180")} aria-hidden="true" />
+              </button>
+              <Link href="/markets" className="ml-auto shrink-0">
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t(isMobile ? "buttons.back" : "buttons.backToMarkets")}
+                </Button>
+              </Link>
             </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className={`flex flex-wrap gap-2 ${isMobile ? 'justify-center' : ''}`}
-          >
-            <Link href="/markets">
-              <Button variant="outline" size={isMobile ? "sm" : "default"}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t(isMobile ? "buttons.back" : "buttons.backToMarkets")}
-              </Button>
-            </Link>
+            {mobileDefinitionOpen && (
+              <div id="desktop-market-definition" className="mt-2 max-w-4xl text-sm leading-relaxed text-gray-600">
+                <p className="whitespace-pre-wrap">{marketDescription(market) || t("states.noStoredDefinition")}</p>
+                {market.translationUnavailable && <p role="alert" className="mt-2 text-amber-700">{t("states.translationUnavailable", "Translation is temporarily unavailable; showing the English market definition.")}</p>}
+              </div>
+            )}
           </motion.div>
         </FadeInSection>}
 
-        <section className="mb-6" data-testid="market-shared-chart">
+        <section className={cn("mb-2", (mobileMode || isMobile) && "mb-6")} data-testid="market-shared-chart">
           {canManageVendors && (
             <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-gray-600">
