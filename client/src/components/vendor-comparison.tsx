@@ -152,7 +152,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
       <section className="space-y-5 font-[Montserrat]">
         <div>
           <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
-            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">03</p><h3 className="text-base font-bold">{t("compare.mobileTitle")}</h3></div>
+            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">02</p><h3 className="text-base font-bold">{t("compare.mobileTitle")}</h3></div>
             <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{t("compare.mobileSelectedCount", { count: selectedVendors.length })}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -176,7 +176,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
         </div>
         {selectedVendorData.length >= 2 ? (
           <section ref={mobileScoresRef} className="scroll-mt-32" data-testid="mobile-vendor-scores">
-            <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">{t("compare.mobileScoresTitle")}</h3></div>
+            <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">03</p><h3 className="text-base font-bold">{t("compare.mobileScoresTitle")}</h3></div>
             <div className="overflow-hidden border border-[#dfe8ed] bg-white">
               <div className="grid bg-[#0f1418] text-white" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
                 {selectedVendorData.map(vendor => (

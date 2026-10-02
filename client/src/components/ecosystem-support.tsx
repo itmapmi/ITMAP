@@ -587,7 +587,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
           )}
           <section aria-labelledby="mobile-ecosystem-picker-title">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
-              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
               <h2 id="mobile-ecosystem-picker-title" className="text-sm font-bold text-[#0f1418]">{t("selection.productsToCompare")}</h2>
             </div>
             {allVendors && allVendors.length > 0 ? (
@@ -655,7 +655,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
           <section ref={supportSectionRef} aria-labelledby="mobile-ecosystem-support-title" className="scroll-mt-32">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
-              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">03</span>
               <h2 id="mobile-ecosystem-support-title" className="text-sm font-bold text-[#0f1418]">{t("mobileFeatureScoresHeading")}</h2>
             </div>
             {selectedVendors.size !== MOBILE_VENDOR_CAP ? (

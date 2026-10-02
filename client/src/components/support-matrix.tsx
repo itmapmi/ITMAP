@@ -205,7 +205,7 @@ const HarveyBall = ({
           )}
           <section aria-labelledby="mobile-product-picker-title">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
-              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
               <h2 id="mobile-product-picker-title" className="text-sm font-bold text-[#0f1418]">{t("mobile.productsToCompare")}</h2>
             </div>
 
@@ -283,7 +283,7 @@ const HarveyBall = ({
 
           <section ref={supportSectionRef} aria-labelledby="mobile-product-support-title" className="scroll-mt-32">
             <div className="flex items-end border-b border-[#dfe8ed] pb-2">
-              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">03</span>
               <h2 id="mobile-product-support-title" className="text-sm font-bold text-[#0f1418]">
                 {t("mobile.featureSupportCommentary")}
               </h2>

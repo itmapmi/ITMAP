@@ -1081,7 +1081,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               {mobileMode ? (
                 <div className="w-full">
                   <div className="mb-3 flex items-end gap-2 border-b border-slate-200 pb-2">
-                    <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">02</p>
                     <h3 className="text-base font-bold">IT Map for {marketName.replace(/^IT\s*Map\s+for\s+/i, "")}</h3>
                   </div>
                 </div>
@@ -1369,7 +1368,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         <section className="mt-5 font-[Montserrat]">
           <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
             <div>
-              <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">05</p>
+              <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">01</p>
               <h3 className="text-base font-bold">{t("criteriaWeights.mobileTitle")}</h3>
             </div>
             <button
