@@ -112,6 +112,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const { t: tc } = useTranslation("common");
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const desktopCardRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([HISTORICAL_WEEKS]); // Start at the current week
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [evidenceVendor, setEvidenceVendor] = useState<{ vendor: VendorWithScores; pixelX: number; pixelY: number } | null>(null);
@@ -452,6 +453,22 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   // Handle window resize and orientation changes
   useEffect(() => {
     const updateContainerWidth = () => {
+      const card = desktopCardRef.current;
+      const svg = svgRef.current;
+      const section = card?.closest('[data-testid="market-shared-chart"]');
+      const tabs = section?.parentElement?.querySelector('[role="tablist"]');
+      if (mobileMode) {
+        card?.style.removeProperty("max-width");
+      } else if (card && svg && section && tabs && svg.getAttribute("height") && !document.getElementById("desktop-market-definition")) {
+        // Restore the native 760px graph, fitting only when the initial viewport
+        // cannot accommodate it plus the existing controls, banners, and tabs.
+        const chromeHeight = card.offsetHeight - svg.getBoundingClientRect().height;
+        const tabSpace = tabs.getBoundingClientRect().bottom - section.getBoundingClientRect().bottom;
+        const availableHeight = window.innerHeight - (card.getBoundingClientRect().top + window.scrollY) - chromeHeight - tabSpace - 8;
+        const graphWidth = Math.min(760, Math.max(420, Math.floor(availableHeight / 0.72)));
+        card.style.maxWidth = `${graphWidth + 26}px`;
+        card.parentElement?.parentElement?.style.setProperty("--desktop-weights-max-height", `${Math.round(graphWidth * 0.72) + chromeHeight - 54}px`);
+      }
       if (containerRef.current) {
         setContainerWidth(containerRef.current.offsetWidth);
       }
@@ -463,11 +480,27 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // Listen for resize and orientation change events
     window.addEventListener('resize', updateContainerWidth);
     window.addEventListener('orientationchange', updateContainerWidth);
+    let resizeFrame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(updateContainerWidth);
+    });
+    if (containerRef.current) observer.observe(containerRef.current);
+    if (svgRef.current) observer.observe(svgRef.current);
+    const navigation = document.querySelector(".sticky.top-0.z-50");
+    if (navigation) observer.observe(navigation);
+    if (desktopCardRef.current?.closest('[data-testid="market-shared-chart"]')?.previousElementSibling) {
+      observer.observe(desktopCardRef.current.closest('[data-testid="market-shared-chart"]')!.previousElementSibling!);
+    }
+    const settleTimer = window.setTimeout(updateContainerWidth, 800);
 
     // Cleanup
     return () => {
       window.removeEventListener('resize', updateContainerWidth);
       window.removeEventListener('orientationchange', updateContainerWidth);
+      observer.disconnect();
+      cancelAnimationFrame(resizeFrame);
+      window.clearTimeout(settleTimer);
     };
   }, [vendorsLoading, scoresLoading, weightsLoading, mobileMode]);
 
@@ -1079,13 +1112,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
+      <div className="grid grid-cols-1 items-start lg:grid-cols-4 gap-4 lg:gap-8">
         <div className={!mobileMode
           ? `flex justify-center ${showCriteriaWeights ? "lg:col-span-3" : "lg:col-span-4"}`
           : "lg:col-span-3"}>
-          <Card className={mobileMode
+          <Card ref={desktopCardRef} className={mobileMode
             ? "rounded-none border border-slate-200 bg-slate-50 shadow-[0_5px_16px_rgba(15,20,24,.06)] font-[Montserrat]"
-            : "w-full max-w-[596px] bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
+            : "w-full max-w-[786px] bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
             <CardHeader className={mobileMode ? "p-3.5 pb-2" : "flex flex-row items-center justify-end p-2 pb-0"}>
               {mobileMode ? (
                 mobileHeaderContent ?? (
@@ -1294,7 +1327,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 {t("criteriaWeights.title")}
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" />
               </summary>
-              <Card className="mt-2 flex h-full flex-col lg:max-h-[450px] lg:overflow-y-auto border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
+              <Card className="mt-2 flex h-full flex-col lg:max-h-[var(--desktop-weights-max-height,450px)] lg:overflow-y-auto border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
                 <CardHeader className={isMobile ? "pb-3" : ""}>
                   <p className="text-xs leading-snug text-gray-500" data-testid="text-weights-note">
                     {isWhatIf

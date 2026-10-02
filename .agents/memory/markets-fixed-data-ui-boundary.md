@@ -29,11 +29,11 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **How to apply:** Preserve the saved name verbatim for these headings, including any prefix already in the saved name. Do not add or strip prefixes or substitute a localized name; keep definition text localization and existing URLs unchanged.
 
-**Desktop first-view compactness:** The desktop graph should be 75% of its earlier size, with readable labels and the chart plus section tabs visible on initial entry, including when account banners appear.
+**Desktop first-view compactness:** Restore the graph's original full desktop size, adapting down only when necessary to keep the chart and section tabs visible on initial entry, including when account banners appear.
 
-**Why:** The user explicitly wanted to see the graph and underlying comparison options without scrolling.
+**Why:** The user reversed the 75% reduction, requesting 100% again while retaining all other compact-layout changes and ensuring the page still fits.
 
-**How to apply:** Reduce desktop layout size and spacing without shrinking label fonts or changing the drawing/scoring algorithms. Preserve mobile layout, stored definitions, timeline controls, and market titles in exports.
+**How to apply:** Prefer the original full-size desktop canvas; fit its container to available viewport height only when needed, accounting for headers, controls, and the tab list. Do not shrink label fonts or change drawing/scoring algorithms. Preserve mobile layout, stored definitions, timeline controls, and market titles in exports.
 
 **Explicit category-ranking exception:** The user requested a Feature rankings tab beside Compare Products. Ranking vendors by their existing product-feature support totals is allowed; it is a view of stored evidence, not a new inferred recommendation.
 
