@@ -1080,7 +1080,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
-        <div className="lg:col-span-3">
+        <div className={!mobileMode && !showCriteriaWeights
+          ? "w-full lg:col-span-4 lg:mx-auto lg:w-[calc(75%_-_0.5rem)]"
+          : "lg:col-span-3"}>
           <Card className={mobileMode ? "rounded-none border border-slate-200 bg-slate-50 shadow-[0_5px_16px_rgba(15,20,24,.06)] font-[Montserrat]" : "bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
             <CardHeader className={mobileMode ? "p-3.5 pb-2" : `${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
               {mobileMode ? (
@@ -1282,7 +1284,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
         {!mobileMode && showCriteriaWeights && (
           <div className="lg:col-span-1">
-            <details className="group">
+            <details open className="group">
               <summary data-testid="criteria-weights-disclosure" className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm [&::-webkit-details-marker]:hidden">
                 {t("criteriaWeights.title")}
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" />
