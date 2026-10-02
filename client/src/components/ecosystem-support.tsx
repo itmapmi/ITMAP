@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MobileNotesCloseButton from "@/components/mobile-notes-close-button";
 import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown, Lock, Check } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
@@ -343,7 +344,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-emerald-900">
             <Network className="h-5 w-5 text-green-500" />
             {t("heading")}
           </CardTitle>
@@ -372,7 +373,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-emerald-900">
             <Network className="h-5 w-5 text-green-500" />
             {t("heading")}
           </CardTitle>
@@ -481,7 +482,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-emerald-900">
             <Network className="h-5 w-5 text-green-500" />
             {t("heading")}
           </CardTitle>
@@ -787,6 +788,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 </div>
               </div>
             )}
+            {selectedNotes && <MobileNotesCloseButton onClose={() => setSelectedNotes(null)} />}
           </DialogContent>
         </Dialog>
 
@@ -870,7 +872,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-3 text-xl">
+            <CardTitle className="flex items-center gap-3 text-xl text-emerald-900">
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg shadow-md">
                 <Network className="h-5 w-5 text-white" />
               </div>

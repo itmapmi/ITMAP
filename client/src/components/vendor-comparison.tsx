@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import MarketSectionHeader from "@/components/market-section-header";
+import VendorComparisonNotes from "@/components/vendor-comparison-notes";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Check, ChevronDown, Download, FileText, Users } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MobileNotesCloseButton from "@/components/mobile-notes-close-button";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 import { recordHighIntentAction } from "@/lib/high-intent";
 import { useTranslation } from "react-i18next";
@@ -31,7 +33,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
     else setLocalSelectedVendors(next);
   };
   const [mobileNote, setMobileNote] = useState<{ vendor: Vendor; criterion: Criteria; score: number; notes: string } | null>(null);
-  const [desktopNotesCriterion, setDesktopNotesCriterion] = useState<Criteria | null>(null);
+  const [expandedDesktopNotes, setExpandedDesktopNotes] = useState<Set<string>>(new Set());
   const [expandedMobileCriterion, setExpandedMobileCriterion] = useState<string | null>(null);
   const mobileScoresRef = useRef<HTMLElement>(null);
   const previousMobileSelectionCount = useRef(0);
@@ -81,11 +83,36 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   const mobileSelectionCount = selectedVendorData.length;
   const mobileEvidenceLoading = scoresLoading || criteriaLoading;
 
+  const renderDesktopNotes = (criterion: Criteria) => (
+    <VendorComparisonNotes
+      criterion={criterion}
+      entries={selectedVendorData.map(vendor => ({
+        vendor,
+        score: getVendorScore(vendor.id, criterion.id),
+        notes: getVendorNotes(vendor.id, criterion.id),
+      }))}
+    />
+  );
+
   useEffect(() => {
+    setExpandedDesktopNotes(new Set());
     setExpandedMobileCriterion(null);
     previousMobileSelectionCount.current = 0;
     pendingMobileScoresScroll.current = false;
   }, [marketId]);
+
+  useEffect(() => {
+    if (selectedVendors.length < 2) setExpandedDesktopNotes(new Set());
+  }, [selectedVendors.length]);
+
+  const toggleDesktopNotes = (criterionId: string) => {
+    setExpandedDesktopNotes(previous => {
+      const next = new Set(previous);
+      if (next.has(criterionId)) next.delete(criterionId);
+      else next.add(criterionId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!mobileMode) return;
@@ -252,11 +279,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                   <span className="font-[Menlo] text-[9px] font-bold uppercase text-[#66737b]">{t("compare.notes")}</span>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">{mobileNote.notes || t("compare.noStoredCommentary")}</p>
                 </div>
-                <div className="border-t border-[#dfe8ed] p-3">
-                  <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setMobileNote(null)}>
-                    {tc("buttons.close")}
-                  </Button>
-                </div>
+                <MobileNotesCloseButton onClose={() => setMobileNote(null)} />
               </>
             )}
           </DialogContent>
@@ -266,18 +289,19 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <MarketSectionHeader
         title={t("compare.title")}
         description={t("compare.selectAtLeastTwo")}
         icon={Users}
+        tone="amber"
       />
       <CardContent className="pt-6">
         <div className={`mb-6 grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"}`}>
           {vendors?.map(vendor => {
             const active = selectedVendors.includes(vendor.id);
             return (
-              <div key={vendor.id} className={`flex min-h-14 items-start gap-3 border p-3 transition-colors ${active ? "border-[#13a8f0] bg-[#dcebf6] shadow-[inset_3px_0_#13a8f0]" : "border-[#dfe8ed] bg-white"}`}>
+              <div key={vendor.id} className={`flex min-h-14 items-start gap-3 rounded-lg border p-3 transition-colors ${active ? "border-[#13a8f0] bg-[#dcebf6] shadow-[inset_3px_0_#13a8f0]" : "border-[#dfe8ed] bg-white"}`}>
                 <Checkbox
                   id={vendor.id}
                   checked={active}
@@ -311,7 +335,8 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                   </TableHeader>
                   <TableBody>
                     {criteria?.map(criterion => (
-                      <TableRow key={criterion.id}>
+                      <Fragment key={criterion.id}>
+                      <TableRow>
                         <TableCell className="font-medium">{translateCriterionName(tc, criterion.name)}</TableCell>
                         {selectedVendorData.map(vendor => (
                           <TableCell key={vendor.id} className="text-center">
@@ -322,15 +347,26 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setDesktopNotesCriterion(criterion)}
+                            onClick={() => toggleDesktopNotes(criterion.id)}
+                            aria-expanded={expandedDesktopNotes.has(criterion.id)}
+                            aria-controls={`desktop-vendor-notes-${criterion.id}`}
                             className="h-8 px-2 text-xs text-[#087fca] hover:text-[#065f9b]"
                             data-testid={`button-notes-${criterion.id}`}
                           >
                             <FileText className="mr-1 h-3 w-3" />
-                            {t("compare.viewNotes")}
+                            {expandedDesktopNotes.has(criterion.id) ? tc("common.close") : t("compare.viewNotes")}
+                            <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${expandedDesktopNotes.has(criterion.id) ? "rotate-180" : ""}`} aria-hidden="true" />
                           </Button>
                         </TableCell>
                       </TableRow>
+                      {expandedDesktopNotes.has(criterion.id) && (
+                        <TableRow className="bg-slate-50 hover:bg-slate-50">
+                          <TableCell colSpan={selectedVendorData.length + 2} className="p-4">
+                            {renderDesktopNotes(criterion)}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -366,14 +402,19 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setDesktopNotesCriterion(criterion)}
+                             onClick={() => toggleDesktopNotes(criterion.id)}
+                             aria-expanded={expandedDesktopNotes.has(criterion.id)}
+                             aria-controls={`desktop-vendor-notes-${criterion.id}`}
                             className="min-h-10 w-full justify-center border-[#b9d8ec] bg-[#dcebf6] text-[#087fca] hover:bg-[#cde3f2]"
                             data-testid={`button-notes-${criterion.id}`}
                           >
                             <FileText className="mr-2 h-4 w-4" />
-                            {t("compare.viewNotes")}
+                             {expandedDesktopNotes.has(criterion.id) ? tc("common.close") : t("compare.viewNotes")}
                           </Button>
                         </div>
+                         {expandedDesktopNotes.has(criterion.id) && (
+                           <div className="mt-3 border-t border-slate-200 pt-3">{renderDesktopNotes(criterion)}</div>
+                         )}
                     </div>
                   );
                 })}
@@ -397,51 +438,6 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
           </div>
         )}
       </CardContent>
-      <Dialog open={!!desktopNotesCriterion} onOpenChange={open => { if (!open) setDesktopNotesCriterion(null); }}>
-        <DialogContent className="flex max-h-[85dvh] max-w-2xl flex-col gap-0 overflow-hidden rounded-none border-[#dfe8ed] p-0">
-          <DialogHeader className="border-b border-[#dfe8ed] p-4 pr-10 text-left">
-            <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#66737b]">{t("compare.notes")}</p>
-            <DialogTitle className="mt-1 text-base text-[#0f1418]">
-              {desktopNotesCriterion && translateCriterionName(tc, desktopNotesCriterion.name)}
-            </DialogTitle>
-          </DialogHeader>
-          {desktopNotesCriterion && (
-            <>
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                {selectedVendorData.map(vendor => (
-                  <article key={vendor.id} className="border border-[#dfe8ed]">
-                    <div className="grid grid-cols-2 border-b border-[#dfe8ed] bg-[#f7f9f9] text-xs">
-                      <div className="border-r border-[#dfe8ed] p-3">
-                        <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.vendor")}</span>
-                        <strong className="mt-1 block break-words">{vendor.name}</strong>
-                      </div>
-                      <div className="p-3">
-                        <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.product")}</span>
-                        <strong className="mt-1 block break-words">{vendor.product || t("compare.productNameUnavailable")}</strong>
-                      </div>
-                      <div className="col-span-2 border-t border-[#dfe8ed] p-3">
-                        <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.score")}</span>
-                        <strong className="mt-1 block">{getVendorScore(vendor.id, desktopNotesCriterion.id)} / 10</strong>
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.notes")}</span>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">
-                        {getVendorNotes(vendor.id, desktopNotesCriterion.id) || t("compare.noStoredCommentary")}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-              <div className="border-t border-[#dfe8ed] p-3">
-                <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setDesktopNotesCriterion(null)}>
-                  {tc("buttons.close")}
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

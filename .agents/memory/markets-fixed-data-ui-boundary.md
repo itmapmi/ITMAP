@@ -7,7 +7,15 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** The backend data model is fixed. The product is an evidence presentation system, not a generated buyer journey; synthetic takeaways, recommendations, rankings, aggregates, or newly inferred facts misrepresent what the product can provide.
 
-**How to apply:** Improve hierarchy, navigation, disclosure, filtering, comparison, and mobile readability using existing fields. Keep the quadrant’s score mapping and vendor coordinates intact. Vendor Evaluation must lead from the graph into a comparison of at least two vendor products. Product and Ecosystem Evaluation must compare exactly two products. Commentary is typically 100–250 words, so never expand it inside score rows; every criterion or feature score needs a View notes action opening a scrollable popup with vendor, product, subject, score/support level, and full stored commentary. Show explicit unavailable states when stored data is absent.
+**How to apply:** Improve hierarchy, navigation, disclosure, filtering, comparison, and mobile readability using existing fields. Keep the quadrant’s score mapping and vendor coordinates intact. Vendor Evaluation must lead from the graph into a comparison of at least two vendor products. Product and Ecosystem Evaluation must compare exactly two products. Every criterion or feature score needs access to full stored commentary, with vendor, product, subject, and score/support level. Mobile commentary and product/ecosystem commentary use scrollable popups. Desktop Vendor Map commentary is the explicit exception: View notes expands a collapsible section directly below its criterion within the comparison card, not a popup. Show explicit unavailable states when stored data is absent.
+
+**Why desktop Vendor Map is different:** The user explicitly requested restoring the earlier inline, collapsible commentary presentation on desktop while leaving mobile popup behavior unchanged.
+
+**Mobile notes popup consistency:** Every mobile comparison notes popup uses the same visible “Close Notes” action.
+
+**Why:** The user requested identical closing controls across Compare, Interop, and Vendor Map.
+
+**How to apply:** Preserve the shared footer action and translated label when changing mobile notes popups; desktop Vendor Map remains inline and collapsible.
 
 **Market entry priority:** Keep technical product comparison as the initial tab, with feature rankings and ecosystem support before vendor comparison. The quadrant is shared context above all tabs; criteria weights are shown only when Vendor Map is selected.
 
@@ -25,4 +33,10 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** The user requested matching the other desktop tabs to the existing Product Evaluation, Support Matrix, and Methodology headings, while explicitly leaving Intelligence as is.
 
-**How to apply:** Carry the same light gradient, blue icon, title, and subtitle styling into desktop section headers without changing the distinct Intelligence presentation or the mobile headers.
+**How to apply:** Keep consistent light-gradient, icon, title, and subtitle formatting, but give each desktop tab its own distinct color theme. Do not change the distinct Intelligence presentation or the mobile headers.
+
+**Desktop card consistency:** Vendor cards and feature-category containers should have curved corners matching Compare Products and Support Matrix, including selected and expanded states.
+
+**Why:** The user requested consistent curved edges across the desktop tabs rather than square boundaries in Feature rankings and Vendor Map.
+
+**How to apply:** Match the existing comparison-card corner treatment when adding or changing desktop vendor and category containers.

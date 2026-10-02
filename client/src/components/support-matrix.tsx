@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingProgress } from "@/components/ui/loading-progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MobileNotesCloseButton from "@/components/mobile-notes-close-button";
 import { Users, Eye, ChevronDown, ChevronRight, FileText, RefreshCw, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown, Lock, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -428,11 +429,7 @@ const HarveyBall = ({
                   <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("notes.storedCommentary")}</span>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">{selectedNotes.notes}</p>
                 </div>
-                <div className="border-t border-[#dfe8ed] p-3">
-                  <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setSelectedNotes(null)}>
-                    {t("buttons.closeNotes")}
-                  </Button>
-                </div>
+                <MobileNotesCloseButton onClose={() => setSelectedNotes(null)} />
               </>
             )}
           </DialogContent>
@@ -727,7 +724,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     return (
       <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-blue-900">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
             {t("heading.productEvaluation")}
           </CardTitle>
@@ -827,7 +824,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     return (
       <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-blue-900">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
             {t("heading.productEvaluation")}
           </CardTitle>
@@ -945,7 +942,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-3 text-xl">
+            <CardTitle className="flex items-center gap-3 text-xl text-blue-900">
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg shadow-md">
                 <LayoutGrid className="h-5 w-5 text-white" />
               </div>

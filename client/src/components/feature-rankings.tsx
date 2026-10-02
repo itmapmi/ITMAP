@@ -64,7 +64,7 @@ export default function FeatureRankings({
   const error = vendorsError || featuresError || supportError;
 
   return (
-    <section className="overflow-hidden rounded-none border border-[#dfe8ed] bg-white shadow-[0_5px_16px_rgba(15,20,24,0.06)]" aria-labelledby="feature-rankings-heading">
+    <section className={`overflow-hidden ${mobileMode ? "rounded-none" : "rounded-xl"} border border-[#dfe8ed] bg-white shadow-[0_5px_16px_rgba(15,20,24,0.06)]`} aria-labelledby="feature-rankings-heading">
       {mobileMode ? <header className="border-b border-[#dfe8ed] bg-white px-4 py-5 sm:px-7">
         <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">{t("eyebrow")}</p>
         <h2 id="feature-rankings-heading" className="mt-1 text-xl font-semibold tracking-tight text-[#0f1418]">{t("title")}</h2>
@@ -74,6 +74,7 @@ export default function FeatureRankings({
           title={t("title")}
           description={t("description")}
           icon={BarChart3}
+          tone="violet"
           headingId="feature-rankings-heading"
         />
       )}
@@ -106,7 +107,7 @@ export default function FeatureRankings({
                 (vendorId, featureId) => support.get(`${vendorId}-${featureId}`),
               ) : [];
               return (
-                <div key={category.id} className={`border transition-colors ${isOpen ? "border-[#8bc8e9] shadow-[0_8px_28px_rgba(8,127,202,0.09)]" : "border-[#dfe8ed] hover:border-[#a5c7d9]"}`}>
+                <div key={category.id} className={`border transition-colors ${mobileMode ? "" : "overflow-hidden rounded-lg"} ${isOpen ? "border-[#8bc8e9] shadow-[0_8px_28px_rgba(8,127,202,0.09)]" : "border-[#dfe8ed] hover:border-[#a5c7d9]"}`}>
                   <button
                     type="button"
                     aria-expanded={isOpen}

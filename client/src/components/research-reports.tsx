@@ -227,6 +227,7 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
         title="Research Reports"
         description="In-depth analyses, briefings, and supporting materials published for this market."
         icon={FileText}
+        tone="rose"
         headingId="report-library-heading"
       />
       <div className="p-6">{content}</div>

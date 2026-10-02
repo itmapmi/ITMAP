@@ -17,7 +17,7 @@ export default function ResearchMethodology({ marketId }: ResearchMethodologyPro
   if (isLoading) {
     return (
       <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+        <CardHeader className="bg-gradient-to-r from-cyan-50 to-sky-50 border-b border-cyan-100">
           <div className="flex items-center gap-3">
             <Skeleton className="w-10 h-10 rounded-lg" />
             <div className="space-y-2">
@@ -59,9 +59,9 @@ export default function ResearchMethodology({ marketId }: ResearchMethodologyPro
   if (!methodology || !methodology.content) {
     return (
       <Card className="bg-gradient-to-br from-white to-gray-50/30 border-gray-100 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-gray-400 to-blue-400 rounded-lg shadow-md">
+        <CardHeader className="bg-gradient-to-r from-cyan-50 to-sky-50 border-b border-cyan-100">
+          <CardTitle className="flex items-center gap-3 text-xl text-cyan-900">
+            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-cyan-500 to-sky-500 rounded-lg shadow-md">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
             Research Methodology
@@ -92,9 +92,9 @@ export default function ResearchMethodology({ marketId }: ResearchMethodologyPro
 
   return (
     <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg shadow-md">
+      <CardHeader className="bg-gradient-to-r from-cyan-50 to-sky-50 border-b border-cyan-100">
+        <CardTitle className="flex items-center gap-3 text-xl text-cyan-900">
+          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-cyan-500 to-sky-500 rounded-lg shadow-md">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
           Research Methodology
