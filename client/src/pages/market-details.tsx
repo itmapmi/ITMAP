@@ -675,14 +675,14 @@ export default function MarketDetails() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", mobileMode ? "py-2" : "py-8")}>
       <motion.div 
         className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <FadeInSection className="mb-6 space-y-4">
+        {!mobileMode && <FadeInSection className="mb-6 space-y-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -729,7 +729,7 @@ export default function MarketDetails() {
               </Button>
             </Link>
           </motion.div>
-        </FadeInSection>
+        </FadeInSection>}
 
         <section className="mb-6" data-testid="market-shared-chart">
           {canManageVendors && (
@@ -792,6 +792,39 @@ export default function MarketDetails() {
             enableDrag={editingLabels}
             onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
             mobileMode={mobileMode}
+            mobileHeaderContent={mobileMode ? (
+              <div className="w-full">
+                <div className="mb-3 flex items-start justify-between gap-2 border-b border-slate-200 pb-2">
+                  <h2 className="min-w-0 flex-1 text-base font-bold">
+                    <button
+                      type="button"
+                      data-testid="market-definition-toggle"
+                      className="flex min-h-10 w-full items-center justify-between gap-2 text-left"
+                      onClick={() => setMobileDefinitionOpen(value => !value)}
+                      aria-expanded={mobileDefinitionOpen}
+                      aria-controls="mobile-market-definition"
+                    >
+                      <span>IT Map for {marketTitle(market).replace(/^IT\s*Map\s+for\s+/i, "")}</span>
+                      <ChevronDown className={cn("h-4 w-4 shrink-0 text-sky-600 transition-transform", mobileDefinitionOpen && "rotate-180")} aria-hidden="true" />
+                    </button>
+                  </h2>
+                  <Link
+                    href={`${pathPrefix}/markets`}
+                    data-testid="mobile-market-back"
+                    aria-label={t("buttons.backToMarkets")}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[2px] bg-sky-500 text-white hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </div>
+                {mobileDefinitionOpen && (
+                  <div id="mobile-market-definition" className="mb-3 border-b border-slate-200 pb-3 text-sm leading-relaxed text-slate-600">
+                    <p className="whitespace-pre-wrap">{marketDescription(market) || t("states.noStoredDefinition")}</p>
+                    {market.translationUnavailable && <p role="alert" className="mt-2 text-amber-700">{t("states.translationUnavailable", "Translation is temporarily unavailable; showing the English market definition.")}</p>}
+                  </div>
+                )}
+              </div>
+            ) : undefined}
             showComparison={false}
             showCriteriaWeights={activeTab === "vendor-evaluation"}
             mobileSelectedVendors={mobileMode ? mobileSelectedVendorIds : undefined}

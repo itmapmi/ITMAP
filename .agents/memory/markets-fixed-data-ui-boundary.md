@@ -13,7 +13,7 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** Campaign visitors who click Compare Products expect feature-by-feature evidence by default. The user subsequently requested a consistent quadrant across every tab on both desktop and mobile.
 
-**How to apply:** Keep the market definition collapsed by default, followed by the existing quadrant, then the tabs. Keep the criteria-weights disclosure next to/below the quadrant, but hide it outside Vendor Map on both desktop and mobile. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
+**How to apply:** On mobile, start with the quadrant; its “IT Map for [market name]” heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. Keep the desktop definition collapsed by default above the quadrant. Keep the criteria-weights disclosure next to/below the quadrant, but hide it outside Vendor Map on both desktop and mobile. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
 
 **Explicit category-ranking exception:** The user requested a Feature rankings tab beside Compare Products. Ranking vendors by their existing product-feature support totals is allowed; it is a view of stored evidence, not a new inferred recommendation.
 

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import * as d3 from "d3";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -44,6 +44,7 @@ interface MagicQuadrantProps {
   onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
   showComparison?: boolean;
   showCriteriaWeights?: boolean;
+  mobileHeaderContent?: ReactNode;
   mobileSelectedVendors?: string[];
   onMobileSelectedVendorsChange?: (vendorIds: string[]) => void;
   /** True only on the /mobile/* route — hides the Timeline and Criteria
@@ -106,7 +107,7 @@ const historicalTimelineTicks = Array.from(
   (_, index) => index * HISTORICAL_TICK_INTERVAL,
 );
 
-export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, showComparison = true, showCriteriaWeights = true, mobileMode = false, mobileSelectedVendors: controlledMobileSelectedVendors, onMobileSelectedVendorsChange }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, showComparison = true, showCriteriaWeights = true, mobileHeaderContent, mobileMode = false, mobileSelectedVendors: controlledMobileSelectedVendors, onMobileSelectedVendorsChange }: MagicQuadrantProps) {
   const { t, i18n } = useTranslation("magicQuadrant");
   const { t: tc } = useTranslation("common");
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1083,11 +1084,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           <Card className={mobileMode ? "rounded-none border border-slate-200 bg-slate-50 shadow-[0_5px_16px_rgba(15,20,24,.06)] font-[Montserrat]" : "bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
             <CardHeader className={mobileMode ? "p-3.5 pb-2" : `${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
               {mobileMode ? (
+                mobileHeaderContent ?? (
                 <div className="w-full">
                   <div className="mb-3 flex items-end gap-2 border-b border-slate-200 pb-2">
                     <h3 className="text-base font-bold">IT Map for {marketName.replace(/^IT\s*Map\s+for\s+/i, "")}</h3>
                   </div>
                 </div>
+                )
               ) : <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>}
               <div className="flex items-center gap-2">
               {!mobileMode && isWhatIf && (
