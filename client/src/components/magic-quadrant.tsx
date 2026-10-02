@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Minus, Plus, RotateCcw } from "lucide-react";
+import { ChevronDown, Minus, Plus, RotateCcw } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import {
   DEFAULT_QUADRANT_THRESHOLDS,
@@ -42,6 +42,9 @@ interface MagicQuadrantProps {
   marketType?: "mature" | "emerging";
   enableDrag?: boolean;
   onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
+  showComparison?: boolean;
+  mobileSelectedVendors?: string[];
+  onMobileSelectedVendorsChange?: (vendorIds: string[]) => void;
   /** True only on the /mobile/* route — hides the Timeline and Criteria
    * Weights controls, which are too fiddly for a phone. Independent of the
    * isMobile viewport hook so narrowing a desktop browser doesn't hide them. */
@@ -102,7 +105,7 @@ const historicalTimelineTicks = Array.from(
   (_, index) => index * HISTORICAL_TICK_INTERVAL,
 );
 
-export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, mobileMode = false }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, showComparison = true, mobileMode = false, mobileSelectedVendors: controlledMobileSelectedVendors, onMobileSelectedVendorsChange }: MagicQuadrantProps) {
   const { t, i18n } = useTranslation("magicQuadrant");
   const { t: tc } = useTranslation("common");
   const svgRef = useRef<SVGSVGElement>(null);
@@ -122,7 +125,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [containerWidth, setContainerWidth] = useState(0);
   const [mobileChartScale, setMobileChartScale] = useState(0.36);
   const [mobileChartPan, setMobileChartPan] = useState({ x: 0, y: 8 });
-  const [mobileSelectedVendors, setMobileSelectedVendors] = useState<string[]>([]);
+  const [localMobileSelectedVendors, setLocalMobileSelectedVendors] = useState<string[]>([]);
+  const mobileSelectedVendors = controlledMobileSelectedVendors ?? localMobileSelectedVendors;
+  const setMobileSelectedVendors = (next: string[] | ((previous: string[]) => string[])) => {
+    const updated = typeof next === "function" ? next(mobileSelectedVendors) : next;
+    if (onMobileSelectedVendorsChange) onMobileSelectedVendorsChange(updated);
+    else setLocalMobileSelectedVendors(updated);
+  };
   const mobileChartViewportRef = useRef<HTMLDivElement>(null);
   const mobilePointers = useRef(new Map<number, { x: number; y: number }>());
   const mobileDragOrigin = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
@@ -465,17 +474,19 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   // Declared BEFORE the seeding effect so that on a market change the reset
   // runs first and the seed can then repopulate (effects run in order).
   useEffect(() => {
+    resetMobileChart();
+    if (controlledMobileSelectedVendors) return;
     setMobileSelectedVendors([]);
     mobileDefaultSeededFor.current = null;
-    resetMobileChart();
   }, [marketId]);
 
   useEffect(() => {
+    if (controlledMobileSelectedVendors) return;
     if (!mobileMode || !vendors || vendors.length < 2) return;
     if (mobileDefaultSeededFor.current === marketId) return;
     mobileDefaultSeededFor.current = marketId;
     setMobileSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
-  }, [mobileMode, vendors, marketId]);
+  }, [mobileMode, vendors, marketId, controlledMobileSelectedVendors]);
 
   // ── Positioning ────────────────────────────────────────────────────────────
   // Every dot depends only on the vendor's own scores, the weights in play and
@@ -1266,29 +1277,33 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
         {!mobileMode && (
           <div className="lg:col-span-1">
-            <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
-              <CardHeader className={isMobile ? "pb-3" : ""}>
-                <CardTitle className={isMobile ? "text-lg" : ""}>{t("criteriaWeights.title")}</CardTitle>
-                <p className="text-xs text-gray-500 leading-snug" data-testid="text-weights-note">
-                  {isWhatIf
-                    ? t("criteriaWeights.whatIfDescription")
-                    : t("criteriaWeights.description")}
-                </p>
-                {isWhatIf && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 w-fit"
-                    onClick={resetWeightsToPublished}
-                    data-testid="button-reset-weights"
-                  >
-                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                    {t("criteriaWeights.reset")}
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
+            <details className="group">
+              <summary data-testid="criteria-weights-disclosure" className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm [&::-webkit-details-marker]:hidden">
+                {t("criteriaWeights.title")}
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" />
+              </summary>
+              <Card className="mt-2 flex h-full flex-col border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
+                <CardHeader className={isMobile ? "pb-3" : ""}>
+                  <p className="text-xs leading-snug text-gray-500" data-testid="text-weights-note">
+                    {isWhatIf
+                      ? t("criteriaWeights.whatIfDescription")
+                      : t("criteriaWeights.description")}
+                  </p>
+                  {isWhatIf && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-fit"
+                      onClick={resetWeightsToPublished}
+                      data-testid="button-reset-weights"
+                    >
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                      {t("criteriaWeights.reset")}
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
                 <div className="space-y-4">
                   <h4 className="font-bold text-gray-900 mb-3">{t("chart.axes.executionHeading")}</h4>
                   {executionCriteria.map(criterion => (
@@ -1333,20 +1348,23 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </details>
           </div>
         )}
       </div>
 
-      <div className="mt-8">
-        <VendorComparison
-          marketId={marketId}
-          mobileMode={mobileMode}
-          mobileSelectedVendors={mobileSelectedVendors}
-          onMobileSelectedVendorsChange={setMobileSelectedVendors}
-        />
-      </div>
+      {showComparison && (
+        <div className="mt-8">
+          <VendorComparison
+            marketId={marketId}
+            mobileMode={mobileMode}
+            mobileSelectedVendors={mobileSelectedVendors}
+            onMobileSelectedVendorsChange={setMobileSelectedVendors}
+          />
+        </div>
+      )}
 
       {mobileMode && (
         <section className="mt-5 font-[Montserrat]">

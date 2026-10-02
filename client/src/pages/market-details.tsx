@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
+import VendorComparison from "@/components/vendor-comparison";
 import SupportMatrix from "@/components/support-matrix";
 import FeatureRankings from "@/components/feature-rankings";
 import EcosystemSupport from "@/components/ecosystem-support";
@@ -126,6 +127,9 @@ export default function MarketDetails() {
     mobileMode && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("section") === "ai-chat"
   );
   const [mobileDefinitionOpen, setMobileDefinitionOpen] = useState(false);
+  const [mobileSelectedVendorIds, setMobileSelectedVendorIds] = useState<string[]>([]);
+  const mobileSelectionSeededFor = useRef<string | null>(null);
+  const mobileSelectionMarketRef = useRef<string | null>(null);
   // Keeps the active chip of the mobile section strip scrolled into view.
   const activeMobileSectionRef = useRef<HTMLButtonElement | null>(null);
   const mobileStripRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +194,18 @@ export default function MarketDetails() {
     queryKey: ["/api/markets", resolvedId, "vendors"],
     enabled: !!resolvedId,
   });
+  useEffect(() => {
+    if (!resolvedId || mobileSelectionMarketRef.current === resolvedId) return;
+    mobileSelectionMarketRef.current = resolvedId;
+    mobileSelectionSeededFor.current = null;
+    setMobileSelectedVendorIds([]);
+    setMobileDefinitionOpen(false);
+  }, [resolvedId]);
+  useEffect(() => {
+    if (!mobileMode || !resolvedId || mobileSelectionSeededFor.current === resolvedId || vendors.length < 2) return;
+    mobileSelectionSeededFor.current = resolvedId;
+    setMobileSelectedVendorIds(vendors.slice(0, 2).map(vendor => vendor.id));
+  }, [mobileMode, resolvedId, vendors]);
 
   // For private (end-user-built) markets the owner can re-enter the wizard to
   // add an optional phase. Compute which phases are missing from the feature
@@ -674,23 +690,31 @@ export default function MarketDetails() {
           >
             <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{marketTitle(market)}</h2>
             {market.translationUnavailable && <p role="alert" className="mt-2 text-sm text-amber-700">{t("states.translationUnavailable", "Translation is temporarily unavailable; showing the English market definition.")}</p>}
-            {mobileMode ? (
-              <div className="mt-3 border border-slate-200 bg-slate-50 p-3 font-[Montserrat]">
+            <div className={cn(
+              "mt-3",
+              mobileMode
+                ? "border border-slate-200 bg-slate-50 p-3 font-[Montserrat]"
+                : "max-w-4xl"
+            )}>
                 <div className="flex items-start justify-between gap-3">
-                  <p className={`text-sm leading-relaxed text-slate-600 ${mobileDefinitionOpen ? "" : "line-clamp-2"}`}>
+                  <p className={cn(
+                    "leading-relaxed",
+                    mobileMode ? "text-sm text-slate-600" : "text-gray-600",
+                    !mobileDefinitionOpen && "line-clamp-2"
+                  )}>
                     {marketDescription(market) || t("states.noStoredDefinition")}
                   </p>
-                  <button type="button" className="grid h-11 w-11 shrink-0 place-items-center text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label={t("buttons.toggleFullDefinition")}>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${mobileDefinitionOpen ? "rotate-180" : ""}`} />
+                  <button type="button" data-testid="market-definition-toggle" className={cn("grid h-11 w-11 shrink-0 place-items-center", mobileMode ? "text-sky-600" : "text-slate-500")} onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label={t("buttons.toggleFullDefinition")}>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", mobileDefinitionOpen && "rotate-180")} />
                   </button>
                 </div>
-                <button type="button" className="mt-1 font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)}>
+                <button type="button" className={cn(
+                  "mt-1 text-sky-600",
+                  mobileMode ? "font-[Menlo] text-[10px] font-bold uppercase tracking-wider" : "text-xs font-semibold"
+                )} onClick={() => setMobileDefinitionOpen(value => !value)}>
                   {mobileDefinitionOpen ? t("buttons.hideDefinition") : t("buttons.readFullDefinition")}
                 </button>
-              </div>
-            ) : (
-              <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : ''}`}>{marketDescription(market)}</p>
-            )}
+            </div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -706,6 +730,73 @@ export default function MarketDetails() {
             </Link>
           </motion.div>
         </FadeInSection>
+
+        <section className="mb-6" data-testid="market-shared-chart">
+          {canManageVendors && (
+            <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-sm text-gray-600">
+                {editingLabels ? (
+                  <span className="inline-flex items-center gap-1.5 text-blue-700">
+                    <Move className="h-3.5 w-3.5" />
+                    {t("labels.dragVendorToReposition")}
+                    {Object.keys(pendingLabelPositions).length > 0 && (
+                      <span className="ml-1 font-medium">
+                        {t("labels.unsavedChanges", { count: Object.keys(pendingLabelPositions).length })}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span>{t("labels.adjustClutteredLabels")}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {editingLabels ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelLabelEdit}
+                      disabled={savingLabels}
+                      data-testid="button-cancel-label-edit"
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" /> {t("buttons.cancel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveLabelPositions}
+                      disabled={savingLabels || Object.keys(pendingLabelPositions).length === 0}
+                      data-testid="button-save-label-positions"
+                    >
+                      <Save className="h-3.5 w-3.5 mr-1" />
+                      {savingLabels ? t("buttons.saving") : t("buttons.savePositions")}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingLabels(true)}
+                    data-testid="button-edit-labels"
+                  >
+                    <Move className="h-3.5 w-3.5 mr-1" /> {t("buttons.editLabelPositions")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          <MagicQuadrant
+            key={`mq-${editingLabels ? "edit" : "view"}`}
+            marketId={resolvedId!}
+            marketName={market.name}
+            marketType={(market as any).marketType ?? "mature"}
+            enableDrag={editingLabels}
+            onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
+            mobileMode={mobileMode}
+            showComparison={false}
+            mobileSelectedVendors={mobileMode ? mobileSelectedVendorIds : undefined}
+            onMobileSelectedVendorsChange={mobileMode ? setMobileSelectedVendorIds : undefined}
+          />
+        </section>
 
         {(() => {
           // `companyLock` marks items locked by the company-email profile gate
@@ -953,66 +1044,11 @@ export default function MarketDetails() {
               )}
 
           <TabsContent value="vendor-evaluation" className="mt-6">
-            {canManageVendors && (
-              <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
-                <div className="text-sm text-gray-600">
-                  {editingLabels ? (
-                    <span className="inline-flex items-center gap-1.5 text-blue-700">
-                      <Move className="h-3.5 w-3.5" />
-                      {t("labels.dragVendorToReposition")}
-                      {Object.keys(pendingLabelPositions).length > 0 && (
-                        <span className="ml-1 font-medium">
-                          {t("labels.unsavedChanges", { count: Object.keys(pendingLabelPositions).length })}
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    <span>{t("labels.adjustClutteredLabels")}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {editingLabels ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCancelLabelEdit}
-                        disabled={savingLabels}
-                        data-testid="button-cancel-label-edit"
-                      >
-                        <X className="h-3.5 w-3.5 mr-1" /> {t("buttons.cancel")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSaveLabelPositions}
-                        disabled={savingLabels || Object.keys(pendingLabelPositions).length === 0}
-                        data-testid="button-save-label-positions"
-                      >
-                        <Save className="h-3.5 w-3.5 mr-1" />
-                        {savingLabels ? t("buttons.saving") : t("buttons.savePositions")}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingLabels(true)}
-                      data-testid="button-edit-labels"
-                    >
-                      <Move className="h-3.5 w-3.5 mr-1" /> {t("buttons.editLabelPositions")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-            <MagicQuadrant
-              key={`mq-${editingLabels ? "edit" : "view"}`}
+            <VendorComparison
               marketId={resolvedId!}
-              marketName={market.name}
-              marketType={(market as any).marketType ?? "mature"}
-              enableDrag={editingLabels}
-              onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
               mobileMode={mobileMode}
+              mobileSelectedVendors={mobileMode ? mobileSelectedVendorIds : undefined}
+              onMobileSelectedVendorsChange={mobileMode ? setMobileSelectedVendorIds : undefined}
             />
           </TabsContent>
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { Check, Download, FileText } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
@@ -29,8 +29,8 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
     if (mobileMode && onMobileSelectedVendorsChange) onMobileSelectedVendorsChange(next);
     else setLocalSelectedVendors(next);
   };
-  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [mobileNote, setMobileNote] = useState<{ vendor: Vendor; criterion: Criteria; score: number; notes: string } | null>(null);
+  const [desktopNotesCriterion, setDesktopNotesCriterion] = useState<Criteria | null>(null);
   const isMobile = useIsMobile();
 
   const { data: vendors } = useQuery<Vendor[]>({
@@ -70,19 +70,6 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   const getVendorNotes = (vendorId: string, criteriaId: string): string => {
     const score = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
     return score?.notes || "";
-  };
-
-  const toggleNotes = (criteriaId: string) => {
-    setExpandedNotes(prev => ({
-      ...prev,
-      [criteriaId]: !prev[criteriaId]
-    }));
-  };
-
-  const hasNotesForCriteria = (criteriaId: string): boolean => {
-    return selectedVendorData.some(vendor => 
-      getVendorNotes(vendor.id, criteriaId).trim() !== ""
-    );
   };
 
   const selectedVendorData = vendors?.filter(vendor => selectedVendors.includes(vendor.id)) || [];
@@ -130,13 +117,13 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
             <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">03</p><h3 className="text-base font-bold">{t("compare.mobileTitle")}</h3></div>
             <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{t("compare.mobileSelectedCount", { count: selectedVendors.length })}</span>
           </div>
-          <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {vendors?.map(vendor => {
               const active = selectedVendors.includes(vendor.id);
               return (
-                <button key={vendor.id} type="button" onClick={() => handleVendorToggle(vendor.id, !active)} disabled={!active && atMax} className={`flex min-h-14 items-center gap-3 border p-2.5 text-left ${active ? "border-sky-500 bg-blue-50 shadow-[inset_3px_0_#13a8f0]" : "border-slate-200 bg-white"} ${!active && atMax ? "opacity-50" : ""}`} aria-pressed={active} data-testid={`mobile-compare-vendor-${vendor.id}`}>
-                  <span className={`grid h-5 w-5 place-items-center border ${active ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300"}`}>{active ? "✓" : ""}</span>
-                  <span><strong className="block text-xs">{vendor.name}</strong><small className="mt-0.5 block text-[10px] text-slate-500">{vendor.product || t("compare.productNameUnavailable")}</small></span>
+                <button key={vendor.id} type="button" onClick={() => handleVendorToggle(vendor.id, !active)} disabled={!active && atMax} className={`flex min-h-20 items-start gap-2 border p-2 text-left transition-colors ${active ? "border-[#13a8f0] bg-[#dcebf6] text-[#0f1418] shadow-[inset_3px_0_#13a8f0]" : "border-[#dfe8ed] bg-white text-[#66737b]"} ${!active && atMax ? "opacity-50" : ""}`} aria-pressed={active} data-testid={`mobile-compare-vendor-${vendor.id}`}>
+                  <span className={`grid h-[21px] w-[21px] shrink-0 place-items-center border ${active ? "border-[#13a8f0] bg-[#13a8f0] text-white" : "border-[#b9cbd5]"}`}>{active && <Check className="h-3 w-3" aria-hidden="true" />}</span>
+                  <span className="min-w-0"><strong className="block break-words text-xs leading-4">{vendor.name}</strong><small className="mt-1 block break-words text-[10px] leading-[1.3] text-[#66737b]">{vendor.product || t("compare.productNameUnavailable")}</small></span>
                 </button>
               );
             })}
@@ -149,30 +136,30 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                 : t("compare.mobileSelectHint")}
           </p>
         </div>
-        {selectedVendorData.length >= 1 && (
+        {selectedVendorData.length >= 2 ? (
           <div>
             <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">{t("compare.mobileScoresTitle")}</h3></div>
-            <div className="overflow-hidden border border-slate-200 bg-slate-50">
-              <div className="grid bg-slate-950 text-white" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
+            <div className="overflow-hidden border border-[#dfe8ed] bg-white">
+              <div className="grid bg-[#0f1418] text-white" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
                 {selectedVendorData.map(vendor => (
-                  <span key={vendor.id} className="min-w-0 border-r border-white/15 px-2.5 py-3 last:border-0">
+                  <span key={vendor.id} className="min-w-0 border-r border-white/15 p-2 last:border-0">
                     <strong className="block break-words text-xs">{vendor.name}</strong>
-                    <small className="mt-0.5 block break-words text-[10px] leading-snug text-slate-300">{vendor.product || t("compare.productNameUnavailable")}</small>
+                    <small className="mt-0.5 block break-words text-[9px] leading-3 text-[#bdd3d1]">{vendor.product || t("compare.productNameUnavailable")}</small>
                   </span>
                 ))}
               </div>
               {criteria?.map(criterion => (
-                <div key={criterion.id} className="border-b border-slate-200 last:border-0">
-                  <h4 className="bg-blue-50 px-3 py-2.5 text-xs font-semibold">{translateCriterionName(tc, criterion.name)}</h4>
+                <div key={criterion.id} className="border-b border-[#dfe8ed] last:border-0">
+                  <h4 className="bg-[#e6f0f5] px-3 py-2.5 text-xs font-semibold text-[#0f1418]">{translateCriterionName(tc, criterion.name)}</h4>
                   <div className="grid" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
                     {selectedVendorData.map(vendor => {
                       const score = getVendorScore(vendor.id, criterion.id);
                       const notes = getVendorNotes(vendor.id, criterion.id);
                       return (
-                        <div key={vendor.id} className="min-w-0 border-r border-slate-200 p-2.5 last:border-0">
+                        <div key={vendor.id} className="min-w-0 border-r border-[#dfe8ed] p-2.5 last:border-0">
                           <span className="block truncate text-[10px] text-slate-500">{vendor.name}</span>
-                          <strong className="mt-1 block font-[Menlo] text-xl text-sky-600">{score.toFixed(1)}<span className="text-[10px] font-normal text-slate-400"> / 10</span></strong>
-                          <button type="button" className="mt-2 min-h-9 w-full border border-blue-200 bg-blue-100 text-[10px] font-bold text-sky-700" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>{t("compare.mobileViewNotes")}</button>
+                          <strong className="mt-1 block font-[Menlo] text-xl text-[#087fca]">{score.toFixed(1)}<span className="text-[10px] font-normal text-slate-400"> / 10</span></strong>
+                          <button type="button" className="mt-2 min-h-9 w-full border border-[#b9d8ec] bg-[#dcebf6] text-[10px] font-bold text-[#087fca]" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>{t("compare.mobileViewNotes")}</button>
                         </div>
                       );
                     })}
@@ -181,15 +168,44 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
               ))}
             </div>
           </div>
+        ) : (
+          <div className="border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-4 text-center text-xs text-[#66737b]">
+            {t("compare.selectAtLeastTwo")}
+          </div>
         )}
         <Dialog open={!!mobileNote} onOpenChange={open => { if (!open) setMobileNote(null); }}>
-          <DialogContent className="max-h-[78dvh] max-w-[calc(100%-2rem)] overflow-y-auto font-[Montserrat] sm:max-w-sm">
-            <DialogHeader><DialogTitle>{mobileNote && translateCriterionName(tc, mobileNote.criterion.name)}</DialogTitle></DialogHeader>
-            {mobileNote && <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-xs"><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">{t("compare.vendor")}</span><strong className="block">{mobileNote.vendor.name}</strong></div><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">{t("compare.score")}</span><strong className="block">{mobileNote.score.toFixed(1)} / 10</strong></div></div>
-              <div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">{t("compare.product")}</span><strong className="block text-xs">{mobileNote.vendor.product || t("compare.productNameUnavailable")}</strong></div>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{mobileNote.notes || t("compare.noStoredCommentary")}</p>
-            </div>}
+          <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm flex-col gap-0 overflow-hidden rounded-none border-[#dfe8ed] p-0 font-[Montserrat]">
+            <DialogHeader className="border-b border-[#dfe8ed] p-4 pr-10 text-left">
+              <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-wider text-[#66737b]">{t("compare.notes")}</p>
+              <DialogTitle className="mt-1 text-base text-[#0f1418]">{mobileNote && translateCriterionName(tc, mobileNote.criterion.name)}</DialogTitle>
+            </DialogHeader>
+            {mobileNote && (
+              <>
+                <div className="grid grid-cols-2 border-b border-[#dfe8ed] bg-[#f7f9f9] text-xs">
+                  <div className="border-r border-[#dfe8ed] p-3">
+                    <span className="font-[Menlo] text-[9px] font-bold uppercase text-[#66737b]">{t("compare.vendor")}</span>
+                    <strong className="mt-1 block break-words">{mobileNote.vendor.name}</strong>
+                  </div>
+                  <div className="p-3">
+                    <span className="font-[Menlo] text-[9px] font-bold uppercase text-[#66737b]">{t("compare.product")}</span>
+                    <strong className="mt-1 block break-words">{mobileNote.vendor.product || t("compare.productNameUnavailable")}</strong>
+                  </div>
+                  <div className="col-span-2 border-t border-[#dfe8ed] p-3">
+                    <span className="font-[Menlo] text-[9px] font-bold uppercase text-[#66737b]">{t("compare.score")}</span>
+                    <strong className="mt-1 block">{mobileNote.score.toFixed(1)} / 10</strong>
+                  </div>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  <span className="font-[Menlo] text-[9px] font-bold uppercase text-[#66737b]">{t("compare.notes")}</span>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">{mobileNote.notes || t("compare.noStoredCommentary")}</p>
+                </div>
+                <div className="border-t border-[#dfe8ed] p-3">
+                  <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setMobileNote(null)}>
+                    {tc("buttons.close")}
+                  </Button>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
       </section>
@@ -202,24 +218,25 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
         <CardTitle>{t("compare.title")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className={`grid gap-4 mb-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
-          {vendors?.map(vendor => (
-            <div key={vendor.id} className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
-              <Checkbox
-                id={vendor.id}
-                checked={selectedVendors.includes(vendor.id)}
-                onCheckedChange={(checked) => handleVendorToggle(vendor.id, !!checked)}
-                className={isMobile ? 'w-5 h-5' : ''}
-                data-testid={`checkbox-vendor-${vendor.id}`}
-              />
-              <label 
-                htmlFor={vendor.id}
-                className={`font-medium text-gray-700 cursor-pointer ${isMobile ? 'text-base' : 'text-sm'}`}
-              >
-                {vendor.name}
-              </label>
-            </div>
-          ))}
+        <div className={`mb-6 grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"}`}>
+          {vendors?.map(vendor => {
+            const active = selectedVendors.includes(vendor.id);
+            return (
+              <div key={vendor.id} className={`flex min-h-14 items-start gap-3 border p-3 transition-colors ${active ? "border-[#13a8f0] bg-[#dcebf6] shadow-[inset_3px_0_#13a8f0]" : "border-[#dfe8ed] bg-white"}`}>
+                <Checkbox
+                  id={vendor.id}
+                  checked={active}
+                  onCheckedChange={(checked) => handleVendorToggle(vendor.id, !!checked)}
+                  className="mt-0.5 data-[state=checked]:border-[#13a8f0] data-[state=checked]:bg-[#13a8f0]"
+                  data-testid={`checkbox-vendor-${vendor.id}`}
+                />
+                <label htmlFor={vendor.id} className="min-w-0 cursor-pointer">
+                  <strong className="block break-words text-sm text-[#0f1418]">{vendor.name}</strong>
+                  <small className="mt-1 block break-words text-xs text-[#66737b]">{vendor.product || t("compare.productNameUnavailable")}</small>
+                </label>
+              </div>
+            );
+          })}
         </div>
 
         {selectedVendorData.length >= 2 ? (
@@ -238,67 +255,28 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {criteria?.map(criterion => {
-                      const isExpanded = expandedNotes[criterion.id];
-                      const hasNotes = hasNotesForCriteria(criterion.id);
-                      
-                      return (
-                        <>
-                          <TableRow key={criterion.id}>
-                            <TableCell className="font-medium">{translateCriterionName(tc, criterion.name)}</TableCell>
-                            {selectedVendorData.map(vendor => (
-                              <TableCell key={vendor.id} className="text-center">
-                                <span className="font-semibold">
-                                  {getVendorScore(vendor.id, criterion.id)}
-                                </span>
-                              </TableCell>
-                            ))}
-                            <TableCell className="text-center">
-                              {hasNotes && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleNotes(criterion.id)}
-                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                                >
-                                  <FileText className="mr-1 h-3 w-3" />
-                                  {t("compare.viewNotes")}
-                                  {isExpanded ? (
-                                    <ChevronDown className="ml-1 h-3 w-3" />
-                                  ) : (
-                                    <ChevronRight className="ml-1 h-3 w-3" />
-                                  )}
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                          
-                          {hasNotes && isExpanded && (
-                            <TableRow>
-                              <TableCell colSpan={selectedVendorData.length + 2} className="p-4 bg-gray-50 dark:bg-gray-800">
-                                <div className="space-y-3">
-                                  {selectedVendorData.map(vendor => {
-                                    const notes = getVendorNotes(vendor.id, criterion.id);
-                                    if (!notes.trim()) return null;
-                                    
-                                    return (
-                                      <div key={vendor.id} className="border-l-3 border-blue-500 pl-3">
-                                        <div className="font-medium text-sm text-blue-700 dark:text-blue-300 mb-1">
-                                          {vendor.name}
-                                        </div>
-                                        <div className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                                          {notes}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </>
-                      );
-                    })}
+                    {criteria?.map(criterion => (
+                      <TableRow key={criterion.id}>
+                        <TableCell className="font-medium">{translateCriterionName(tc, criterion.name)}</TableCell>
+                        {selectedVendorData.map(vendor => (
+                          <TableCell key={vendor.id} className="text-center">
+                            <span className="font-semibold">{getVendorScore(vendor.id, criterion.id)}</span>
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDesktopNotesCriterion(criterion)}
+                            className="h-8 px-2 text-xs text-[#087fca] hover:text-[#065f9b]"
+                            data-testid={`button-notes-${criterion.id}`}
+                          >
+                            <FileText className="mr-1 h-3 w-3" />
+                            {t("compare.viewNotes")}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
@@ -308,23 +286,20 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
             {isMobile && (
               <div className="space-y-4">
                 {criteria?.map(criterion => {
-                  const isExpanded = expandedNotes[criterion.id];
-                  const hasNotes = hasNotesForCriteria(criterion.id);
-                  
                   return (
-                    <div key={criterion.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                    <div key={criterion.id} className="border border-[#dfe8ed] p-4 bg-white shadow-sm">
                       <div className="mb-4">
-                        <div className="font-medium text-base text-gray-900 mb-3">
+                        <div className="font-bold text-base text-[#0f1418] mb-3">
                           {translateCriterionName(tc, criterion.name)}
                         </div>
                         
                         <div className="space-y-3">
                           {selectedVendorData.map(vendor => (
-                            <div key={vendor.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                              <span className="font-medium text-sm text-gray-800">
+                            <div key={vendor.id} className="flex justify-between items-center gap-3 p-3 bg-[#f7f9f9] border border-[#dfe8ed]">
+                              <span className="min-w-0 font-medium text-sm text-[#0f1418]">
                                 {vendor.name}
                               </span>
-                              <span className="font-bold text-lg text-blue-600">
+                              <span className="font-bold text-lg text-[#087fca]">
                                 {getVendorScore(vendor.id, criterion.id)}
                               </span>
                             </div>
@@ -332,47 +307,18 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                         </div>
                       </div>
                       
-                      {hasNotes && (
-                        <div className="border-t border-gray-200 pt-3">
+                        <div className="border-t border-[#dfe8ed] pt-3">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => toggleNotes(criterion.id)}
-                            className="w-full justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            onClick={() => setDesktopNotesCriterion(criterion)}
+                            className="min-h-10 w-full justify-center border-[#b9d8ec] bg-[#dcebf6] text-[#087fca] hover:bg-[#cde3f2]"
                             data-testid={`button-notes-${criterion.id}`}
                           >
                             <FileText className="mr-2 h-4 w-4" />
-                            {isExpanded ? t("compare.hideNotes") : t("compare.viewNotes")}
-                            {isExpanded ? (
-                              <ChevronDown className="ml-2 h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="ml-2 h-4 w-4" />
-                            )}
+                            {t("compare.viewNotes")}
                           </Button>
-                          
-                          {isExpanded && (
-                            <div className="mt-3 pt-3 bg-gray-50 rounded-lg p-3">
-                              <div className="space-y-3">
-                                {selectedVendorData.map(vendor => {
-                                  const notes = getVendorNotes(vendor.id, criterion.id);
-                                  if (!notes.trim()) return null;
-                                  
-                                  return (
-                                    <div key={vendor.id} className="border-l-4 border-blue-500 pl-3">
-                                      <div className="font-medium text-sm text-blue-700 mb-1">
-                                        {vendor.name}
-                                      </div>
-                                      <div className="text-sm text-gray-600 whitespace-pre-wrap">
-                                        {notes}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -391,11 +337,56 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
             </div>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="border border-dashed border-[#c9d9e2] bg-[#f7f9f9] py-8 text-center text-sm text-[#66737b]">
             {t("compare.selectAtLeastTwo")}
           </div>
         )}
       </CardContent>
+      <Dialog open={!!desktopNotesCriterion} onOpenChange={open => { if (!open) setDesktopNotesCriterion(null); }}>
+        <DialogContent className="flex max-h-[85dvh] max-w-2xl flex-col gap-0 overflow-hidden rounded-none border-[#dfe8ed] p-0">
+          <DialogHeader className="border-b border-[#dfe8ed] p-4 pr-10 text-left">
+            <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#66737b]">{t("compare.notes")}</p>
+            <DialogTitle className="mt-1 text-base text-[#0f1418]">
+              {desktopNotesCriterion && translateCriterionName(tc, desktopNotesCriterion.name)}
+            </DialogTitle>
+          </DialogHeader>
+          {desktopNotesCriterion && (
+            <>
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+                {selectedVendorData.map(vendor => (
+                  <article key={vendor.id} className="border border-[#dfe8ed]">
+                    <div className="grid grid-cols-2 border-b border-[#dfe8ed] bg-[#f7f9f9] text-xs">
+                      <div className="border-r border-[#dfe8ed] p-3">
+                        <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.vendor")}</span>
+                        <strong className="mt-1 block break-words">{vendor.name}</strong>
+                      </div>
+                      <div className="p-3">
+                        <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.product")}</span>
+                        <strong className="mt-1 block break-words">{vendor.product || t("compare.productNameUnavailable")}</strong>
+                      </div>
+                      <div className="col-span-2 border-t border-[#dfe8ed] p-3">
+                        <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.score")}</span>
+                        <strong className="mt-1 block">{getVendorScore(vendor.id, desktopNotesCriterion.id)} / 10</strong>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">{t("compare.notes")}</span>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">
+                        {getVendorNotes(vendor.id, desktopNotesCriterion.id) || t("compare.noStoredCommentary")}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="border-t border-[#dfe8ed] p-3">
+                <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setDesktopNotesCriterion(null)}>
+                  {tc("buttons.close")}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
