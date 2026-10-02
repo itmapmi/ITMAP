@@ -286,8 +286,8 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                   data-testid={`checkbox-vendor-${vendor.id}`}
                 />
                 <label htmlFor={vendor.id} className="min-w-0 cursor-pointer">
-                  <strong className="block break-words text-sm text-[#0f1418]">{vendor.name}</strong>
-                  <small className="mt-1 block break-words text-xs text-[#66737b]">{vendor.product || t("compare.productNameUnavailable")}</small>
+                  <strong className="block break-words text-base font-semibold text-gray-900">{vendor.name}</strong>
+                  <small className="mt-1 block break-words text-sm text-gray-600">{vendor.product || t("compare.productNameUnavailable")}</small>
                 </label>
               </div>
             );
