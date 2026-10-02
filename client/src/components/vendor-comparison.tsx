@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, Download, FileText } from "lucide-react";
+import { Check, ChevronDown, Download, FileText } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
@@ -31,13 +31,17 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   };
   const [mobileNote, setMobileNote] = useState<{ vendor: Vendor; criterion: Criteria; score: number; notes: string } | null>(null);
   const [desktopNotesCriterion, setDesktopNotesCriterion] = useState<Criteria | null>(null);
+  const [expandedMobileCriterion, setExpandedMobileCriterion] = useState<string | null>(null);
+  const mobileScoresRef = useRef<HTMLElement>(null);
+  const previousMobileSelectionCount = useRef(0);
+  const pendingMobileScoresScroll = useRef(false);
   const isMobile = useIsMobile();
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
   });
 
-  const { data: scores } = useQuery<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>({
+  const { data: scores, isLoading: scoresLoading } = useQuery<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>({
     queryKey: ["/api/markets", marketId, "scores", i18n.language],
     queryFn: async () => {
       const res = await fetch(`/api/markets/${marketId}/scores?language=${encodeURIComponent(i18n.language)}`, { credentials: "include" });
@@ -46,7 +50,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
     },
   });
 
-  const { data: criteria } = useQuery<Criteria[]>({
+  const { data: criteria, isLoading: criteriaLoading } = useQuery<Criteria[]>({
     queryKey: ["/api/criteria"],
   });
 
@@ -73,6 +77,40 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
   };
 
   const selectedVendorData = vendors?.filter(vendor => selectedVendors.includes(vendor.id)) || [];
+  const mobileSelectionCount = selectedVendorData.length;
+  const mobileEvidenceLoading = scoresLoading || criteriaLoading;
+
+  useEffect(() => {
+    setExpandedMobileCriterion(null);
+    previousMobileSelectionCount.current = 0;
+    pendingMobileScoresScroll.current = false;
+  }, [marketId]);
+
+  useEffect(() => {
+    if (!mobileMode) return;
+    const reachedComparison = previousMobileSelectionCount.current < 2 && mobileSelectionCount >= 2;
+    const evidenceArrived = pendingMobileScoresScroll.current && !mobileEvidenceLoading;
+    if (mobileSelectionCount >= 2 && (reachedComparison || evidenceArrived)) {
+      pendingMobileScoresScroll.current = mobileEvidenceLoading;
+      mobileScoresRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+    if (mobileSelectionCount < 2) {
+      pendingMobileScoresScroll.current = false;
+      setExpandedMobileCriterion(null);
+    }
+    previousMobileSelectionCount.current = mobileSelectionCount;
+  }, [mobileMode, mobileSelectionCount, mobileEvidenceLoading]);
+
+  const toggleMobileCriterion = (criterionId: string, button: HTMLButtonElement) => {
+    const switchingCriterion = expandedMobileCriterion !== null && expandedMobileCriterion !== criterionId;
+    setExpandedMobileCriterion(previous => previous === criterionId ? null : criterionId);
+    if (switchingCriterion) {
+      requestAnimationFrame(() => button.scrollIntoView({ block: "start", inline: "nearest" }));
+    }
+  };
 
   // NOTE: the mobile default selection is seeded once by the owner of the
   // shared selection state (magic-quadrant.tsx). It must not be re-seeded
@@ -137,7 +175,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
           </p>
         </div>
         {selectedVendorData.length >= 2 ? (
-          <div>
+          <section ref={mobileScoresRef} className="scroll-mt-32" data-testid="mobile-vendor-scores">
             <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">{t("compare.mobileScoresTitle")}</h3></div>
             <div className="overflow-hidden border border-[#dfe8ed] bg-white">
               <div className="grid bg-[#0f1418] text-white" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
@@ -150,8 +188,21 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
               </div>
               {criteria?.map(criterion => (
                 <div key={criterion.id} className="border-b border-[#dfe8ed] last:border-0">
-                  <h4 className="bg-[#e6f0f5] px-3 py-2.5 text-xs font-semibold text-[#0f1418]">{translateCriterionName(tc, criterion.name)}</h4>
-                  <div className="grid" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
+                  <h4>
+                    <button
+                      type="button"
+                      className="flex min-h-[54px] w-full scroll-mt-44 items-center justify-between gap-3 bg-[#e6f0f5] px-3 py-2.5 text-left text-xs font-semibold text-[#0f1418]"
+                      aria-expanded={expandedMobileCriterion === criterion.id}
+                      aria-controls={`mobile-vendor-criterion-panel-${criterion.id}`}
+                      onClick={event => toggleMobileCriterion(criterion.id, event.currentTarget)}
+                      data-testid={`mobile-vendor-criterion-${criterion.id}`}
+                    >
+                      {translateCriterionName(tc, criterion.name)}
+                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expandedMobileCriterion === criterion.id ? "rotate-180" : ""}`} aria-hidden="true" />
+                    </button>
+                  </h4>
+                  {expandedMobileCriterion === criterion.id && (
+                  <div id={`mobile-vendor-criterion-panel-${criterion.id}`} className="grid" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
                     {selectedVendorData.map(vendor => {
                       const score = getVendorScore(vendor.id, criterion.id);
                       const notes = getVendorNotes(vendor.id, criterion.id);
@@ -159,15 +210,16 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
                         <div key={vendor.id} className="min-w-0 border-r border-[#dfe8ed] p-2.5 last:border-0">
                           <span className="block truncate text-[10px] text-slate-500">{vendor.name}</span>
                           <strong className="mt-1 block font-[Menlo] text-xl text-[#087fca]">{score.toFixed(1)}<span className="text-[10px] font-normal text-slate-400"> / 10</span></strong>
-                          <button type="button" className="mt-2 min-h-9 w-full border border-[#b9d8ec] bg-[#dcebf6] text-[10px] font-bold text-[#087fca]" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>{t("compare.mobileViewNotes")}</button>
+                          <button type="button" className="mt-2 min-h-9 w-full border border-[#b9d8ec] bg-[#dcebf6] text-[10px] font-bold text-[#087fca]" onClick={() => setMobileNote({ vendor, criterion, score, notes })} data-testid={`mobile-vendor-notes-${vendor.id}-${criterion.id}`}>{t("compare.mobileViewNotes")}</button>
                         </div>
                       );
                     })}
                   </div>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         ) : (
           <div className="border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-4 text-center text-xs text-[#66737b]">
             {t("compare.selectAtLeastTwo")}
