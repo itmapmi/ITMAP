@@ -21,7 +21,13 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** Campaign visitors who click Compare Products expect feature-by-feature evidence by default. The user subsequently requested a consistent quadrant across every tab on both desktop and mobile.
 
-**How to apply:** On mobile, start with the quadrant; its market-name heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. On desktop, put Read full definition beside the market title and hide all definition text until expanded. Center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it and make the weights panel internally scrollable rather than pushing the tab list below the fold. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
+**How to apply:** On mobile, start with the quadrant; its market-name heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. On desktop, put Read full definition beside the market title and hide all definition text until expanded. Center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
+
+**Desktop weights compactness:** Omit the introductory explanation and place the controls directly beneath Criteria Weights. Compact the weight rows so the complete panel fits without an internal scrollbar.
+
+**Why:** The user explicitly requested removing the explanation, moving the weights up, and reducing their size to fit without a scrollbar, overriding the earlier scrollable-panel approach.
+
+**How to apply:** Preserve every criterion, its percentage, slider interaction, and reset-to-published action. Keep mobile weights unchanged and avoid making the desktop panel taller than the chart.
 
 **Market heading source of truth:** The mobile graphic heading, desktop heading above the graphic, and exported graphic title use the exact market name stored in Admin → Markets. Do not repeat the market name inside the desktop graphic card.
 

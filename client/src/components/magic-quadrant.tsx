@@ -467,7 +467,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         const availableHeight = window.innerHeight - (card.getBoundingClientRect().top + window.scrollY) - chromeHeight - tabSpace - 8;
         const graphWidth = Math.min(760, Math.max(420, Math.floor(availableHeight / 0.72)));
         card.style.maxWidth = `${graphWidth + 26}px`;
-        card.parentElement?.parentElement?.style.setProperty("--desktop-weights-max-height", `${Math.round(graphWidth * 0.72) + chromeHeight - 54}px`);
       }
       if (containerRef.current) {
         setContainerWidth(containerRef.current.offsetWidth);
@@ -1327,69 +1326,64 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 {t("criteriaWeights.title")}
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" />
               </summary>
-              <Card className="mt-2 flex h-full flex-col lg:max-h-[var(--desktop-weights-max-height,450px)] lg:overflow-y-auto border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
-                <CardHeader className={isMobile ? "pb-3" : ""}>
-                  <p className="text-xs leading-snug text-gray-500" data-testid="text-weights-note">
-                    {isWhatIf
-                      ? t("criteriaWeights.whatIfDescription")
-                      : t("criteriaWeights.description")}
-                  </p>
-                  {isWhatIf && (
+              <Card className="mt-1 border border-[rgba(226,232,240,0.8)] bg-white shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
+                {isWhatIf && (
+                <CardHeader className="px-3 py-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="mt-2 w-fit"
+                      className="h-7 w-fit text-xs"
                       onClick={resetWeightsToPublished}
                       data-testid="button-reset-weights"
                     >
                       <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                       {t("criteriaWeights.reset")}
                     </Button>
-                  )}
                 </CardHeader>
-                <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
-                <div className="space-y-4">
-                  <h4 className="font-bold text-gray-900 mb-3">{t("chart.axes.executionHeading")}</h4>
+                )}
+                <CardContent className="bg-[#F9FAFC] px-3 py-3">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold leading-5 text-gray-900">{t("chart.axes.executionHeading")}</h4>
                   {executionCriteria.map(criterion => (
-                    <div key={criterion.id} className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {translateCriterionName(tc, criterion.name)}
-                      </label>
+                    <div key={criterion.id} className="space-y-1">
+                      <div className="flex items-baseline justify-between gap-2 text-xs">
+                        <span className="font-medium text-gray-700">{translateCriterionName(tc, criterion.name)}</span>
+                        <span className="shrink-0 tabular-nums text-gray-500">{criteriaWeights[criterion.id] ?? 100}%</span>
+                      </div>
                       <Slider
                         value={[criteriaWeights[criterion.id] ?? 100]}
                         onValueChange={([value]) => handleWeightChange(criterion.id, value)}
                         max={100}
                         step={1}
                         className="w-full"
+                        aria-label={translateCriterionName(tc, criterion.name)}
+                        data-testid={`criteria-weight-slider-${criterion.id}`}
                       />
-                      <div className="text-xs text-gray-500 text-right">
-                        {criteriaWeights[criterion.id] ?? 100}%
-                      </div>
                     </div>
                   ))}
                   
                 </div>
 
-                <hr className="my-6 border-gray-300" />
+                <hr className="my-3 border-gray-300" />
 
-                <div className="space-y-4">
-                  <h4 className="font-bold text-gray-900 mb-3">{t("chart.axes.viabilityHeading")}</h4>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold leading-5 text-gray-900">{t("chart.axes.viabilityHeading")}</h4>
                   {viabilityCriteria.map(criterion => (
-                    <div key={criterion.id} className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {translateCriterionName(tc, criterion.name)}
-                      </label>
+                    <div key={criterion.id} className="space-y-1">
+                      <div className="flex items-baseline justify-between gap-2 text-xs">
+                        <span className="font-medium text-gray-700">{translateCriterionName(tc, criterion.name)}</span>
+                        <span className="shrink-0 tabular-nums text-gray-500">{criteriaWeights[criterion.id] ?? 100}%</span>
+                      </div>
                       <Slider
                         value={[criteriaWeights[criterion.id] ?? 100]}
                         onValueChange={([value]) => handleWeightChange(criterion.id, value)}
                         max={100}
                         step={1}
                         className="w-full"
+                        aria-label={translateCriterionName(tc, criterion.name)}
+                        data-testid={`criteria-weight-slider-${criterion.id}`}
                       />
-                      <div className="text-xs text-gray-500 text-right">
-                        {criteriaWeights[criterion.id] ?? 100}%
-                      </div>
                     </div>
                   ))}
                 </div>
