@@ -85,7 +85,8 @@
     "saveNotes": "ノートを保存"
   },
   "compare": {
-    "title": "ベンダーを比較",
+    "title": "ベンダー評価",
+    "desktopDescription": "組織レベルのパフォーマンスを比較するには、少なくとも2社のベンダーを選択してください",
     "criteria": "評価基準",
     "notes": "メモ",
     "viewNotes": "メモを表示",

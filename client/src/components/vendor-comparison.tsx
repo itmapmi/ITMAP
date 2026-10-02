@@ -292,6 +292,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
     <Card className="overflow-hidden">
       <MarketSectionHeader
         title={t("compare.title")}
+        description={t("compare.desktopDescription")}
         icon={Users}
         tone="amber"
       />

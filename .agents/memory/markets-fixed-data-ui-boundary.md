@@ -21,7 +21,13 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** Campaign visitors who click Compare Products expect feature-by-feature evidence by default. The user subsequently requested a consistent quadrant across every tab on both desktop and mobile.
 
-**How to apply:** On mobile, start with the quadrant; its “IT Map for [market name]” heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. Keep the desktop definition collapsed by default above the quadrant. On desktop, center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
+**How to apply:** On mobile, start with the quadrant; its market-name heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. Keep the desktop definition collapsed by default above the quadrant. On desktop, center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
+
+**Market heading source of truth:** Graphic headings on both devices and the desktop heading above the graphic use the exact market name stored in Admin → Markets.
+
+**Why:** The user requested identical wording to the admin market name, overriding the earlier mobile “IT Map for” prefix and display-name transformations for these headings.
+
+**How to apply:** Preserve the saved name verbatim for these headings, including any prefix already in the saved name. Do not add or strip prefixes or substitute a localized name; keep definition text localization and existing URLs unchanged.
 
 **Explicit category-ranking exception:** The user requested a Feature rankings tab beside Compare Products. Ranking vendors by their existing product-feature support totals is allowed; it is a view of stored evidence, not a new inferred recommendation.
 

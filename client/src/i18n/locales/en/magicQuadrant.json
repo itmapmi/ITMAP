@@ -85,7 +85,8 @@
     "saveNotes": "Save Notes"
   },
   "compare": {
-    "title": "Compare Vendors",
+    "title": "Vendor Evaluation",
+    "desktopDescription": "Select at least two vendors to compare their organization-level performance",
     "criteria": "Criteria",
     "notes": "Notes",
     "viewNotes": "View Notes",

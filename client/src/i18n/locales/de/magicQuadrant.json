@@ -85,7 +85,8 @@
     "saveNotes": "Notizen speichern"
   },
   "compare": {
-    "title": "Anbieter vergleichen",
+    "title": "Anbieterbewertung",
+    "desktopDescription": "Wählen Sie mindestens zwei Anbieter aus, um ihre Leistung auf Organisationsebene zu vergleichen",
     "criteria": "Kriterien",
     "notes": "Notizen",
     "viewNotes": "Notizen anzeigen",

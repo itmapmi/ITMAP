@@ -98,7 +98,7 @@ export function VerificationBanner() {
   const remaining = unverifiedSessionsRemaining({ emailVerified: false, unverifiedSessionCount: used });
 
   return (
-    <div className="bg-amber-500/15 border-b border-amber-400/30 text-amber-200 text-sm">
+    <div className="bg-amber-950 border-b border-amber-800 text-amber-50 text-sm">
       <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center justify-center gap-3 text-center">
         <MailCheck className="h-4 w-4 shrink-0" />
         <span data-testid="text-verification-banner">
@@ -107,7 +107,7 @@ export function VerificationBanner() {
             ? `${remaining} more free ${sessionsWord(remaining)} after this one.`
             : "this is your last session before verification is required."}
         </span>
-        <ResendButton email={user.email!} className="border-amber-400/40 text-amber-100 hover:bg-amber-400/10 bg-transparent h-7" />
+        <ResendButton email={user.email!} className="border-amber-300 bg-amber-100 text-amber-950 hover:bg-amber-200 hover:text-amber-950 h-7" />
       </div>
     </div>
   );

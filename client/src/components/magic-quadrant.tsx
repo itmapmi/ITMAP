@@ -1089,7 +1089,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 mobileHeaderContent ?? (
                 <div className="w-full">
                   <div className="mb-3 flex items-end gap-2 border-b border-slate-200 pb-2">
-                    <h3 className="text-base font-bold">IT Map for {marketName.replace(/^IT\s*Map\s+for\s+/i, "")}</h3>
+                    <h3 className="text-base font-bold">{marketName}</h3>
                   </div>
                 </div>
                 )

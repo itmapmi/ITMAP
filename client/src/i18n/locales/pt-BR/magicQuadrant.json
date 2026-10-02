@@ -85,7 +85,8 @@
     "saveNotes": "Salvar Notas"
   },
   "compare": {
-    "title": "Comparar Fornecedores",
+    "title": "Avaliação de Fornecedores",
+    "desktopDescription": "Selecione pelo menos dois fornecedores para comparar seu desempenho no nível organizacional",
     "criteria": "Critérios",
     "notes": "Notas",
     "viewNotes": "Ver Notas",

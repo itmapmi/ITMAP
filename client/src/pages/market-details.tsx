@@ -688,7 +688,7 @@ export default function MarketDetails() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{marketTitle(market)}</h2>
+            <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
             {market.translationUnavailable && <p role="alert" className="mt-2 text-sm text-amber-700">{t("states.translationUnavailable", "Translation is temporarily unavailable; showing the English market definition.")}</p>}
             <div className={cn(
               "mt-3",
@@ -804,7 +804,7 @@ export default function MarketDetails() {
                       aria-expanded={mobileDefinitionOpen}
                       aria-controls="mobile-market-definition"
                     >
-                      <span>IT Map for {marketTitle(market).replace(/^IT\s*Map\s+for\s+/i, "")}</span>
+                      <span>{market.name}</span>
                       <ChevronDown className={cn("h-4 w-4 shrink-0 text-sky-600 transition-transform", mobileDefinitionOpen && "rotate-180")} aria-hidden="true" />
                     </button>
                   </h2>
