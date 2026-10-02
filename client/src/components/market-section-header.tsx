@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 
 interface MarketSectionHeaderProps {
   title: string;
-  description: string;
+  description?: string;
   icon: LucideIcon;
   headingId?: string;
   tone?: "blue" | "violet" | "amber" | "rose";
@@ -26,7 +26,7 @@ export default function MarketSectionHeader({ title, description, icon: Icon, he
         <Icon className={`h-5 w-5 shrink-0 ${theme.icon}`} aria-hidden="true" />
         {title}
       </h2>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      {description && <p className="text-sm text-muted-foreground">{description}</p>}
     </header>
   );
 }

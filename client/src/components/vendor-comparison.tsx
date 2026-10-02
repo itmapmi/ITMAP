@@ -292,7 +292,6 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
     <Card className="overflow-hidden">
       <MarketSectionHeader
         title={t("compare.title")}
-        description={t("compare.selectAtLeastTwo")}
         icon={Users}
         tone="amber"
       />
@@ -432,11 +431,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
               </Button>
             </div>
           </div>
-        ) : (
-          <div className="border border-dashed border-[#c9d9e2] bg-[#f7f9f9] py-8 text-center text-sm text-[#66737b]">
-            {t("compare.selectAtLeastTwo")}
-          </div>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
