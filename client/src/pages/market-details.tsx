@@ -1095,7 +1095,7 @@ export default function MarketDetails() {
           <TabsContent value="feature-rankings" className="mt-6">
             {showOwnerControls && !hasProductPhase
               ? <PhasePlaceholder phase="Product" />
-              : <FeatureRankings marketId={resolvedId!} onOpenCompare={() => selectMarketSection("support-matrix")} />}
+              : <FeatureRankings marketId={resolvedId!} mobileMode={mobileMode} onOpenCompare={() => selectMarketSection("support-matrix")} />}
           </TabsContent>
 
           <TabsContent value="ecosystem-support" className="mt-6">

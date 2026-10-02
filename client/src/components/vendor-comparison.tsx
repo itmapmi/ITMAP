@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import MarketSectionHeader from "@/components/market-section-header";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, ChevronDown, Download, FileText } from "lucide-react";
+import { Check, ChevronDown, Download, FileText, Users } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
@@ -266,10 +267,12 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t("compare.title")}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <MarketSectionHeader
+        title={t("compare.title")}
+        description={t("compare.selectAtLeastTwo")}
+        icon={Users}
+      />
+      <CardContent className="pt-6">
         <div className={`mb-6 grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"}`}>
           {vendors?.map(vendor => {
             const active = selectedVendors.includes(vendor.id);

@@ -20,3 +20,9 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 **Why:** The prior no-rankings rule prevented invented buyer takeaways, but would incorrectly exclude this directly requested presentation of the same category totals already shown in Compare Products.
 
 **How to apply:** Place Feature rankings directly after Compare Products, before ecosystem support, in both tab layouts. Use only the product-capability feature partition and the shared support-level contribution mapping. Keep maximum equal to the number of features; sort scored vendors highest first, disclose missing support records instead of presenting unscored vendors as zero, and point readers to Compare Products commentary for rationale.
+
+**Desktop heading consistency:** Use the approved Product Evaluation heading style for desktop section headings. Intelligence is intentionally excluded from this standardization.
+
+**Why:** The user requested matching the other desktop tabs to the existing Product Evaluation, Support Matrix, and Methodology headings, while explicitly leaving Intelligence as is.
+
+**How to apply:** Carry the same light gradient, blue icon, title, and subtitle styling into desktop section headers without changing the distinct Intelligence presentation or the mobile headers.

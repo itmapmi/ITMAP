@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import MarketSectionHeader from "@/components/market-section-header";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Download, ExternalLink, Calendar, ChevronDown, FileIcon, FileArchive, FileSpreadsheet, FileVideo, FileType, AlertCircle, Lock } from "lucide-react";
 import { format } from "date-fns";
@@ -220,8 +221,20 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
     );
   }
 
+  const renderDesktopSection = (content: ReactNode) => (
+    <section className="overflow-hidden rounded-xl border border-blue-100 bg-white shadow-lg" aria-labelledby="report-library-heading">
+      <MarketSectionHeader
+        title="Research Reports"
+        description="In-depth analyses, briefings, and supporting materials published for this market."
+        icon={FileText}
+        headingId="report-library-heading"
+      />
+      <div className="p-6">{content}</div>
+    </section>
+  );
+
   if (isLoading) {
-    return (
+    return renderDesktopSection(
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-24 w-full" />
@@ -231,11 +244,11 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
   }
 
   if (companyLocked) {
-    return <CompanyProfileLockedPanel feature="Research reports" />;
+    return renderDesktopSection(<CompanyProfileLockedPanel feature="Research reports" />);
   }
 
   if (!reports || reports.length === 0) {
-    return (
+    return renderDesktopSection(
       <div className="flex justify-center items-center p-12">
         <div className="text-center">
           <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -248,15 +261,8 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
     );
   }
 
-  return (
+  return renderDesktopSection(
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-bold mb-2">Research Reports</h3>
-        <p className="text-muted-foreground">
-          In-depth analyses, briefings, and supporting materials published for this market.
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {reports.map((report) => {
           const meta = getFileMeta(report.mimeType, report.fileUrl);

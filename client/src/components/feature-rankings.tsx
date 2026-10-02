@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, BarChart3, ChevronDown } from "lucide-react";
+import MarketSectionHeader from "@/components/market-section-header";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 import { getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
 import { categoryTranslationUnavailable, featureCategoryName } from "@/lib/feature-category-localization";
@@ -12,9 +13,11 @@ type Category = FeatureWithCategory["category"];
 export default function FeatureRankings({
   marketId,
   onOpenCompare,
+  mobileMode = false,
 }: {
   marketId: string;
   onOpenCompare: () => void;
+  mobileMode?: boolean;
 }) {
   const { t, i18n } = useTranslation("featureRankings");
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
@@ -62,11 +65,18 @@ export default function FeatureRankings({
 
   return (
     <section className="overflow-hidden rounded-none border border-[#dfe8ed] bg-white shadow-[0_5px_16px_rgba(15,20,24,0.06)]" aria-labelledby="feature-rankings-heading">
-      <header className="border-b border-[#dfe8ed] bg-white px-4 py-5 sm:px-7">
+      {mobileMode ? <header className="border-b border-[#dfe8ed] bg-white px-4 py-5 sm:px-7">
         <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">{t("eyebrow")}</p>
         <h2 id="feature-rankings-heading" className="mt-1 text-xl font-semibold tracking-tight text-[#0f1418]">{t("title")}</h2>
         <p className="mt-2 max-w-xl text-xs leading-5 text-[#66737b]">{t("description")}</p>
-      </header>
+      </header> : (
+        <MarketSectionHeader
+          title={t("title")}
+          description={t("description")}
+          icon={BarChart3}
+          headingId="feature-rankings-heading"
+        />
+      )}
 
       <div className="px-4 py-5 sm:px-7 sm:py-7">
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-[#dfe8ed] pb-3">
