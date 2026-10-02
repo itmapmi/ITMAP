@@ -717,7 +717,7 @@ export default function MarketDetails() {
           </motion.div>
         </FadeInSection>}
 
-        <section className={cn("mb-2", (mobileMode || isMobile) && "mb-6")} data-testid="market-shared-chart">
+        <section className={cn("mb-10", mobileMode && "mb-6")} data-testid="market-shared-chart">
           {canManageVendors && (
             <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-gray-600">
@@ -912,7 +912,15 @@ export default function MarketDetails() {
                   />
                 </div>
               ) : (
-              <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
+              <TabsList
+                className={cn(
+                  "w-full",
+                  isMobile
+                    ? "inline-flex overflow-x-auto scrollbar-hide justify-start"
+                    : "grid h-auto min-h-10 grid-flow-col auto-cols-fr gap-1 border border-sky-100 bg-sky-50 p-1 [&>*]:h-full [&>*]:min-w-0 [&>*]:w-full [&>*]:justify-center [&>*]:whitespace-normal [&>*]:px-2 [&>*]:text-center"
+                )}
+                data-testid="market-section-menu"
+              >
                 <TabsTrigger value="support-matrix" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-support-matrix">
                   {t(isMobile ? "tabs.compareProducts.mobile" : "tabs.compareProducts.desktop")}
                 </TabsTrigger>

@@ -41,6 +41,12 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **How to apply:** Prefer the original full-size desktop canvas; fit its container to available viewport height only when needed, accounting for headers, controls, and the tab list. Do not shrink label fonts or change drawing/scoring algorithms. Preserve mobile layout, stored definitions, timeline controls, and market titles in exports.
 
+**Desktop section menu:** Use a distinct light-blue background, at least 1 cm of separation beneath the graphic, and equally sized menu items distributed across the full bar.
+
+**Why:** The user explicitly requested a different light tone, at least one centimeter of graphic-to-menu separation, and equal menu alignment.
+
+**How to apply:** Keep all visible items equally spaced, including Intelligence, locked items, and the conditional Generate RFP action. Preserve existing actions and the mobile section strip.
+
 **Explicit category-ranking exception:** The user requested a Feature rankings tab beside Compare Products. Ranking vendors by their existing product-feature support totals is allowed; it is a view of stored evidence, not a new inferred recommendation.
 
 **Why:** The prior no-rankings rule prevented invented buyer takeaways, but would incorrectly exclude this directly requested presentation of the same category totals already shown in Compare Products.

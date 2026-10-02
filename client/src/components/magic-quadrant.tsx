@@ -488,6 +488,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     if (svgRef.current) observer.observe(svgRef.current);
     const navigation = document.querySelector(".sticky.top-0.z-50");
     if (navigation) observer.observe(navigation);
+    const sectionTabs = desktopCardRef.current?.closest('[data-testid="market-shared-chart"]')?.parentElement?.querySelector('[role="tablist"]');
+    if (sectionTabs) observer.observe(sectionTabs);
     if (desktopCardRef.current?.closest('[data-testid="market-shared-chart"]')?.previousElementSibling) {
       observer.observe(desktopCardRef.current.closest('[data-testid="market-shared-chart"]')!.previousElementSibling!);
     }
