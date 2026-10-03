@@ -21,6 +21,12 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** Campaign visitors who click Compare Products expect feature-by-feature evidence by default. The user subsequently requested a consistent quadrant across every tab on both desktop and mobile.
 
+**Mobile Vendor Map entry:** Start with no vendors checked and no automatic scroll into comparison results. Its comparison heading is Vendor Evaluation, not Compare Products.
+
+**Why:** The user explicitly rejected the preselected-vendor default and the resulting automatic scroll on arrival.
+
+**How to apply:** Vendor selection must be user-driven in both page-owned and standalone chart comparisons. Preserve manual selection, clearing selections, and the comparison revealed after the user chooses at least two vendors.
+
 **How to apply:** On mobile, start with the quadrant; its market-name heading expands the stored definition, with an arrow-only Back link in a small blue box at the top right. Do not duplicate the market title or definition above the chart. On desktop, put Read full definition beside the market title and hide all definition text until expanded. Center the standalone quadrant; selecting Vendor Map shows automatically expanded Criteria Weights beside it. Keep the chart width stable while repositioning it. Hide Criteria Weights outside Vendor Map on both desktop and mobile; mobile weights remain collapsed by default. Vendor Map contains the vendor comparison experience without a duplicate graphic. Preserve direct section links. The user explicitly requested placement changes without changes to the graphic's drawing or positioning logic.
 
 **Desktop weights compactness:** Omit the introductory explanation and place the controls directly beneath Criteria Weights. Compact the weight rows so the complete panel fits without an internal scrollbar.

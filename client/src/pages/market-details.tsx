@@ -128,7 +128,6 @@ export default function MarketDetails() {
   );
   const [mobileDefinitionOpen, setMobileDefinitionOpen] = useState(false);
   const [mobileSelectedVendorIds, setMobileSelectedVendorIds] = useState<string[]>([]);
-  const mobileSelectionSeededFor = useRef<string | null>(null);
   const mobileSelectionMarketRef = useRef<string | null>(null);
   // Keeps the active chip of the mobile section strip scrolled into view.
   const activeMobileSectionRef = useRef<HTMLButtonElement | null>(null);
@@ -197,15 +196,9 @@ export default function MarketDetails() {
   useEffect(() => {
     if (!resolvedId || mobileSelectionMarketRef.current === resolvedId) return;
     mobileSelectionMarketRef.current = resolvedId;
-    mobileSelectionSeededFor.current = null;
     setMobileSelectedVendorIds([]);
     setMobileDefinitionOpen(false);
   }, [resolvedId]);
-  useEffect(() => {
-    if (!mobileMode || !resolvedId || mobileSelectionSeededFor.current === resolvedId || vendors.length < 2) return;
-    mobileSelectionSeededFor.current = resolvedId;
-    setMobileSelectedVendorIds(vendors.slice(0, 2).map(vendor => vendor.id));
-  }, [mobileMode, resolvedId, vendors]);
 
   // For private (end-user-built) markets the owner can re-enter the wizard to
   // add an optional phase. Compute which phases are missing from the feature

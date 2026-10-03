@@ -505,27 +505,12 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
   }, [vendorsLoading, scoresLoading, weightsLoading, mobileMode]);
 
-  // Seed the mobile comparison with the first two vendors exactly once per
-  // market. Deliberately NOT keyed on the selection length: if it re-ran
-  // whenever the list emptied, the user could never uncheck the last vendor
-  // (it would snap straight back to the default pair).
-  const mobileDefaultSeededFor = useRef<string | null>(null);
-  // Declared BEFORE the seeding effect so that on a market change the reset
-  // runs first and the seed can then repopulate (effects run in order).
+  // Start each market with no vendors selected; selections are user-driven.
   useEffect(() => {
     resetMobileChart();
     if (controlledMobileSelectedVendors) return;
     setMobileSelectedVendors([]);
-    mobileDefaultSeededFor.current = null;
   }, [marketId]);
-
-  useEffect(() => {
-    if (controlledMobileSelectedVendors) return;
-    if (!mobileMode || !vendors || vendors.length < 2) return;
-    if (mobileDefaultSeededFor.current === marketId) return;
-    mobileDefaultSeededFor.current = marketId;
-    setMobileSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
-  }, [mobileMode, vendors, marketId, controlledMobileSelectedVendors]);
 
   // ── Positioning ────────────────────────────────────────────────────────────
   // Every dot depends only on the vendor's own scores, the weights in play and

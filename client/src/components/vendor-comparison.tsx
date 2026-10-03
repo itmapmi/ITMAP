@@ -140,9 +140,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
     }
   };
 
-  // NOTE: the mobile default selection is seeded once by the owner of the
-  // shared selection state (magic-quadrant.tsx). It must not be re-seeded
-  // here whenever the list becomes empty, or the user can never clear it.
+  // Mobile comparison starts empty; only explicit vendor selections populate it.
 
   // Record a comparison once the user settles on 2+ vendors. Debounced so a
   // run of checkbox toggles produces one event, and de-duplicated so the same
@@ -180,7 +178,7 @@ export default function VendorComparison({ marketId, mobileMode = false, mobileS
       <section className="space-y-5 font-[Montserrat]">
         <div>
           <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
-            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">02</p><h3 className="text-base font-bold">{t("compare.mobileTitle")}</h3></div>
+            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">02</p><h3 className="text-base font-bold">{t("compare.title")}</h3></div>
             <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{t("compare.mobileSelectedCount", { count: selectedVendors.length })}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
