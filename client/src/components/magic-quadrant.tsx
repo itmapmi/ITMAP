@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import * as d3 from "d3";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -525,7 +525,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     c => (criteriaWeights[c.id] ?? publishedWeights[c.id]) !== publishedWeights[c.id],
   );
 
-  const vendorsWithScores: VendorWithScores[] = (vendors || []).map(vendor => {
+  const vendorsWithScores: VendorWithScores[] = useMemo(() => (vendors || []).map(vendor => {
     const vendorScores: { [criteriaId: string]: number } = {};
     if (scores) {
       for (const score of scores) {
@@ -580,7 +580,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       box: position.box,
       isHistorical: false,
     };
-  });
+  }), [vendors, scores, weeksAgo, historicalPositions, chartConfig, criteria, criteriaWeights]);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || vendorsLoading || scoresLoading || weightsLoading) return;
@@ -588,20 +588,14 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    // Responsive dimensions based on container and device
-    const containerWidth = containerRef.current.offsetWidth;
-    // The dedicated mobile route deliberately keeps the desktop 760px drawing
-    // coordinate system. The viewport below scales/scrolls that fixed canvas,
-    // so persisted label positions and vendor coordinates never move merely
-    // because the phone width or orientation changed.
-    const compactChart = isMobile && !mobileMode;
-    const width = mobileMode ? 760 : (isMobile ? Math.min(containerWidth - 20, 420) : Math.min(containerWidth, 760));
-    // Rectangle on desktop: 3-column × 2-row grid suits a wider aspect ratio.
-    const height = mobileMode ? 547 : (isMobile ? 360 : Math.round(width * 0.72));
-    // Extra top/bottom margin accommodates outside box labels above/below the chart.
-    const margin = isMobile && !mobileMode
-      ? { top: 36, right: 15, bottom: 68, left: 50 }
-      : { top: 44, right: 20, bottom: 82, left: 60 };
+    // Saved labels are absolute coordinates in the original full-size canvas.
+    // Fit the desktop SVG using CSS, never by changing its drawing geometry or
+    // typography at a zoom-narrowed breakpoint. The dedicated mobile drawing
+    // and its separate transform/pan controls retain their existing canvas.
+    const compactChart = false;
+    const width = 760;
+    const height = 547;
+    const margin = { top: 44, right: 20, bottom: 82, left: 60 };
 
     svg.attr("width", width).attr("height", height).attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "xMidYMid meet");
 
@@ -684,6 +678,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .tickSize(0)
       .tickSizeOuter(0)
       .tickFormat(d => d === 50 || d === 100 ? `${d}` : '');
+
+    if (!mobileMode) {
+      // D3's default pixel-snap offset switches at devicePixelRatio > 1,
+      // which real browser zoom can cross. Keep desktop axes canonical too.
+      xAxis.offset(0.5);
+      yAxis.offset(0.5);
+    }
 
     const xAxisG = svg.append("g")
       .attr("class", "x-axis")
@@ -953,12 +954,23 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             }
           });
 
+        if (!mobileMode) {
+          // D3 converts the pointer through the SVG's inverse screen CTM.
+          // Start from the label (not the vendor datum or grab point), keeping
+          // the grab offset and saved coordinates accurate at every scale.
+          drag.container(() => svgRef.current!)
+            .subject(() => ({
+              x: Number(labelText.attr("x")),
+              y: Number(labelText.attr("y")),
+            }));
+        }
+
         // Apply drag to text
         labelText.call(drag as any);
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, mobileMode, mobileSelectedVendors, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions, t]);
+  }, [vendorsWithScores, criteriaWeights, mobileMode, mobileSelectedVendors, labelPositions, enableDrag, onLabelPositionChange, marketId, allHistoricalPositions, t]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1000,6 +1012,12 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       // Serialize the SVG with an explicit xmlns so it loads as an image
       const clone = svgEl.cloneNode(true) as SVGSVGElement;
       clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      if (!mobileMode) {
+        // Export at native viewBox size, not the fitted CSS display size.
+        clone.style.removeProperty("width");
+        clone.style.removeProperty("height");
+        clone.style.removeProperty("max-width");
+      }
       const svgString = new XMLSerializer().serializeToString(clone);
       const svgUrl = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }));
 
@@ -1096,6 +1114,18 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const executionCriteria = criteria?.filter(c => c.category === "execution") || [];
   const viabilityCriteria = criteria?.filter(c => c.category === "viability") || [];
 
+  // The popover is HTML outside the SVG: project its canonical anchor into
+  // container pixels. Keep the mobile anchor path unchanged.
+  let evidenceAnchor = { x: evidenceVendor?.pixelX ?? 0, y: evidenceVendor?.pixelY ?? 0 };
+  if (!mobileMode && evidenceVendor && svgRef.current && containerRef.current) {
+    const matrix = svgRef.current.getScreenCTM();
+    if (matrix) {
+      const point = new DOMPoint(evidenceVendor.pixelX, evidenceVendor.pixelY).matrixTransform(matrix);
+      const rect = containerRef.current.getBoundingClientRect();
+      evidenceAnchor = { x: point.x - rect.left, y: point.y - rect.top };
+    }
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 items-start lg:grid-cols-4 gap-4 lg:gap-8">
@@ -1167,7 +1197,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     <svg
                       ref={svgRef}
                       className={mobileMode ? "block max-w-none bg-white" : "border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto"}
-                      style={mobileMode ? { width: 760, height: 547, maxWidth: "none" } : undefined}
+                      style={mobileMode ? { width: 760, height: 547, maxWidth: "none" } : { display: "block", width: "100%", height: "auto", maxWidth: 760 }}
                     />
                   </div>
                 </div>
@@ -1183,8 +1213,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     <button
                       className="absolute w-1 h-1 p-0 border-0 bg-transparent"
                       style={{
-                        left: evidenceVendor?.pixelX ?? 0,
-                        top: evidenceVendor?.pixelY ?? 0,
+                        left: evidenceAnchor.x,
+                        top: evidenceAnchor.y,
                         transform: "translate(-50%, -50%)",
                       }}
                       aria-hidden="true"

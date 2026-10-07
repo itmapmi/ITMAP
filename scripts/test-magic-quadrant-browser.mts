@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import puppeteer, { type Page } from "puppeteer";
+import path from "node:path";
+import { verifyDesktopZoom } from "./test-quadrant-zoom.mts";
 import { DEFAULT_QUADRANT_THRESHOLDS, positionFromComposites } from "../shared/quadrant-positioning";
 
 // Browser regression for the historical slider: stored snapshots are raw
 // weighted composites in rubric units (0–10) and the chart re-plots them
 // through the market's thresholds with the shared piecewise transform — the
 // same engine used here to compute the expected pixel coordinates.
-const baseUrl = process.env.MAGIC_QUADRANT_TEST_BASE_URL || "http://127.0.0.1:5000";
+const baseUrl = process.env.MAGIC_QUADRANT_TEST_BASE_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://127.0.0.1:5000");
 const marketSlug = "historical-browser-fixture";
 const marketId = "historical-browser-fixture";
 const vendorId = "vendor-alpha";
@@ -85,6 +87,7 @@ const allHistory = [
 type HistoricalRow = { id: string; vendorId: string; marketId: string; executionScore: string; viabilityScore: string; recordedAt?: string };
 const selectedWeekRequests: Array<{ date: string; positions: HistoricalRow[] }> = [];
 const allHistoryRequests: Array<{ positions: HistoricalRow[] }> = [];
+const labelPositions = [{ vendorId, labelX: "490", labelY: "218", updatedAt: "2026-10-01T00:00:00Z" }];
 
 function selectedPositions(dateValue: string) {
   // The six-month slider's early and late positions should resolve to distinct
@@ -216,7 +219,11 @@ async function waitForVendorCoordinates(page: Page, scores: { execution: number;
 
 async function run() {
   const serverProcess = await ensureServer();
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    pipe: true,
+    enableExtensions: [path.resolve("scripts/fixtures/chart-zoom-extension")],
+  });
   const page = await browser.newPage();
 
   try {
@@ -230,6 +237,12 @@ async function run() {
       }
 
       if (request.method() !== "GET") {
+        if (url.pathname === "/api/label-positions") {
+          const data = JSON.parse(request.postData()!);
+          const row = labelPositions.find(row => row.vendorId === data.vendorId)!;
+          row.labelX = String(data.labelX);
+          row.labelY = String(data.labelY);
+        }
         await request.respond({ status: 204, body: "" });
         return;
       }
@@ -257,6 +270,10 @@ async function run() {
 
       if (url.pathname === `/api/markets/${marketId}/chart-config`) {
         await request.respond(jsonResponse(chartConfig));
+        return;
+      }
+      if (url.pathname === `/api/markets/${marketId}/label-positions`) {
+        await request.respond(jsonResponse(labelPositions));
         return;
       }
 
@@ -342,6 +359,8 @@ async function run() {
     assert.equal(allHistoryRequests[0].positions.some(position => position.vendorId === vendorId), true);
 
     console.log("Historical slider browser regression passed.");
+    await setSliderValue(page, 26);
+    await verifyDesktopZoom(browser, page, vendorId, baseUrl, marketSlug);
   } finally {
     await browser.close();
     if (serverProcess) {

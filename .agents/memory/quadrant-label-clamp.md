@@ -25,6 +25,10 @@ before appending the text. Don't mutate the saved DB value — only the rendered
 position. If you ever switch saved positions to normalized (0–1) coordinates,
 this whole class of bug goes away.
 
+**Desktop fitting boundary:** display resizing must not resize the underlying
+drawable box. Keep clamping bounds in the original full-size coordinate
+convention, not the fitted on-screen dimensions. See `quadrant-label-layout.md`.
+
 **Superseded (Sep 2026):** an earlier version of this note also covered a
 mobile-only de-overlap pass and a distance "tether" that discarded a dragged
 position too far from its dot. Both were part of a collision-avoidance layout
