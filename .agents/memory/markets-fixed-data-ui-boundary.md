@@ -45,7 +45,13 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **Why:** The user reversed the 75% reduction, requesting 100% again while retaining all other compact-layout changes and ensuring the page still fits.
 
-**How to apply:** Prefer the original full-size desktop canvas; fit its container to available viewport height only when needed, accounting for headers, controls, and the tab list. Do not shrink label fonts or change drawing/scoring algorithms. Preserve mobile layout, stored definitions, timeline controls, and market titles in exports.
+**How to apply:** Prefer the original full-size desktop canvas; fit its container to available viewport height only when needed, accounting for headers, controls, and the tab list. Preserve base label fonts and scoring algorithms. Preserve mobile layout, stored definitions, timeline controls, and market titles in exports.
+
+**Desktop browser zoom:** Browser zoom must preserve the relative arrangement of dots, saved labels, and chart regions. The correction is desktop-only; the user explicitly said the mobile experience is fine and must not be touched.
+
+**Why:** The user supplied a correct arrangement at 67% browser zoom and increasingly displaced labels when zooming in; zooming out did not exhibit the issue.
+
+**How to apply:** Preserve manually positioned labels and score-based dot mapping. Scale desktop drawing elements together rather than mixing resized dot geometry with unscaled saved label coordinates. Do not use automatic label rearrangement or changes to mobile as a workaround.
 
 **Desktop section menu:** Use a distinct light-blue background, at least 1 cm of separation beneath the graphic, and equally sized menu items distributed across the full bar.
 
