@@ -35,6 +35,7 @@
 - [Markets fixed-data UI boundary](markets-fixed-data-ui-boundary.md) — Markets UX may reorganize stored evidence, but must not invent journeys, summaries, rankings, or on-the-fly data.
 - [Markets AI chat grounding](markets-ai-chat-grounding.md) — AI chat is the exception to static presentation: generated answers must remain strictly grounded in stored market evidence.
 - [Security Intelligence mobile boundary](security-intelligence-mobile-boundary.md) — redesign uses a black evidence workspace and must preserve the existing CVE feature set exactly.
+- [CVE vendor attribution](cve-vendor-attribution.md) — NVD `amazon` spans AWS and consumer products; do not blanket-confirm it as AWS without product-scope review.
 - [RFP Builder mobile boundary](rfp-builder-mobile-boundary.md) — buyer workflow stays black and preserves Projects plus the exact six-step RFP wizard.
 - [Cross-device typography consistency](cross-device-typography.md) — mobile Markets, CVE, and RFP designs must use the desktop ITMAP logo and font system exactly.
 - [Markets desktop palette parity](markets-desktop-palette.md) — mobile Markets must use desktop semantic colors, retaining only data-bearing chart/status colors.
