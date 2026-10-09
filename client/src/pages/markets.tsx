@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock, FileText, Plus, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { marketTitle, marketDescription, type LocalizedMarket } from "@/lib/market-localization";
+import { matchesMarketSearch } from "@/lib/market-search";
 
 export const FREE_MARKET_ID = "130ee3b2-16b1-4803-a8f0-8c4ed3a61d96";
 
@@ -78,16 +79,11 @@ export default function Markets() {
     let list = publicMarkets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
     const q = searchQuery.trim().toLowerCase();
     if (!q) return list;
-    return list.filter(m => {
-      // Match on market name or description
-      if (cleanName(m.name).toLowerCase().includes(q)) return true;
-      if (m.shortDescription?.toLowerCase().includes(q)) return true;
-      if (m.description?.toLowerCase().includes(q)) return true;
-      if (marketTitle(m).toLowerCase().includes(q)) return true;
-      if (marketDescription(m)?.toLowerCase().includes(q)) return true;
-      // Match on any vendor name in this market
-      return (vendorMap[m.id] ?? []).some(v => v.includes(q));
-    });
+    return list.filter(m => matchesMarketSearch(
+      q,
+      [cleanName(m.name), marketTitle(m)],
+      vendorMap[m.id] ?? [],
+    ));
   }, [publicMarkets, selectedCategory, searchQuery, vendorMap]);
 
   // Track page visit and dwell time so the intent engine picks up browse activity.

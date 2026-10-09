@@ -9,6 +9,12 @@ Markets pages may visually reorganize only the stored quadrant, persisted criter
 
 **How to apply:** Improve hierarchy, navigation, disclosure, filtering, comparison, and mobile readability using existing fields. Keep the quadrant’s score mapping and vendor coordinates intact. Vendor Evaluation must lead from the graph into a comparison of at least two vendor products. Product and Ecosystem Evaluation must compare exactly two products. Every criterion or feature score needs access to full stored commentary, with vendor, product, subject, and score/support level. Mobile commentary and product/ecosystem commentary use scrollable popups. Desktop Vendor Map commentary is the explicit exception: View notes expands a collapsible section directly below its criterion within the comparison card, not a popup. Show explicit unavailable states when stored data is absent.
 
+**Market listing search boundary:** Search market titles and actual vendor roster names, not incidental vendor mentions in definitions or summaries.
+
+**Why:** The user reported AWS returning AI Gateways even though AWS was mentioned only in its descriptive copy and was not a listed participant.
+
+**How to apply:** A descriptive mention is not evidence of vendor membership. Preserve canonical and translated market-name searches, actual roster-name matching, category filters, and market visibility restrictions.
+
 **Why desktop Vendor Map is different:** The user explicitly requested restoring the earlier inline, collapsible commentary presentation on desktop while leaving mobile popup behavior unchanged.
 
 **Mobile notes popup consistency:** Every mobile comparison notes popup uses the same visible “Close Notes” action.
