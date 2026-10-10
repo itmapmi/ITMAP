@@ -5,6 +5,10 @@ import { db } from "../db";
 import { linkedInCampaignLeads } from "@shared/schema";
 import { registerLeadIngress, type LeadRepository } from "../linkedin/ingress";
 import { registerNativeLeadDelivery } from "../linkedin/pipeline";
+import { campaignLoginAllowed } from "../linkedin/campaigns";
+import { CampaignAccountDenied, grantCampaignAccount } from "../linkedin/accounts";
+import { scheduleCampaignProfile, startPendingCampaignProfiles } from "../linkedin/profiles";
+import { establishSession } from "./auth";
 import { parseCampaigns } from "../linkedin/lead";
 import {
   getLinkedInConfiguration, linkedInRedirectUri, validatedLinkedInIdentity,
@@ -16,6 +20,7 @@ const campaigns = () => parseCampaigns(process.env.LINKEDIN_CAMPAIGNS_JSON);
 // These routes are campaign-only. There is deliberately no normal signup
 // button, public email query parameter, or general LinkedIn sign-in endpoint.
 export function registerLinkedInCampaignRoutes(app: Express) {
+  startPendingCampaignProfiles();
   const repository: LeadRepository = {
       async receive(lead, campaign, profile, fingerprint) {
         const inserted = await db.insert(linkedInCampaignLeads).values({
@@ -32,7 +37,12 @@ export function registerLinkedInCampaignRoutes(app: Express) {
         }).onConflictDoNothing({
           target: [linkedInCampaignLeads.sourceClientId, linkedInCampaignLeads.leadId],
         }).returning({ id: linkedInCampaignLeads.id });
-        if (inserted.length) return "stored";
+        if (inserted.length) {
+          if (lead.submitterUrn && !lead.testLead) {
+            scheduleCampaignProfile(campaign.sourceClientId, lead.submitterUrn.slice("urn:li:person:".length), campaign.slug);
+          }
+          return "stored";
+        }
         const [existing] = await db.select({ fingerprint: linkedInCampaignLeads.fingerprint })
           .from(linkedInCampaignLeads).where(and(
             eq(linkedInCampaignLeads.sourceClientId, campaign.sourceClientId),
@@ -52,8 +62,11 @@ export function registerLinkedInCampaignRoutes(app: Express) {
   app.get("/auth/linkedin/campaign/:slug", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     try {
-      const campaign = campaigns().find((c) => c.slug === req.params.slug);
-      if (!campaign) return res.status(404).send("Campaign not found.");
+      const campaignSlug = req.params.slug;
+      if (!campaignLoginAllowed(campaignSlug)) return res.status(404).send("Campaign not found.");
+      if (process.env.LINKEDIN_CAMPAIGN_LOGIN_ENABLED !== "true") {
+        return res.status(503).send("Campaign login has not been enabled.");
+      }
       const redirectUri = linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI);
       if (!redirectUri) return res.status(503).send("Campaign authorization is not configured yet.");
       const config = await getLinkedInConfiguration();
@@ -61,8 +74,10 @@ export function registerLinkedInCampaignRoutes(app: Express) {
       const state = oidc.randomState();
       const nonce = oidc.randomNonce();
       (req.session as any).linkedInCampaignHandoff = {
-        campaignSlug: campaign.slug, state, nonce, verifier, redirectUri, createdAt: Date.now(),
+        campaignSlug, state, nonce, verifier, redirectUri,
+        clientId: process.env.LINKEDIN_CLIENT_ID, createdAt: Date.now(),
       };
+      delete (req.session as any).linkedInPendingIdentity;
       const challenge = await oidc.calculatePKCECodeChallenge(verifier);
       const url = oidc.buildAuthorizationUrl(config, {
         redirect_uri: redirectUri,
@@ -86,6 +101,7 @@ export function registerLinkedInCampaignRoutes(app: Express) {
     const session = req.session as any;
     const handoff = session?.linkedInCampaignHandoff;
     delete session?.linkedInCampaignHandoff;
+    delete session?.linkedInPendingIdentity;
     // Save consumption BEFORE external exchange, so an ordinary retry cannot
     // reuse this authorization state. The provider also consumes the code.
     if (!handoff || Date.now() - handoff.createdAt > HANDOFF_TTL_MS) {
@@ -93,8 +109,10 @@ export function registerLinkedInCampaignRoutes(app: Express) {
     }
     try {
       await new Promise<void>((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()));
-      const campaign = campaigns().find((c) => c.slug === handoff.campaignSlug);
-      if (!campaign || handoff.redirectUri !== linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI)) {
+      if (process.env.LINKEDIN_CAMPAIGN_LOGIN_ENABLED !== "true" ||
+          !campaignLoginAllowed(handoff.campaignSlug) ||
+          !handoff.clientId || handoff.clientId !== process.env.LINKEDIN_CLIENT_ID ||
+          handoff.redirectUri !== linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI)) {
         return res.status(400).send("Campaign configuration changed. Return to the campaign link.");
       }
       const callback = new URL(handoff.redirectUri);
@@ -107,15 +125,18 @@ export function registerLinkedInCampaignRoutes(app: Express) {
         idTokenExpected: true,
       });
       const identity = validatedLinkedInIdentity(tokens.claims());
-      // Foundation only: an OIDC subject must NOT be assumed equal to a
-      // bridge-supplied person URN. No account, privileges, or login session is
-      // created until live same-app correlation is demonstrated and implemented.
-      session.linkedInPendingIdentity = {
-        ...identity, campaignSlug: campaign.slug, authenticatedAt: Date.now(),
-      };
-      await new Promise<void>((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()));
-      res.status(503).send("LinkedIn authorization succeeded. Campaign account matching is not enabled yet; no ITMAP account access has been granted.");
-    } catch {
+      const account = await grantCampaignAccount(handoff.clientId, handoff.campaignSlug, identity);
+      // req.logIn regenerates the session; no provider token or auth code is
+      // retained. The authenticated buyer enters without waiting for Lead Sync.
+      await establishSession(req, res, account.user, {
+        context: account.created ? "signup" : "login", method: "linkedin",
+      });
+      res.redirect("/markets");
+      scheduleCampaignProfile(handoff.clientId, identity.subject, handoff.campaignSlug);
+    } catch (error) {
+      if (error instanceof CampaignAccountDenied) {
+        return res.status(403).send(error.message);
+      }
       // Do not log provider errors containing URLs, codes, tokens, or claims.
       console.warn("[LinkedIn] Campaign authorization was not completed");
       res.status(400).send("LinkedIn authorization was not completed. Return to the campaign link to retry.");

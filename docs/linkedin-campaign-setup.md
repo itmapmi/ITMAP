@@ -8,11 +8,20 @@ routes are implemented.
 Normal ITMAP signup and Google sign-in are unchanged. There is no LinkedIn
 button on the normal signup page.
 
-**This is not a live onboarding flow yet.** The callback validates LinkedIn
-authorization but intentionally does not create an ITMAP login session, associate
-a submitted profile, or grant buyer access. Reliable live lead-to-member
-correlation, account reuse, browser handoff for delayed leads, and buyer onboarding policy
-must be completed and verified before activation.
+**This is not published or activated in production yet.** When explicitly
+enabled, the callback validates LinkedIn authorization, safely creates/reuses a
+buyer account, regenerates the ITMAP session, grants normal buyer access and
+redirects to `/markets` without waiting for a lead.
+
+The owner explicitly approved access before form-submission confirmation:
+someone authorizing through a shared campaign URL can receive normal buyer
+access without submitting the form. This never grants admin/vendor privileges
+or other users' private data.
+
+Background profile completion is implemented behind a separate, disabled
+correlation-verification flag. Prove the live lead-to-member relationship before
+enabling it. No name, timing, unverified email or "latest global lead" guessing
+is allowed.
 
 ## Credentials and LinkedIn app
 
@@ -45,7 +54,16 @@ Non-secret settings:
   with LinkedIn and maintain it before that version is retired.
 - `LINKEDIN_LEAD_SYNC_ENABLED` — only literal `true` enables the native retrieval
   worker. Leave unset during review. This flag does **not** enable account
-  onboarding; that remains unimplemented/disabled.
+  onboarding.
+- `LINKEDIN_CAMPAIGN_LOGIN_ENABLED` — only literal `true` enables campaign
+  authorization and immediate buyer login. Keep disabled in production until
+  the real provider callback is tested and the owner activates the campaign.
+- `LINKEDIN_CAMPAIGN_LOGIN_SLUGS` — comma-separated server-owned whitelist of
+  login campaigns. This permits testing login independently of Lead Sync/form
+  setup; for example `linkedin`. A mapped campaign slug is also accepted.
+- `LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED` — leave unset until live provider
+  evidence proves the OIDC subject/person-URN correlation for this app. Only
+  literal `true` permits submitted-profile association.
 
 Missing configuration fails closed. Do not use production credentials to invent
 mock approval or activate unverified matching.
@@ -91,6 +109,25 @@ The work email does not necessarily equal LinkedIn's primary sign-in email.
 - Deleted-lead notifications remove only imported lead records, not ITMAP accounts.
   Tombstones prevent a delayed creation notification from restoring older data.
 - Notifications do **not** create users, send login tokens, or establish sessions.
+
+## Immediate buyer session and background profile policy
+
+- Buyer access comes from validated campaign OIDC, not a submitted email or a
+  client-visible flag. Accounts are keyed by developer-app ID plus subject.
+- A strictly verified primary-email claim may reuse an existing buyer account.
+  Admin/vendor/scoped, blocked, expired and ambiguous accounts are refused.
+- Missing email claims create a subject-bound account with null email, not a
+  fabricated address. A trusted matched lead can later supply an unverified work
+  email when no other account holds it; it never merges by that work email.
+- A server-owned buyer grant removes profile/company-email and unverified-session
+  limits for qualifying buyers, consistently in the backend and client.
+  Normal signup retains its existing gates. Email is not falsely marked verified.
+- Profile completion checks for an exactly matched person/app/campaign after the
+  relationship has been proven. It runs on login and receipt, with periodic
+  retries for durable pending identities. Missing/conflicting leads stay pending.
+- Existing buyer profile/verification values are retained rather than overwritten
+  by campaign data. Verification sends happen after profile commit and cannot
+  undo login/access on failure.
 
 After approval, create subscriptions through `/rest/leadNotifications` using the
 advertiser's authorized connection, configured owner/form, and published HTTPS
@@ -156,13 +193,14 @@ the managed production schema; do not add startup or production migration script
 
 Before live activation, demonstrate with the same actual campaign submitter:
 
-1. The lead-delivery submitter identifier and validated OIDC subject can be
-   correlated using supported provider evidence.
+1. Campaign authorization/signature/state checks and real callback URLs work.
+   Lead/member correlation is proven separately before profile completion is enabled.
 2. Different primary/work emails do not cause speculative account merging.
 3. Existing buyer/vendor/admin permissions and private market ownership remain safe.
 4. Complete, incomplete, duplicate and delayed leads behave correctly.
-5. Qualifying buyers receive an ITMAP session, full normal buyer access, the
-   markets destination, and no anonymous timer; background email remains secondary.
+5. Authorized campaign buyers receive an ITMAP session, full normal buyer access,
+   the markets destination, and no anonymous timer even if Lead Sync is late or
+   unavailable; background email remains secondary.
 
 Until these checks and remaining implementation pass, do not describe the
 campaign as offering automatic logged-in arrival.

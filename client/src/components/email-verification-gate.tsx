@@ -10,6 +10,7 @@ import {
   type PendingVerification,
 } from "@/hooks/useAuth";
 import { MAX_UNVERIFIED_SESSIONS, unverifiedSessionsRemaining } from "@shared/verification";
+import { hasCampaignBuyerAccess } from "@shared/campaign-access";
 import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
 
 // Verification policy (enforced server-side, see shared/verification.ts): an
@@ -92,7 +93,7 @@ function ResendButton({ email, className }: { email: string; className?: string 
 export function VerificationBanner() {
   const { user } = useAuth();
 
-  if (!user || (user as any).emailVerified !== false) return null;
+  if (!user || (user as any).emailVerified !== false || hasCampaignBuyerAccess(user)) return null;
 
   const used = sessionsUsedOf(user);
   const remaining = unverifiedSessionsRemaining({ emailVerified: false, unverifiedSessionCount: used });
@@ -160,7 +161,7 @@ export function VerificationReminderDialog() {
   const { user } = useAuth();
   const [manuallyDismissed, setManuallyDismissed] = useState(false);
 
-  const unverified = !!user && (user as any).emailVerified === false;
+  const unverified = !!user && (user as any).emailVerified === false && !hasCampaignBuyerAccess(user);
   const email = unverified ? (user!.email as string) : null;
   const onLastSession = unverified && sessionsUsedOf(user) >= MAX_UNVERIFIED_SESSIONS;
 

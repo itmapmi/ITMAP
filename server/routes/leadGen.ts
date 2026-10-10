@@ -293,7 +293,7 @@ export interface LinkVisitorOnLoginOptions {
   // context, so a signup's own login and a post-verification auto-login never
   // double-count as a "repeat login".
   context?: "signup" | "login" | "verify";
-  method?: "email" | "google";
+  method?: "email" | "google" | "linkedin";
 }
 
 export async function linkVisitorOnLogin(

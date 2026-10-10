@@ -5,12 +5,16 @@ const identitySchema = z.object({
   sub: z.string().min(1).max(256),
   email: z.string().email().max(254).optional(),
   email_verified: z.boolean().optional(),
+  given_name: z.string().trim().max(120).optional(),
+  family_name: z.string().trim().max(120).optional(),
 });
 
 export function validatedLinkedInIdentity(claims: unknown) {
   const parsed = identitySchema.parse(claims);
   return {
     subject: parsed.sub,
+    firstName: parsed.given_name || null,
+    lastName: parsed.family_name || null,
     verifiedPrimaryEmail: parsed.email_verified === true && parsed.email
       ? parsed.email.toLowerCase()
       : null,
@@ -38,6 +42,7 @@ export function getLinkedInConfiguration(): Promise<oidc.Configuration> {
       id,
       secret,
       oidc.ClientSecretPost(secret),
+      { execute: [oidc.enableNonRepudiationChecks] },
     ).catch((error) => {
       configuration = undefined;
       throw error;

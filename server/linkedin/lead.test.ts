@@ -101,7 +101,7 @@ describe("LinkedIn authenticated claims and callback boundary", () => {
   it("accepts only validated subject and strictly verified primary email", () => {
     expect(validatedLinkedInIdentity({
       sub: "member", email: "Buyer@EXAMPLE.ORG", email_verified: true,
-    })).toEqual({ subject: "member", verifiedPrimaryEmail: "buyer@example.org" });
+    })).toEqual({ subject: "member", verifiedPrimaryEmail: "buyer@example.org", firstName: null, lastName: null });
     expect(() => validatedLinkedInIdentity({ email: "buyer@example.org" })).toThrow();
   });
   it("uses an explicit HTTPS callback, never a forwarded request host", () => {

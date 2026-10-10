@@ -79,6 +79,7 @@ export const users = pgTable("users", {
   // email account). A Google-authenticated email is verified by definition,
   // so linking also flips emailVerified to true.
   googleId: text("google_id").unique(),
+  linkedInCampaignAccessGrantedAt: timestamp("linkedin_campaign_access_granted_at", { withTimezone: true }),
 
   // Company profile (see shared/company-email.ts). Buyers who signed up with
   // a consumer-domain address complete this to unlock Reports / News /
@@ -94,6 +95,19 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+export const linkedInCampaignIdentities = pgTable("linkedin_campaign_identities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: text("client_id").notNull(),
+  subject: text("subject").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  campaignSlug: text("campaign_slug").notNull(),
+  authenticatedAt: timestamp("authenticated_at", { withTimezone: true }).notNull().defaultNow(),
+  profileStatus: text("profile_status").notNull().default("awaiting_verified_match"),
+  createdByCampaign: boolean("created_by_campaign").notNull().default(false),
+}, (table) => ({
+  subjectUnique: uniqueIndex("linkedin_campaign_identities_subject_unique").on(table.clientId, table.subject),
+}));
 
 // Independent campaign submissions: receiving a lead is not account creation
 // or browser authentication. Provider subject correlation is verified later.
@@ -635,6 +649,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  linkedInCampaignAccessGrantedAt: true,
 });
 
 // Authentication schemas — passwordless. Entering an email (personal or

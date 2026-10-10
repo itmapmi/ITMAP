@@ -5,6 +5,7 @@ import { apiRequestJson } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
 import { needsCompanyEmailVerification, isCompanyEmailGatedFeature } from "@shared/company-email";
+import { hasCampaignBuyerAccess } from "@shared/campaign-access";
 import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
 import { track } from "@/lib/track";
 import {
@@ -65,6 +66,10 @@ function setPendingVerification(value: PendingVerification | null) {
 
 function syncPendingVerificationFromUser(user: any) {
   if (!user) return;
+  if (hasCampaignBuyerAccess(user)) {
+    setPendingVerification(null);
+    return;
+  }
   if (user.emailVerified === false && user.email && user.createdAt) {
     setPendingVerification({
       email: user.email,

@@ -7,9 +7,10 @@
 //
 // Shared so the server (enforcement) and client (banner / reminder copy)
 // can never drift apart.
+import { hasCampaignBuyerAccess, type CampaignBuyerState } from "./campaign-access";
 export const MAX_UNVERIFIED_SESSIONS = 3;
 
-type VerificationState = {
+type VerificationState = CampaignBuyerState & {
   emailVerified: boolean;
   unverifiedSessionCount: number | null;
 };
@@ -17,14 +18,14 @@ type VerificationState = {
 // Whether an unverified account may be granted ONE MORE independent session
 // (checked before the counter is incremented at login/register).
 export function canStartUnverifiedSession(user: VerificationState): boolean {
-  if (user.emailVerified) return true;
+  if (user.emailVerified || hasCampaignBuyerAccess(user)) return true;
   return (user.unverifiedSessionCount ?? 0) < MAX_UNVERIFIED_SESSIONS;
 }
 
 // Whether an already-issued session may keep working (checked on every
 // request, after the counter has been incremented for that session).
 export function hasUnverifiedSessionAllowance(user: VerificationState): boolean {
-  if (user.emailVerified) return true;
+  if (user.emailVerified || hasCampaignBuyerAccess(user)) return true;
   return (user.unverifiedSessionCount ?? 0) <= MAX_UNVERIFIED_SESSIONS;
 }
 

@@ -9,6 +9,12 @@ description: The user's business goal for converting LinkedIn Lead Gen Form subm
 
 **How to apply:** Use the native subscription/notification and lead-response APIs. Keep advertiser Lead Sync authorization separate from visitor OIDC authorization; neither app approval nor using one app proves that live member identifiers correlate.
 
+**Immediate access policy:** Grant full normal buyer access immediately after valid campaign-only LinkedIn authorization, before confirming or matching the Lead Gen Form submission.
+
+**Why:** The user explicitly selected this policy after being told that a person could authorize through a shared campaign link without submitting the form.
+
+**How to apply:** Establish the authenticated buyer session and open markets without waiting for Lead Sync. Match/populate the profile in the background only with reliable identity proof; leave it pending otherwise. Preserve ordinary signup gates, roles, private-data ownership and blocked/expired-account restrictions.
+
 LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their information passed into ITMAP's database, and go directly to the report page already registered, without completing another registration or password form.
 
 **Why:** The user wants to run a LinkedIn campaign with minimal registration friction.
@@ -61,10 +67,10 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **Why:** After initially rejecting LinkedIn sign-in, the user explicitly selected "Yes—use campaign-only LinkedIn authorization" when the first-time consent screen and unchanged normal signup were explained.
 
-**How to apply:** Preserve ordinary signup and keep LinkedIn authorization confined to the campaign completion handoff. Do not substitute a mandatory email link/code or ask for another email. Explain that authorization may show consent/login rather than being universally invisible, and still prove lead-to-member correlation before populating a profile or granting campaign buyer access.
+**How to apply:** Preserve ordinary signup and keep LinkedIn authorization confined to the campaign completion handoff. Do not substitute a mandatory email link/code or ask for another email. Authorization may show consent/login. Buyer access follows valid authorization under the approved immediate-access policy; profile population still requires proved lead-to-member correlation.
 
 **Provider identity constraint:** LinkedIn lead responses expose a submitter person URN for non-guest leads, but person IDs are application-scoped and OIDC subjects are pairwise. A bridge's member identifier must not be assumed to match ITMAP's sign-in identifier. Work email may also differ from the sign-in primary email.
 
 **Why:** Official LinkedIn Lead Sync schema, Profile API, and OIDC documentation establish these constraints; unsafe correlation could populate the wrong user's profile or grant access without a matched submission.
 
-**How to apply:** Prove lead-to-sign-in correlation using actual provider evidence before activating campaign onboarding. Make documents custom client credentials for its LinkedIn Lead Forms connection, which is a potential same-app route, not proof that the identifiers match. Own-app Lead Sync access requires separate LinkedIn approval. Do not substitute names, shared CTA URLs, or inferred email ownership.
+**How to apply:** Prove lead-to-sign-in correlation before enabling background profile population, not as a prerequisite to the user-approved immediate buyer access. Own-app Lead Sync requires separate approval. Do not substitute names, shared CTA URLs or inferred email ownership for profile matching or account linking.

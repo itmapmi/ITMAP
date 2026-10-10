@@ -59,7 +59,9 @@ export const COMPANY_PROFILE_LOCK_MESSAGE =
   "Complete your short profile to unlock — it's free";
 export const COMPANY_PROFILE_PATH = "/me/profile";
 
-type CompanyGateUser = {
+import { hasCampaignBuyerAccess, type CampaignBuyerState } from "./campaign-access";
+
+type CompanyGateUser = CampaignBuyerState & {
   role?: string | null;
   persona?: string | null;
   vendorScopeId?: string | null;
@@ -74,6 +76,7 @@ type CompanyGateUser = {
 // business domain, nor anyone who has already verified a company email.
 export function needsCompanyEmailVerification(user: CompanyGateUser | null | undefined): boolean {
   if (!user) return false;
+  if (hasCampaignBuyerAccess(user)) return false;
   if (user.role === "admin") return false;
   if (user.persona === "vendor") return false;
   if (user.vendorScopeId || (user.vendorScopeIds && user.vendorScopeIds.length > 0)) return false;

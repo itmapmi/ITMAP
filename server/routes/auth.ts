@@ -5,6 +5,7 @@ import { setupSession, setupPassport, requireAuth, hashPassword, comparePassword
 import { registerUserSchema, loginUserSchema, setPasswordSchema } from "@shared/schema";
 import path from "path";
 import { linkVisitorOnLogin, type LinkVisitorOnLoginOptions } from "./leadGen";
+import { hasCampaignBuyerAccess } from "@shared/campaign-access";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
 import { sendVerificationEmail, sendCompanyVerificationEmail } from "../emailService";
 import { registerGoogleAuthRoutes } from "./googleAuth";
@@ -283,7 +284,7 @@ export function registerAuthRoutes(app: Express): void {
         res.status(403).json({ error: "Access to this account has expired." });
         return;
       }
-      if (!user.emailVerified) {
+      if (!user.emailVerified && !hasCampaignBuyerAccess(user)) {
         try {
           const reserved = await storage.reserveUnverifiedSession(user.id);
           if (reserved) {

@@ -49,7 +49,8 @@ export function registerNativeLeadDelivery(
         campaignScopesConfigured: configuration.length > 0 && configuration.every((c) =>
           c.sourceClientId === process.env.LINKEDIN_CLIENT_ID && !!c.sponsoredAccountUrn),
         notifications: counts,
-        accountOnboardingEnabled: false,
+        accountOnboardingEnabled: process.env.LINKEDIN_CAMPAIGN_LOGIN_ENABLED === "true",
+        profileMatchingEnabled: process.env.LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED === "true",
       });
     } catch {
       res.status(503).json({ error: "LinkedIn delivery status is unavailable" });
