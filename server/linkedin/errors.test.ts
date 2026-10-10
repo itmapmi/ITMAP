@@ -34,4 +34,14 @@ describe("safe campaign callback diagnostics", () => {
     expect(campaignFailureDiagnostic("account_link", error))
       .toEqual({ stage: "account_link", kind: "Error", code: "42P01" });
   });
+  it("reports allowlisted validation field names but not paths, messages or values", () => {
+    expect(campaignFailureDiagnostic("identity_validation", {
+      name: "ZodError",
+      issues: [
+        { path: ["sub"], message: "PRIVATE_VALUE", received: "PRIVATE_VALUE" },
+        { path: ["PRIVATE_VALUE"], message: "PRIVATE_VALUE" },
+        { path: ["email", "PRIVATE_VALUE"] },
+      ],
+    })).toEqual({ stage: "identity_validation", kind: "ZodError", invalidFields: "sub" });
+  });
 });

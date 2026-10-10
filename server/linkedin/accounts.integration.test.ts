@@ -45,6 +45,9 @@ vi.mock("openid-client", async (original) => {
   const actual = await original<typeof import("openid-client")>();
   return {
     ...actual,
+    fetchUserInfo: async (_config: unknown, _token: string, subject: string) => ({
+      ...mocked.claims, sub: subject,
+    }),
     authorizationCodeGrant: async (_config: unknown, url: URL, checks: Record<string, unknown>) => {
       if (url.searchParams.get("state") !== checks.expectedState ||
           url.searchParams.get("code") !== "synthetic-valid-code" ||
@@ -198,6 +201,22 @@ describe("campaign-only HTTP session handoff", () => {
     expect(hasCampaignBuyerAccess(after.body.user)).toBe(true);
     expect(mocked.logins.at(-1)).toEqual({ context: "signup", method: "linkedin" });
     expect((await browser.get(`/auth/linkedin/callback?code=synthetic-valid-code&state=${state}`)).status).toBe(400);
+  });
+  it("establishes a buyer session despite malformed optional profile fields", async () => {
+    mocked.claims = {
+      sub: "optional-profile-member", email: "buyer@example.org",
+      email_verified: "true", given_name: null, family_name: null,
+    };
+    const browser = request.agent(app);
+    const start = await browser.get("/auth/linkedin/campaign/linkedin");
+    const state = new URL(start.headers.location).searchParams.get("state");
+    const callback = await browser.get(`/auth/linkedin/callback?code=synthetic-valid-code&state=${state}`);
+    expect(callback.status).toBe(302);
+    expect(callback.headers.location).toBe("/markets");
+    const after = await browser.get("/test/session");
+    expect(after.body.user.email).toBeNull();
+    expect(after.body.user.emailVerified).toBe(false);
+    expect(hasCampaignBuyerAccess(after.body.user)).toBe(true);
   });
   it("denied provider consent does not establish an ITMAP session", async () => {
     const browser = request.agent(app);

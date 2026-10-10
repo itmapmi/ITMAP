@@ -12,24 +12,89 @@ export function linkedInWebGrantChecks(state: string): oidc.AuthorizationCodeGra
   return { expectedState: state, idTokenExpected: true };
 }
 
-const identitySchema = z.object({
-  sub: z.string().min(1).max(256),
-  email: z.string().email().max(254).optional(),
-  email_verified: z.boolean().optional(),
-  given_name: z.string().trim().max(120).optional(),
-  family_name: z.string().trim().max(120).optional(),
-});
+const subjectSchema = z.object({ sub: z.string().min(1).max(256) });
+const optionalProfileFields = {
+  email: z.string().email().max(254).nullish(),
+  email_verified: z.boolean().nullish(),
+  given_name: z.string().trim().max(120).nullish(),
+  family_name: z.string().trim().max(120).nullish(),
+};
+
+function optionalProfile(claims: unknown) {
+  const { sub } = subjectSchema.parse(claims);
+  const raw = claims as Record<string, unknown>;
+  const email = optionalProfileFields.email.safeParse(raw.email);
+  const verified = optionalProfileFields.email_verified.safeParse(raw.email_verified);
+  const given = optionalProfileFields.given_name.safeParse(raw.given_name);
+  const family = optionalProfileFields.family_name.safeParse(raw.family_name);
+  const failures = [
+    ["email", email], ["email_verified", verified],
+    ["given_name", given], ["family_name", family],
+  ] as const;
+  return {
+    sub,
+    email: email.success ? email.data : null,
+    verified: verified.success && verified.data === true,
+    given: given.success ? given.data : null,
+    family: family.success ? family.data : null,
+    // Only static field names, never values or the full validation exception.
+    invalidFields: failures.filter(([, result]) => !result.success).map(([field]) => field),
+  };
+}
 
 export function validatedLinkedInIdentity(claims: unknown) {
-  const parsed = identitySchema.parse(claims);
+  const parsed = optionalProfile(claims);
   return {
     subject: parsed.sub,
-    firstName: parsed.given_name || null,
-    lastName: parsed.family_name || null,
-    verifiedPrimaryEmail: parsed.email_verified === true && parsed.email
+    firstName: parsed.given || null,
+    lastName: parsed.family || null,
+    verifiedPrimaryEmail: parsed.verified && parsed.email
       ? parsed.email.toLowerCase()
       : null,
   };
+}
+
+export function invalidLinkedInProfileFields(claims: unknown) {
+  return optionalProfile(claims).invalidFields;
+}
+
+export async function resolveLinkedInIdentity(
+  config: oidc.Configuration,
+  tokens: oidc.TokenEndpointResponse & oidc.TokenEndpointResponseHelpers,
+  report: (event: { invalidFields?: readonly string[]; error?: unknown }) => void,
+) {
+  // Called only after authorizationCodeGrant has validated the signed ID token.
+  const claims = tokens.claims();
+  const identity = validatedLinkedInIdentity(claims);
+  const invalidFields = invalidLinkedInProfileFields(claims);
+  if (invalidFields.length) report({ invalidFields });
+  if (invalidFields.length || !identity.firstName || !identity.lastName || !identity.verifiedPrimaryEmail) {
+    try {
+      // The SDK enforces UserInfo.sub === the signed token's subject. Neither
+      // names nor an unverified/truthy email flag can link an existing account.
+      // Bound optional enrichment without mutating the shared login config or
+      // letting a slow profile endpoint delay sign-in for the default timeout.
+      const profileConfig = new oidc.Configuration(
+        config.serverMetadata(), config.clientMetadata().client_id, config.clientMetadata(),
+      );
+      profileConfig.timeout = 3;
+      const customFetch = config[oidc.customFetch];
+      if (customFetch) profileConfig[oidc.customFetch] = customFetch;
+      oidc.enableNonRepudiationChecks(profileConfig);
+      const info = await oidc.fetchUserInfo(profileConfig, tokens.access_token, identity.subject);
+      const profile = validatedLinkedInIdentity(info);
+      const invalid = invalidLinkedInProfileFields(info);
+      if (invalid.length) report({ invalidFields: invalid });
+      identity.firstName ??= profile.firstName;
+      identity.lastName ??= profile.lastName;
+      identity.verifiedPrimaryEmail ??= profile.verifiedPrimaryEmail;
+    } catch (error) {
+      // Optional profile availability cannot revoke a valid signed identity.
+      // No claims from the failed/mismatched UserInfo response are used.
+      report({ error });
+    }
+  }
+  return identity;
 }
 
 export function linkedInRedirectUri(raw: string | undefined): string | null {

@@ -127,6 +127,14 @@ Callback failures report a random reference plus allowlisted stage/error/claim
 categories. Do not log full errors, authorization URLs, response bodies,
 credentials, authorization codes or claim values.
 
+The signed member identifier remains mandatory. Optional name/email fields
+may be absent, null or malformed; report only their static field names and omit
+invalid values rather than rejecting an authenticated member. Fetch UserInfo
+when enrichment is needed, requiring its subject to match the signed ID token.
+UserInfo failure does not prevent access based on that token. Email matching
+still requires a valid address and the literal boolean `email_verified: true`;
+truthy strings or numbers are never treated as verified.
+
 References:
 - [LinkedIn authorization-code web flow](https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow)
 - [LinkedIn OIDC](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2)

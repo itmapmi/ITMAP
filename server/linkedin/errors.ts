@@ -19,6 +19,7 @@ const safeProviderErrors = new Set([
 const safeClaims = new Set(["iss", "aud", "exp", "iat", "nonce", "sub", "azp", "auth_time"]);
 const safeNames = new Set(["ClientError", "ResponseBodyError", "AuthorizationResponseError",
   "OperationProcessingError", "UnsupportedOperationError", "ZodError", "Error", "TypeError"]);
+const safeProfileFields = new Set(["sub", "email", "email_verified", "given_name", "family_name"]);
 
 // Never log messages, URLs, token responses, claim values, authorization codes,
 // client credentials, full exceptions or arbitrary provider error descriptions.
@@ -26,6 +27,15 @@ export function campaignFailureDiagnostic(stage: CampaignCallbackStage, error: u
   const summary: Record<string, string | number> = { stage };
   const first = error && typeof error === "object" ? error as Record<string, unknown> : {};
   summary.kind = typeof first.name === "string" && safeNames.has(first.name) ? first.name : "Other";
+  if (first.name === "ZodError" && Array.isArray(first.issues)) {
+    const fields = new Set<string>();
+    for (const issue of first.issues) {
+      if (issue && typeof issue === "object" && Array.isArray(issue.path) &&
+          issue.path.length === 1 && typeof issue.path[0] === "string" &&
+          safeProfileFields.has(issue.path[0])) fields.add(issue.path[0]);
+    }
+    if (fields.size) summary.invalidFields = Array.from(fields).join(",");
+  }
   let current: unknown = error;
   for (let i = 0; i < 4 && current && typeof current === "object"; i++) {
     const node = current as Record<string, unknown>;

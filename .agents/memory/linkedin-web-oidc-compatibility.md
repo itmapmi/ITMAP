@@ -10,3 +10,9 @@ Treat LinkedIn's confidential authorization-code web flow separately from its na
 **How to apply:** Retain random session-bound state, short-lived consumed handoffs, server-side client authentication and signed ID-token issuer/audience/expiry validation. Never solve compatibility by accepting unsigned JWTs, disabling signature checks, or inferring account identity from names. Start a fresh campaign handoff after changing the flow; do not retry an old authorization code. Log only allowlisted stage/error identifiers, not raw exceptions or token/claim values.
 
 References: https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow and https://github.com/directus/directus/issues/26743.
+
+Do not confuse authenticated member identity with optional profile availability or formatting.
+
+**Why:** Production token/security checks passed while application profile parsing rejected the response. Making optional profile data a prerequisite for authentication conflicts with the approved immediate-access-before-profile policy.
+
+**How to apply:** Keep the signed member identifier mandatory, omit/report malformed optional fields without their values, and enrich only from subject-matched UserInfo. Never coerce truthy strings or numbers into verified email proof or use mismatched UserInfo for account linking.

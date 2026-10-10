@@ -13,7 +13,7 @@ import { establishSession } from "./auth";
 import { parseCampaigns } from "../linkedin/lead";
 import { campaignFailureDiagnostic, type CampaignCallbackStage } from "../linkedin/errors";
 import {
-  getLinkedInConfiguration, linkedInRedirectUri, validatedLinkedInIdentity,
+  getLinkedInConfiguration, linkedInRedirectUri, resolveLinkedInIdentity,
   LINKEDIN_WEB_FLOW, linkedInWebGrantChecks,
 } from "../linkedin/oidc";
 
@@ -124,7 +124,14 @@ export function registerLinkedInCampaignRoutes(app: Express) {
       stage = "token_exchange";
       const tokens = await oidc.authorizationCodeGrant(config, callback, linkedInWebGrantChecks(handoff.state));
       stage = "identity_validation";
-      const identity = validatedLinkedInIdentity(tokens.claims());
+      const identity = await resolveLinkedInIdentity(config, tokens, ({ invalidFields, error }) => {
+        if (invalidFields) {
+          console.warn("[LinkedIn] Optional profile fields unavailable", { invalidFields });
+        } else {
+          console.warn("[LinkedIn] Optional profile request unsuccessful",
+            campaignFailureDiagnostic("identity_validation", error));
+        }
+      });
       stage = "account_link";
       const account = await grantCampaignAccount(handoff.clientId, handoff.campaignSlug, identity);
       // req.logIn regenerates the session; no provider token or auth code is

@@ -94,9 +94,9 @@ describe("LinkedIn authenticated claims and callback boundary", () => {
     expect(validatedLinkedInIdentity({
       sub: "member", email: "buyer@example.org", email_verified: false,
     }).verifiedPrimaryEmail).toBeNull();
-    expect(() => validatedLinkedInIdentity({
+    expect(validatedLinkedInIdentity({
       sub: "member", email: "buyer@example.org", email_verified: "true",
-    })).toThrow();
+    }).verifiedPrimaryEmail).toBeNull();
   });
   it("accepts only validated subject and strictly verified primary email", () => {
     expect(validatedLinkedInIdentity({
