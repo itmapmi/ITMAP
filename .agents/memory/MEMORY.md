@@ -62,3 +62,4 @@
 - [Geo language vs manual choice](geo-language-preference.md) — auto-detected languages must not persist as explicit choices; recheck geo after network changes while honoring manual selection.
 - [Translation import validation](translation-import-validation.md) — a zero-write translation upload must fail visibly; an invalid language must never fall through to the English market-data import.
 - [Market page translation boundary](market-page-translation-boundary.md) — translate public market copy as an overlay; keep English identities for URLs and never send private reports to a translation provider.
+- [LinkedIn onboarding goal](linkedin-onboarding-goal.md) — prefilled lead forms should lead to account access without another registration or password form.
