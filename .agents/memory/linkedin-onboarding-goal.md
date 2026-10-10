@@ -33,11 +33,11 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
 
-**Normal signup boundary:** The user does not want users to log in through LinkedIn like Gmail and does not need a LinkedIn button in the normal signup flow.
+**LinkedIn sign-in boundary:** The user does not want users to log in through LinkedIn like Gmail and does not need a LinkedIn button in the normal signup flow. They also explicitly rejected an email-link/code claim step and selected keeping the no-inbox, no-LinkedIn-sign-in requirement for the campaign.
 
-**Why:** The user explicitly clarified this while distinguishing Lead Sync from LinkedIn sign-in.
+**Why:** The user explicitly clarified this while distinguishing Lead Sync from LinkedIn sign-in, then reaffirmed both exclusions when asked about claiming the campaign account.
 
-**How to apply:** Preserve ordinary signup and do not add a LinkedIn login button. Explain that Lead Sync authorization belongs to the advertiser/integration; it does not establish a visitor's ITMAP browser session. Do not assume a campaign-only LinkedIn authorization handoff is acceptable without clarifying it.
+**How to apply:** Preserve ordinary signup, do not add a LinkedIn login button or campaign-only LinkedIn authorization handoff, and do not substitute a mandatory email link/code. Lead Sync authorization belongs to the advertiser/integration; it does not establish a visitor's ITMAP browser session. Treat first-time authenticated arrival via the shared native form CTA as blocked unless a supported person-specific handoff is proven or the user explicitly changes a constraint.
 
 **Provider identity constraint:** LinkedIn lead responses expose a submitter person URN for non-guest leads, but person IDs are application-scoped and OIDC subjects are pairwise. A bridge's member identifier must not be assumed to match ITMAP's sign-in identifier. Work email may also differ from the sign-in primary email.
 
