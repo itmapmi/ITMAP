@@ -1,0 +1,21 @@
+dropping LinkedIn login changes the plan, and mostly simplifies it. But there’s one piece of that flow I need to be straight with you about, because it affects what you build.
+
+What works exactly as you described:
+Lead form submitted → Lead Sync pushes the data to your database → the account is created. That half is solid. The person never fills a signup form on your site, because the account already exists. That’s the real win, and it’s exactly what Lead Sync gives you.
+
+The part that doesn’t work the way it sounds:
+“They go to my website at which point they are already registered” — the account is registered, yes, but your website can’t recognise who the visitor is when they land. A click from a LinkedIn ad arrives as an anonymous browser session. Nothing in that click tells itmap.ai “this is jane@acme.com.” And importantly, LinkedIn’s Lead Gen Form thank-you page cannot pass the person’s email or identity into the destination URL — that redirect is a fixed URL, the same for everyone, with no personal data appended (LinkedIn blocks that for privacy). So there’s no way to carry their identity from the form to your site automatically.
+
+The gap is simple: creating an account removes the signup step, but giving someone a logged-in session still requires proving the browser belongs to them once. You can’t hand out a session to a visitor you can’t identify.
+
+The clean way to close it — and it fits your site perfectly:
+Your site already does a 90-second free preview, then a modal that asks for a company email. Keep that. The only change: when they enter their email, your backend checks the database, sees the account you pre-created from the lead, and emails them a one-click magic link (or a 6-digit code). They click it and they’re in — no password, no signup form, because there’s nothing to fill. From their side it’s “I typed my email and I was instantly inside.” That’s the “already registered” experience, delivered the moment they act once.
+
+So the honest version of your flow is: form → database (registered) → they enter the same email on your site → instant one-click access. The pre-registration is what makes that final step frictionless.
+
+What this means for your to-do list:
+
+Drop Sign in with LinkedIn (OIDC) entirely — you don’t need it. That also means you can ignore the Auth-tab redirect URL and the Supabase OIDC step we discussed. One less thing.
+Keep Lead Sync API (pending approval) — still the core.
+Build on Replit: the webhook that receives the lead and creates the account, plus a simple email magic-link/OTP sign-in for the modal. Both are yours to build and testable now with mock data.
+On LinkedIn: the Lead Gen Form + the ads.
