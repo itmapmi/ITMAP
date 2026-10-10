@@ -1,6 +1,17 @@
 import * as oidc from "openid-client";
 import { z } from "zod";
 
+export const LINKEDIN_WEB_FLOW = "linkedin_confidential_code";
+
+// LinkedIn's confidential web flow uses a session-bound, one-use state and
+// client_secret_post, not its separately provisioned native-app PKCE flow.
+// Do not request a nonce that LinkedIn may omit from its returned ID token.
+// ID-token signature, issuer, audience and expiry checks remain mandatory.
+export function linkedInWebGrantChecks(state: string): oidc.AuthorizationCodeGrantChecks {
+  if (!state) throw new Error("Campaign authorization state is missing");
+  return { expectedState: state, idTokenExpected: true };
+}
+
 const identitySchema = z.object({
   sub: z.string().min(1).max(256),
   email: z.string().email().max(254).optional(),
