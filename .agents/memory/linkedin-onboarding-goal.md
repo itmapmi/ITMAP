@@ -5,6 +5,12 @@ description: The user's business goal for converting LinkedIn Lead Gen Form subm
 
 LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their information passed into ITMAP's database, and go directly to the report page already registered, without completing another registration or password form.
 
+**Latest destination and timer requirement:** The user subsequently described arrival on the markets page, automatic registration using the form email, background profile completion, no registration-timer popup, and direct logged-in arrival. Verification email may be sent in the background.
+
+**Why:** The user explicitly described this desired workflow after rejecting inbox and LinkedIn sign-in steps.
+
+**How to apply:** Use the markets page for the latest proposed arrival flow rather than assuming the earlier report destination still applies. Do not mistake suppressing the anonymous timer for authenticating a visitor; full logged-in arrival still requires a supported identity handoff.
+
 **Why:** The user wants to run a LinkedIn campaign with minimal registration friction.
 
 **How to apply:** Evaluate onboarding designs against this goal. Do not confuse automatic account registration with establishing an authenticated browser session.
