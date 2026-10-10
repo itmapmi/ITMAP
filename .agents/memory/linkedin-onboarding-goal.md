@@ -33,6 +33,12 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
 
+**Normal signup boundary:** The user does not want users to log in through LinkedIn like Gmail and does not need a LinkedIn button in the normal signup flow.
+
+**Why:** The user explicitly clarified this while distinguishing Lead Sync from LinkedIn sign-in.
+
+**How to apply:** Preserve ordinary signup and do not add a LinkedIn login button. Explain that Lead Sync authorization belongs to the advertiser/integration; it does not establish a visitor's ITMAP browser session. Do not assume a campaign-only LinkedIn authorization handoff is acceptable without clarifying it.
+
 **Provider identity constraint:** LinkedIn lead responses expose a submitter person URN for non-guest leads, but person IDs are application-scoped and OIDC subjects are pairwise. A bridge's member identifier must not be assumed to match ITMAP's sign-in identifier. Work email may also differ from the sign-in primary email.
 
 **Why:** Official LinkedIn Lead Sync schema, Profile API, and OIDC documentation establish these constraints; unsafe correlation could populate the wrong user's profile or grant access without a matched submission.
