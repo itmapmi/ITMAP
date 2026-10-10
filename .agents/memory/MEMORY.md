@@ -63,4 +63,4 @@
 - [Translation import validation](translation-import-validation.md) — a zero-write translation upload must fail visibly; an invalid language must never fall through to the English market-data import.
 - [Market page translation boundary](market-page-translation-boundary.md) — translate public market copy as an overlay; keep English identities for URLs and never send private reports to a translation provider.
 - [LinkedIn onboarding goal](linkedin-onboarding-goal.md) — LinkedIn submission should lead directly to the report, already registered; email is secondary.
-- [Production schema verification](production-schema-verification.md) — a successful publish can still leave schema additions unapplied; verify production independently.
+- [Production schema verification](production-schema-verification.md) — user reports republishing does not apply prod schema; verify independently rather than repeating republish advice.
