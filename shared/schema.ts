@@ -129,6 +129,24 @@ export const userActivityLogs = pgTable("user_activity_logs", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const linkedInLeadNotifications = pgTable("linkedin_lead_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deliveryKey: text("delivery_key").notNull().unique(),
+  sourceClientId: text("source_client_id").notNull(),
+  campaignSlug: text("campaign_slug").notNull(),
+  notification: jsonb("notification").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  status: text("status").notNull().default("queued"),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  lastError: text("last_error"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+}, (table) => ({
+  dueIndex: index("linkedin_lead_notifications_due_idx").on(table.status, table.nextAttemptAt),
+}));
+
 export const markets = pgTable("markets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),

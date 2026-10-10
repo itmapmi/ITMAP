@@ -3,6 +3,12 @@ name: LinkedIn campaign onboarding goal
 description: The user's business goal for converting LinkedIn Lead Gen Form submissions into ITMAP users.
 ---
 
+**Lead delivery choice:** Use direct LinkedIn Lead Sync through the ITMAP developer app rather than Make or Zapier.
+
+**Why:** The user explicitly selected direct Lead Sync after discussing same-app permissions and member matching.
+
+**How to apply:** Use the native subscription/notification and lead-response APIs. Keep advertiser Lead Sync authorization separate from visitor OIDC authorization; neither app approval nor using one app proves that live member identifiers correlate.
+
 LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their information passed into ITMAP's database, and go directly to the report page already registered, without completing another registration or password form.
 
 **Why:** The user wants to run a LinkedIn campaign with minimal registration friction.

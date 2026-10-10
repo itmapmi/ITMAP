@@ -36,6 +36,7 @@ export const campaignConfigSchema = z.object({
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/),
   formUrn: leadDeliverySchema.shape.formUrn,
   sourceClientId: z.string().min(1).max(128),
+  sponsoredAccountUrn: z.string().regex(/^urn:li:sponsoredAccount:\d+$/).optional(),
   questionIds: questionMap,
   requiredConsentIds: z.array(z.number().int().nonnegative()).max(20),
 }).strict();

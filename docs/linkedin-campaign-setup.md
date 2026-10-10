@@ -2,14 +2,16 @@
 
 ## Current status
 
-The lead receiver and campaign-only OpenID Connect routes are implemented.
+The native Lead Sync webhook, durable notification inbox/retry worker,
+lead-response retrieval, mock lead receiver, and campaign-only OpenID Connect
+routes are implemented.
 Normal ITMAP signup and Google sign-in are unchanged. There is no LinkedIn
 button on the normal signup page.
 
 **This is not a live onboarding flow yet.** The callback validates LinkedIn
 authorization but intentionally does not create an ITMAP login session, associate
 a submitted profile, or grant buyer access. Reliable live lead-to-member
-correlation, account reuse, late-delivery handling, and buyer onboarding policy
+correlation, account reuse, browser handoff for delayed leads, and buyer onboarding policy
 must be completed and verified before activation.
 
 ## Credentials and LinkedIn app
@@ -23,8 +25,13 @@ Supply these using secure workspace credential setup, never chat:
 
 - `LINKEDIN_CLIENT_ID`
 - `LINKEDIN_CLIENT_SECRET`
-- `LINKEDIN_LEAD_WEBHOOK_SECRET` — a separate random secret of at least 32 characters,
-  shared only with the authorized lead-delivery bridge.
+- `LINKEDIN_LEAD_SYNC_ACCESS_TOKEN` — advertiser authorization issued through
+  this same ITMAP app with `r_marketing_leadgen_automation`. This is separate
+  from a campaign visitor's OIDC token and requires approval plus the advertiser's
+  appropriate ad-account/company-page roles. Configure after approval, not now.
+  Expired/revoked tokens require renewed advertiser authorization.
+- `LINKEDIN_LEAD_WEBHOOK_SECRET` — optional, only for the normalized mock/bridge
+  receiver. It is not needed by the selected native Lead Sync integration.
 
 Non-secret settings:
 
@@ -34,6 +41,11 @@ Non-secret settings:
   untrusted request header.
 - `LINKEDIN_CAMPAIGNS_JSON` — an array of campaign configurations (below). Keep
   this server-controlled, not a visitor-provided configuration.
+- `LINKEDIN_LEAD_SYNC_VERSION` — supported API version as `YYYYMM`; verify it
+  with LinkedIn and maintain it before that version is retired.
+- `LINKEDIN_LEAD_SYNC_ENABLED` — only literal `true` enables the native retrieval
+  worker. Leave unset during review. This flag does **not** enable account
+  onboarding; that remains unimplemented/disabled.
 
 Missing configuration fails closed. Do not use production credentials to invent
 mock approval or activate unverified matching.
@@ -48,6 +60,8 @@ Each configuration has:
   `urn:li:versionedLeadGenForm:(urn:li:leadGenForm:123,1)`.
 - `sourceClientId`: actual developer app that fetches the lead, not an arbitrary
   identity label. Set after checking the bridge's authorization.
+- `sponsoredAccountUrn`: required for native sponsored campaigns; the exact
+  `urn:li:sponsoredAccount:<id>` authorized by the advertiser.
 - `questionIds`: distinct stable LinkedIn question IDs for `firstName`,
   `lastName`, `companyEmail`, `companyName`, and `designation`.
 - `requiredConsentIds`: the LinkedIn consent IDs required by the approved form.
@@ -57,7 +71,41 @@ Visible profile labels should be First name, Last name, Work email, Company name
 and Job title. `designation` is ITMAP's existing storage name for Job title.
 The work email does not necessarily equal LinkedIn's primary sign-in email.
 
-## Lead-delivery endpoint
+## Native delivery — selected approach
+
+`GET`/`POST /api/campaigns/linkedin/webhook`
+
+- GET answers LinkedIn's UUID challenge with the client-secret HMAC response.
+- POST checks `X-LI-Signature` against **`hmacsha256=` plus the original raw body**.
+  The header itself contains only the hex digest. Native payloads are capped at
+  32 KiB and parsed separately from ordinary JSON requests.
+- Only configured sponsored account/form scopes from the ITMAP app are accepted.
+- Signed notifications are queued durably before `202`; exact retries receive
+  `200`. They are references, not complete lead profiles.
+- The worker retrieves profiles from the documented owner finder at LinkedIn's
+  fixed API origin, validates them, and stores independent lead records.
+- Notification deduplication includes the action timestamp because a member/form
+  can reuse the same lead URN across submissions.
+- Failed retrieval retries with backoff, then enters a failed state after eight
+  processing attempts. It is not silently acknowledged as completed.
+- Deleted-lead notifications remove only imported lead records, not ITMAP accounts.
+  Tombstones prevent a delayed creation notification from restoring older data.
+- Notifications do **not** create users, send login tokens, or establish sessions.
+
+After approval, create subscriptions through `/rest/leadNotifications` using the
+advertiser's authorized connection, configured owner/form, and published HTTPS
+webhook URL. Lead Sync subscriptions are **not** created in the developer
+portal's generic Webhooks tab. Subscription creation is not automated yet.
+
+Admin-only delivery diagnostics:
+
+- `GET /api/admin/campaigns/linkedin/status`
+- `POST /api/admin/campaigns/linkedin/notifications/:id/retry` for failed events.
+
+These endpoints expose configuration existence/status only, not credentials or
+lead profiles. They do not yet have an admin UI.
+
+## Normalized mock/bridge receiver — not the native subscription URL
 
 `POST /api/campaigns/linkedin/leads`
 
@@ -102,7 +150,7 @@ different protocols.
 
 ## Database and activation
 
-The independent `linkedin_campaign_leads` table is additive. Apply the schema to
+The independent lead and notification tables are additive. Apply the schema to
 development through the normal development schema process. Publishing handles
 the managed production schema; do not add startup or production migration scripts.
 

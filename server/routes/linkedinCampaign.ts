@@ -3,7 +3,8 @@ import * as oidc from "openid-client";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { linkedInCampaignLeads } from "@shared/schema";
-import { registerLeadIngress } from "../linkedin/ingress";
+import { registerLeadIngress, type LeadRepository } from "../linkedin/ingress";
+import { registerNativeLeadDelivery } from "../linkedin/pipeline";
 import { parseCampaigns } from "../linkedin/lead";
 import {
   getLinkedInConfiguration, linkedInRedirectUri, validatedLinkedInIdentity,
@@ -15,11 +16,7 @@ const campaigns = () => parseCampaigns(process.env.LINKEDIN_CAMPAIGNS_JSON);
 // These routes are campaign-only. There is deliberately no normal signup
 // button, public email query parameter, or general LinkedIn sign-in endpoint.
 export function registerLinkedInCampaignRoutes(app: Express) {
-  registerLeadIngress(app, {
-    campaigns,
-    secret: () => process.env.LINKEDIN_LEAD_WEBHOOK_SECRET,
-    production: () => process.env.NODE_ENV === "production",
-    repository: {
+  const repository: LeadRepository = {
       async receive(lead, campaign, profile, fingerprint) {
         const inserted = await db.insert(linkedInCampaignLeads).values({
           sourceClientId: campaign.sourceClientId,
@@ -43,7 +40,13 @@ export function registerLinkedInCampaignRoutes(app: Express) {
           )).limit(1);
         return existing?.fingerprint === fingerprint ? "duplicate" : "conflict";
       },
-    },
+  };
+  registerNativeLeadDelivery(app, campaigns, repository);
+  registerLeadIngress(app, {
+    campaigns,
+    secret: () => process.env.LINKEDIN_LEAD_WEBHOOK_SECRET,
+    production: () => process.env.NODE_ENV === "production",
+    repository,
   });
 
   app.get("/auth/linkedin/campaign/:slug", async (req, res) => {
