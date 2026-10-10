@@ -99,5 +99,8 @@ PUBLIC_BASE_URL = "https://itmap.ai"
 [userenv.production]
 PRIMARY_DOMAIN = "itmap.ai"
 
+[userenv.development]
+LINKEDIN_REDIRECT_URI = "https://c340604c-5721-42e2-9455-6060a3539512-00-2db2gks07t8ke.sisko.replit.dev/auth/linkedin/callback"
+
 [objectStorage]
 defaultBucketID = "replit-objstore-eecbc4ab-69aa-485e-9419-470dc87d40d9"
