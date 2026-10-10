@@ -16,3 +16,9 @@ Do not confuse authenticated member identity with optional profile availability 
 **Why:** Production token/security checks passed while application profile parsing rejected the response. Making optional profile data a prerequisite for authentication conflicts with the approved immediate-access-before-profile policy.
 
 **How to apply:** Keep the signed member identifier mandatory, omit/report malformed optional fields without their values, and enrich only from subject-matched UserInfo. Never coerce truthy strings or numbers into verified email proof or use mismatched UserInfo for account linking.
+
+The owner confirmed that the campaign-only sign-in works after separating signed identity from optional profile parsing.
+
+**Why:** This is a confirmed live approach, not only a synthetic provider test.
+
+**How to apply:** Preserve this separation in future validation changes. Successful OIDC sign-in is not proof that Lead Sync person identifiers match the sign-in subject.

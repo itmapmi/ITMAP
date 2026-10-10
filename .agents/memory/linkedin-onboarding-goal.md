@@ -63,6 +63,12 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
 
+**Leadgen summary requirement:** LinkedIn basic profile details and the later matched Lead Gen Form profile should appear in the top user-account summary in Lead-Gen Activity Intelligence.
+
+**Why:** The user explicitly requested this after confirming campaign sign-in works.
+
+**How to apply:** Display stored profile data on the same securely linked user account; do not create a separate LinkedIn lead identity or infer missing company details.
+
 **LinkedIn sign-in boundary:** Normal signup must not have a LinkedIn button. The user subsequently approved campaign-only LinkedIn authorization and accepted a first-time LinkedIn permission screen. They still reject an email-link/code claim step and repeat email entry.
 
 **Why:** After initially rejecting LinkedIn sign-in, the user explicitly selected "Yes—use campaign-only LinkedIn authorization" when the first-time consent screen and unchanged normal signup were explained.
