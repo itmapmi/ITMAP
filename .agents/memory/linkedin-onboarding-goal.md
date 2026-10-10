@@ -26,3 +26,9 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 **Why:** The user explicitly rejected a report-only campaign exception and said these users provide all the details normally needed for full access.
 
 **How to apply:** Do not restrict the campaign policy to the selected report or require another profile/email step to unlock other normal buyer features. Keep email secondary and preserve role-specific/private-data authorization.
+
+**Identical profile information requirement:** The LinkedIn form must map to the ITMAP profile form after signup; the user said they should be identical.
+
+**Why:** The user explicitly requested this mapping.
+
+**How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
