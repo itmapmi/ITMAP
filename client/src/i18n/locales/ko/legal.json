@@ -245,8 +245,6 @@
     },
     "sharing": {
       "heading": "5. 정보 공유 방법",
-      "vendorTitle": "기술 벤더.",
-      "vendorText": "약관에 명시된 대로, ITMAP에서 벤더의 시장이나 제품에 참여할 때 귀하의 이름, 회사 이름, 직책 및 비즈니스 이메일 주소를 해당 벤더와 공유할 수 있으며, 벤더는 귀하에게 연락할 수 있습니다. 언제든지 이메일을 통해 이 동의를 철회할 수 있습니다.",
       "googleTitle": "Google LLC.",
       "googleBeforeLink": "Google로 로그인을 선택하면, Google은",
       "googleLink": "Google 개인정보 보호정책",
