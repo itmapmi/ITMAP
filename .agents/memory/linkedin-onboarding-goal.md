@@ -32,3 +32,9 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 **Why:** The user explicitly requested this mapping.
 
 **How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
+
+**Provider identity constraint:** LinkedIn lead responses expose a submitter person URN for non-guest leads, but person IDs are application-scoped and OIDC subjects are pairwise. A bridge's member identifier must not be assumed to match ITMAP's sign-in identifier. Work email may also differ from the sign-in primary email.
+
+**Why:** Official LinkedIn Lead Sync schema, Profile API, and OIDC documentation establish these constraints; unsafe correlation could populate the wrong user's profile or grant access without a matched submission.
+
+**How to apply:** Prove lead-to-sign-in correlation using actual provider evidence before activating campaign onboarding. Make documents custom client credentials for its LinkedIn Lead Forms connection, which is a potential same-app route, not proof that the identifiers match. Own-app Lead Sync access requires separate LinkedIn approval. Do not substitute names, shared CTA URLs, or inferred email ownership.
