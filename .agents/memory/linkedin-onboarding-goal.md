@@ -51,11 +51,11 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
 
-**LinkedIn sign-in boundary:** The user does not want users to log in through LinkedIn like Gmail and does not need a LinkedIn button in the normal signup flow. They also explicitly rejected an email-link/code claim step and selected keeping the no-inbox, no-LinkedIn-sign-in requirement for the campaign.
+**LinkedIn sign-in boundary:** Normal signup must not have a LinkedIn button. The user subsequently approved campaign-only LinkedIn authorization and accepted a first-time LinkedIn permission screen. They still reject an email-link/code claim step and repeat email entry.
 
-**Why:** The user explicitly clarified this while distinguishing Lead Sync from LinkedIn sign-in, then reaffirmed both exclusions when asked about claiming the campaign account.
+**Why:** After initially rejecting LinkedIn sign-in, the user explicitly selected "Yes—use campaign-only LinkedIn authorization" when the first-time consent screen and unchanged normal signup were explained.
 
-**How to apply:** Preserve ordinary signup, do not add a LinkedIn login button or campaign-only LinkedIn authorization handoff, and do not substitute a mandatory email link/code. Lead Sync authorization belongs to the advertiser/integration; it does not establish a visitor's ITMAP browser session. Treat first-time authenticated arrival via the shared native form CTA as blocked unless a supported person-specific handoff is proven or the user explicitly changes a constraint.
+**How to apply:** Preserve ordinary signup and keep LinkedIn authorization confined to the campaign completion handoff. Do not substitute a mandatory email link/code or ask for another email. Explain that authorization may show consent/login rather than being universally invisible, and still prove lead-to-member correlation before populating a profile or granting campaign buyer access.
 
 **Provider identity constraint:** LinkedIn lead responses expose a submitter person URN for non-guest leads, but person IDs are application-scoped and OIDC subjects are pairwise. A bridge's member identifier must not be assumed to match ITMAP's sign-in identifier. Work email may also differ from the sign-in primary email.
 

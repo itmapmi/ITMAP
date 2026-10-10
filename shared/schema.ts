@@ -95,6 +95,28 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Independent campaign submissions: receiving a lead is not account creation
+// or browser authentication. Provider subject correlation is verified later.
+export const linkedInCampaignLeads = pgTable("linkedin_campaign_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceClientId: text("source_client_id").notNull(),
+  leadId: text("lead_id").notNull(),
+  campaignSlug: text("campaign_slug").notNull(),
+  formUrn: text("form_urn").notNull(),
+  submitterUrn: text("submitter_urn"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
+  testLead: boolean("test_lead").notNull(),
+  profile: jsonb("profile").notNull(),
+  consentResponses: jsonb("consent_responses").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  matchedUserId: varchar("matched_user_id").references(() => users.id),
+  matchedAt: timestamp("matched_at", { withTimezone: true }),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("linkedin_campaign_leads_delivery_unique").on(table.sourceClientId, table.leadId),
+  index("linkedin_campaign_leads_match_idx").on(table.campaignSlug, table.submitterUrn),
+]);
+
 export const userActivityLogs = pgTable("user_activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
