@@ -14,3 +14,9 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 **Why:** The user explicitly clarified that report access must follow LinkedIn submission directly, not an email-link visit.
 
 **How to apply:** Do not make an email click a prerequisite for the primary report experience. Explain any browser-identity handoff limits before committing to an implementation.
+
+**Authenticated arrival requirement:** The visitor must also be signed in when the report opens. Creating an account in the background while showing an anonymous report does not satisfy the goal.
+
+**Why:** The user explicitly selected the option requiring sign-in on arrival.
+
+**How to apply:** Evaluate the browser-session handoff as well as account registration. Do not present background registration alone as completion of this flow.
