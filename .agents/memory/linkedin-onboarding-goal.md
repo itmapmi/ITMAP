@@ -20,3 +20,9 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 **Why:** The user explicitly selected the option requiring sign-in on arrival.
 
 **How to apply:** Evaluate the browser-session handoff as well as account registration. Do not present background registration alone as completion of this flow.
+
+**Full buyer access requirement:** LinkedIn campaign users providing all required profile details should receive access to everything available to a normal completed-profile buyer, without further gates. The advertised report is the first destination, not the limit of their access.
+
+**Why:** The user explicitly rejected a report-only campaign exception and said these users provide all the details normally needed for full access.
+
+**How to apply:** Do not restrict the campaign policy to the selected report or require another profile/email step to unlock other normal buyer features. Keep email secondary and preserve role-specific/private-data authorization.
