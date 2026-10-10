@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { randomUUID } from "node:crypto";
 import * as oidc from "openid-client";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
@@ -10,8 +11,10 @@ import { CampaignAccountDenied, grantCampaignAccount } from "../linkedin/account
 import { scheduleCampaignProfile, startPendingCampaignProfiles } from "../linkedin/profiles";
 import { establishSession } from "./auth";
 import { parseCampaigns } from "../linkedin/lead";
+import { campaignFailureDiagnostic, type CampaignCallbackStage } from "../linkedin/errors";
 import {
   getLinkedInConfiguration, linkedInRedirectUri, validatedLinkedInIdentity,
+  LINKEDIN_WEB_FLOW, linkedInWebGrantChecks,
 } from "../linkedin/oidc";
 
 const HANDOFF_TTL_MS = 10 * 60 * 1000;
@@ -70,34 +73,31 @@ export function registerLinkedInCampaignRoutes(app: Express) {
       const redirectUri = linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI);
       if (!redirectUri) return res.status(503).send("Campaign authorization is not configured yet.");
       const config = await getLinkedInConfiguration();
-      const verifier = oidc.randomPKCECodeVerifier();
       const state = oidc.randomState();
-      const nonce = oidc.randomNonce();
       (req.session as any).linkedInCampaignHandoff = {
-        campaignSlug, state, nonce, verifier, redirectUri,
+        campaignSlug, state, flow: LINKEDIN_WEB_FLOW, redirectUri,
         clientId: process.env.LINKEDIN_CLIENT_ID, createdAt: Date.now(),
       };
       delete (req.session as any).linkedInPendingIdentity;
-      const challenge = await oidc.calculatePKCECodeChallenge(verifier);
       const url = oidc.buildAuthorizationUrl(config, {
         redirect_uri: redirectUri,
         scope: "openid profile email",
-        state, nonce,
-        code_challenge: challenge,
-        code_challenge_method: "S256",
+        state,
       });
       req.session.save((error) => {
         if (error) return res.status(503).send("Could not start campaign authorization. Please retry.");
         res.redirect(url.href);
       });
-    } catch {
-      console.error("[LinkedIn] Campaign authorization could not start");
+    } catch (error) {
+      console.error("[LinkedIn] Campaign authorization could not start",
+        campaignFailureDiagnostic("configuration", error));
       res.status(503).send("Campaign authorization is unavailable. Please retry later.");
     }
   });
 
   app.get("/auth/linkedin/callback", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Referrer-Policy", "no-referrer");
     const session = req.session as any;
     const handoff = session?.linkedInCampaignHandoff;
     delete session?.linkedInCampaignHandoff;
@@ -107,27 +107,29 @@ export function registerLinkedInCampaignRoutes(app: Express) {
     if (!handoff || Date.now() - handoff.createdAt > HANDOFF_TTL_MS) {
       return res.status(400).send("This authorization has expired. Return to the campaign link and retry.");
     }
+    let stage: CampaignCallbackStage = "handoff_save";
     try {
       await new Promise<void>((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()));
+      stage = "configuration";
       if (process.env.LINKEDIN_CAMPAIGN_LOGIN_ENABLED !== "true" ||
           !campaignLoginAllowed(handoff.campaignSlug) ||
           !handoff.clientId || handoff.clientId !== process.env.LINKEDIN_CLIENT_ID ||
+          handoff.flow !== LINKEDIN_WEB_FLOW ||
           handoff.redirectUri !== linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI)) {
         return res.status(400).send("Campaign configuration changed. Return to the campaign link.");
       }
       const callback = new URL(handoff.redirectUri);
       callback.search = new URL(req.originalUrl, callback.origin).search;
       const config = await getLinkedInConfiguration();
-      const tokens = await oidc.authorizationCodeGrant(config, callback, {
-        expectedState: handoff.state,
-        expectedNonce: handoff.nonce,
-        pkceCodeVerifier: handoff.verifier,
-        idTokenExpected: true,
-      });
+      stage = "token_exchange";
+      const tokens = await oidc.authorizationCodeGrant(config, callback, linkedInWebGrantChecks(handoff.state));
+      stage = "identity_validation";
       const identity = validatedLinkedInIdentity(tokens.claims());
+      stage = "account_link";
       const account = await grantCampaignAccount(handoff.clientId, handoff.campaignSlug, identity);
       // req.logIn regenerates the session; no provider token or auth code is
       // retained. The authenticated buyer enters without waiting for Lead Sync.
+      stage = "session_creation";
       await establishSession(req, res, account.user, {
         context: account.created ? "signup" : "login", method: "linkedin",
       });
@@ -138,8 +140,10 @@ export function registerLinkedInCampaignRoutes(app: Express) {
         return res.status(403).send(error.message);
       }
       // Do not log provider errors containing URLs, codes, tokens, or claims.
-      console.warn("[LinkedIn] Campaign authorization was not completed");
-      res.status(400).send("LinkedIn authorization was not completed. Return to the campaign link to retry.");
+      const reference = randomUUID();
+      console.warn("[LinkedIn] Campaign authorization was not completed",
+        { reference, ...campaignFailureDiagnostic(stage, error) });
+      res.status(400).send(`LinkedIn authorization was not completed. Return to the campaign link to retry. Reference: ${reference}`);
     }
   });
 }

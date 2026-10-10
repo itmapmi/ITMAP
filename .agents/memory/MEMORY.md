@@ -64,3 +64,4 @@
 - [Market page translation boundary](market-page-translation-boundary.md) — translate public market copy as an overlay; keep English identities for URLs and never send private reports to a translation provider.
 - [LinkedIn onboarding goal](linkedin-onboarding-goal.md) — LinkedIn submission should lead directly to the report, already registered; email is secondary.
 - [Production schema verification](production-schema-verification.md) — user reports republishing does not apply prod schema; verify independently rather than repeating republish advice.
+- [LinkedIn web OIDC compatibility](linkedin-web-oidc-compatibility.md) — web login uses confidential code flow; generic native PKCE/mandatory nonce can fail while signed-token checks must stay.

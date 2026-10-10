@@ -48,7 +48,8 @@ vi.mock("openid-client", async (original) => {
     authorizationCodeGrant: async (_config: unknown, url: URL, checks: Record<string, unknown>) => {
       if (url.searchParams.get("state") !== checks.expectedState ||
           url.searchParams.get("code") !== "synthetic-valid-code" ||
-          !checks.expectedNonce || !checks.pkceCodeVerifier || checks.idTokenExpected !== true) {
+          checks.expectedNonce !== undefined || checks.pkceCodeVerifier !== undefined ||
+          checks.idTokenExpected !== true) {
         throw new Error("Synthetic authorization rejected");
       }
       return { claims: () => mocked.claims };
@@ -183,9 +184,13 @@ describe("campaign-only HTTP session handoff", () => {
     const before = await browser.get("/test/session");
     const authorization = new URL(start.headers.location);
     expect(authorization.searchParams.get("scope")).toBe("openid profile email");
+    expect(authorization.searchParams.has("nonce")).toBe(false);
+    expect(authorization.searchParams.has("code_challenge")).toBe(false);
+    expect(authorization.searchParams.has("code_challenge_method")).toBe(false);
     const state = authorization.searchParams.get("state");
     const callback = await browser.get(`/auth/linkedin/callback?code=synthetic-valid-code&state=${state}`);
     expect(callback.status).toBe(302);
+    expect(callback.headers["referrer-policy"]).toBe("no-referrer");
     expect(callback.headers.location).toBe("/markets");
     const after = await browser.get("/test/session");
     expect(after.body.id).not.toBe(before.body.id);

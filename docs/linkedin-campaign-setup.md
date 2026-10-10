@@ -8,8 +8,9 @@ routes are implemented.
 Normal ITMAP signup and Google sign-in are unchanged. There is no LinkedIn
 button on the normal signup page.
 
-**This is not published or activated in production yet.** When explicitly
-enabled, the callback validates LinkedIn authorization, safely creates/reuses a
+**Campaign login is implemented; verify the real provider roundtrip after each
+callback change before launching ads.** When explicitly enabled, the callback
+validates LinkedIn authorization, safely creates/reuses a
 buyer account, regenerates the ITMAP session, grants normal buyer access and
 redirects to `/markets` without waiting for a lead.
 
@@ -111,6 +112,25 @@ The work email does not necessarily equal LinkedIn's primary sign-in email.
 - Notifications do **not** create users, send login tokens, or establish sessions.
 
 ## Immediate buyer session and background profile policy
+
+### LinkedIn web-flow compatibility
+
+Use LinkedIn's confidential authorization-code web flow with server-side
+`client_secret_post`, a random session-bound state, and a required signed ID
+token. LinkedIn's native-app PKCE setup is a separate integration. Do not
+universally add PKCE or request a nonce that its web ID token may omit.
+The callback still verifies state, RSA signature, issuer, audience and expiry;
+it does not accept unsigned tokens or merely decoded JWTs. Old-flow handoffs
+are rejected and must restart through the campaign URL.
+
+Callback failures report a random reference plus allowlisted stage/error/claim
+categories. Do not log full errors, authorization URLs, response bodies,
+credentials, authorization codes or claim values.
+
+References:
+- [LinkedIn authorization-code web flow](https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow)
+- [LinkedIn OIDC](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2)
+- [Reported PKCE/nonce compatibility issue](https://github.com/directus/directus/issues/26743)
 
 - Buyer access comes from validated campaign OIDC, not a submitted email or a
   client-visible flag. Accounts are keyed by developer-app ID plus subject.
