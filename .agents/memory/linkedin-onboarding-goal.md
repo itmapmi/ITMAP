@@ -63,6 +63,12 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Keep the captured profile fields aligned and populate the ITMAP profile from the submitted answers without asking the visitor to enter them again.
 
+**Optional Industry requirement:** Industry should be included end to end in the ITMAP profile, LinkedIn form mapping and Leadgen account header, but remain optional.
+
+**Why:** The user explicitly approved adding Industry end to end as optional.
+
+**How to apply:** Do not introduce an Industry access gate or require it on older campaign forms. Use submitted answers, not inferred company sectors.
+
 **Leadgen summary requirement:** LinkedIn basic profile details and the later matched Lead Gen Form profile should appear in the top user-account summary in Lead-Gen Activity Intelligence.
 
 **Why:** The user explicitly requested this after confirming campaign sign-in works.

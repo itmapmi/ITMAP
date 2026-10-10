@@ -39,9 +39,18 @@ export function normalizeProviderLead(raw: unknown, campaign: CampaignConfig): L
     submitterUrn: row.submitter ?? null,
     submittedAt: new Date(row.submittedAt).toISOString(),
     testLead: row.testLead,
-    answers: row.formResponse.answers.flatMap((a) => a.answerDetails.textQuestionAnswer
-      ? [{ questionId: a.questionId, value: a.answerDetails.textQuestionAnswer.answer }]
-      : []),
+    answers: row.formResponse.answers.flatMap((a) => {
+      if (a.answerDetails.textQuestionAnswer) {
+        return [{ questionId: a.questionId, value: a.answerDetails.textQuestionAnswer.answer }];
+      }
+      if (a.questionId !== campaign.questionIds.industry) return [];
+      const options = a.answerDetails.multipleChoiceAnswer?.options ?? [];
+      if (!options.length) return [];
+      // Resolve choices only against the exact labels configured for this form.
+      const label = options.length === 1 ? campaign.industryOptions?.[String(options[0])] : undefined;
+      if (!label) throw new Error("Industry option is not mapped for this form");
+      return [{ questionId: a.questionId, value: label }];
+    }),
     consentResponses: row.formResponse.consentResponses.map((c) => ({
       id: c.consentId, accepted: c.accepted,
     })),

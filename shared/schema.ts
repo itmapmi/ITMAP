@@ -87,6 +87,7 @@ export const users = pgTable("users", {
   // replaces the login `email`.
   companyName: text("company_name"),
   designation: text("designation"),
+  industry: text("industry"),
   companyEmail: text("company_email"),
   companyEmailVerified: boolean("company_email_verified").notNull().default(false),
   companyEmailVerificationToken: text("company_email_verification_token"),

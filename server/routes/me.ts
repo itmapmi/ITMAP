@@ -18,6 +18,7 @@
  */
 import type { Express } from "express";
 import { z } from "zod";
+import { optionalIndustrySchema } from "@shared/company-profile";
 import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
@@ -125,6 +126,7 @@ export function registerMeRoutes(app: Express): void {
   const companyProfileView = (user: any) => ({
     companyName: user.companyName ?? null,
     designation: user.designation ?? null,
+    industry: user.industry ?? null,
     companyEmail: user.companyEmail ?? null,
     companyEmailVerified: !!user.companyEmailVerified,
     companyEmailVerificationSentAt: user.companyEmailVerificationSentAt ?? null,
@@ -144,6 +146,7 @@ export function registerMeRoutes(app: Express): void {
   const companyProfileSchema = z.object({
     companyName: z.string().trim().min(2, "Company name is required").max(120),
     designation: z.string().trim().min(2, "Designation is required").max(120),
+    industry: optionalIndustrySchema,
     companyEmail: z.string().trim().toLowerCase().email("Enter a valid company email").max(254),
   });
 
@@ -154,7 +157,7 @@ export function registerMeRoutes(app: Express): void {
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid profile" });
       }
-      const { companyName, designation, companyEmail } = parsed.data;
+      const { companyName, designation, companyEmail, industry } = parsed.data;
 
       if (isConsumerEmailDomain(companyEmail)) {
         return res.status(400).json({
@@ -178,7 +181,7 @@ export function registerMeRoutes(app: Express): void {
       const withinCooldown = sameEmail && !previouslyVerified &&
         resendCooldownRemainingMs(user.companyEmailVerificationSentAt) > 0;
 
-      const updated = await storage.updateCompanyProfile(user.id, { companyName, designation, companyEmail });
+      const updated = await storage.updateCompanyProfile(user.id, { companyName, designation, companyEmail, industry });
       (req as any).user = updated;
 
       // Saving an already-verified address (e.g. editing only the job title)

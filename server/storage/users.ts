@@ -158,7 +158,7 @@ export async function getUserWithVerifiedCompanyEmail(companyEmail: string): Pro
 // fresh verification email. An unchanged address keeps its verified state.
 export async function updateCompanyProfile(
   id: string,
-  updates: { companyName: string; designation: string; companyEmail: string },
+  updates: { companyName: string; designation: string; companyEmail: string; industry?: string | null },
 ): Promise<User> {
   const [current] = await db.select().from(users).where(eq(users.id, id));
   const emailChanged = (current?.companyEmail ?? "").toLowerCase() !== updates.companyEmail.toLowerCase();
@@ -167,6 +167,7 @@ export async function updateCompanyProfile(
     .set({
       companyName: updates.companyName,
       designation: updates.designation,
+      ...(updates.industry !== undefined && { industry: updates.industry }),
       companyEmail: updates.companyEmail,
       ...(emailChanged && {
         companyEmailVerified: false,

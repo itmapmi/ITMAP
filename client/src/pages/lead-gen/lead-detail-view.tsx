@@ -24,6 +24,7 @@ interface LeadDetail {
     email: string | null;
     companyName: string | null;
     designation: string | null;
+    industry: string | null;
     companyEmail: string | null;
     companyEmailVerified: boolean;
   };
@@ -147,6 +148,7 @@ export default function LeadDetailView({ userId, apiBase, backHref, backLabel, v
   const sparkData = data.activityByDay.map((d) => d.count);
   const companyName = data.user.companyName?.trim();
   const designation = data.user.designation?.trim();
+  const industry = data.user.industry?.trim();
   const companyEmail = data.user.companyEmail?.trim();
 
   // Sort type breakdown by intent weight (high-value actions first), then count.
@@ -179,7 +181,7 @@ export default function LeadDetailView({ userId, apiBase, backHref, backLabel, v
               <BandBadge band={data.intent.band} />
             </div>
             {data.user.email && <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-400"><Mail className="h-3.5 w-3.5 shrink-0" /> <span className="break-all">{data.user.email}</span></p>}
-            {(companyName || designation || companyEmail) && (
+            {(companyName || designation || industry || companyEmail) && (
               <dl className="mt-4 grid gap-3 border-t border-white/10 pt-3 text-sm sm:grid-cols-2" data-testid="lead-company-profile">
                 {companyName && (
                   <div className="min-w-0">
@@ -191,6 +193,12 @@ export default function LeadDetailView({ userId, apiBase, backHref, backLabel, v
                   <div className="min-w-0">
                     <dt className="text-xs text-slate-500">Designation</dt>
                     <dd className="mt-0.5 break-words text-slate-200" data-testid="lead-designation">{designation}</dd>
+                  </div>
+                )}
+                {industry && (
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-500">Industry</dt>
+                    <dd className="mt-0.5 break-words text-slate-200" data-testid="lead-industry">{industry}</dd>
                   </div>
                 )}
                 {companyEmail && (

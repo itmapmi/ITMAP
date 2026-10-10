@@ -36,6 +36,22 @@ const sample = () => leadDeliverySchema.parse({
 });
 
 describe("LinkedIn campaign lead contract", () => {
+  it("maps optional industry and accepts absent or blank answers", () => {
+    const config = campaignConfigSchema.parse({
+      ...campaign, questionIds: { ...campaign.questionIds, industry: "60" },
+    });
+    const lead = sample();
+    expect(extractProfile(lead, config).industry).toBeUndefined();
+    lead.answers.push({ questionId: "60", value: "  Financial Services  " });
+    expect(extractProfile(lead, config).industry).toBe("Financial Services");
+    lead.answers[lead.answers.length - 1].value = " ";
+    expect(extractProfile(lead, config).industry).toBeNull();
+    lead.answers[lead.answers.length - 1].value = "x".repeat(121);
+    expect(() => extractProfile(lead, config)).toThrow();
+    expect(() => campaignConfigSchema.parse({
+      ...campaign, questionIds: { ...campaign.questionIds, industry: "10" },
+    })).toThrow();
+  });
   it("maps stable question IDs regardless of question order", () => {
     expect(extractProfile(sample(), campaign)).toEqual({
       firstName: "Example", lastName: "Buyer",

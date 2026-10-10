@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { optionalIndustrySchema } from "@shared/company-profile";
 import { isConsumerEmailDomain } from "@shared/company-email";
 
 // Bridge contract: retain stable LinkedIn question IDs, not translated labels
@@ -28,7 +29,11 @@ const questionMap = z.object({
   companyEmail: z.string().regex(/^\d+$/),
   companyName: z.string().regex(/^\d+$/),
   designation: z.string().regex(/^\d+$/),
-}).strict().refine((value) => new Set(Object.values(value)).size === 5, {
+  industry: z.string().regex(/^\d+$/).optional(),
+}).strict().refine((value) => {
+  const ids = Object.values(value).filter((id) => id !== undefined);
+  return new Set(ids).size === ids.length;
+}, {
   message: "Each profile field needs a different LinkedIn question ID",
 });
 
@@ -38,6 +43,7 @@ export const campaignConfigSchema = z.object({
   sourceClientId: z.string().min(1).max(128),
   sponsoredAccountUrn: z.string().regex(/^urn:li:sponsoredAccount:\d+$/).optional(),
   questionIds: questionMap,
+  industryOptions: z.record(z.string().regex(/^\d+$/), z.string().trim().min(1).max(120)).optional(),
   requiredConsentIds: z.array(z.number().int().nonnegative()).max(20),
 }).strict();
 
@@ -49,6 +55,7 @@ export type LeadProfile = {
   companyEmail: string;
   companyName: string;
   designation: string;
+  industry?: string | null;
 };
 
 export function parseCampaigns(raw: string | undefined): CampaignConfig[] {
@@ -84,19 +91,21 @@ export function extractProfile(lead: LeadDelivery, config: CampaignConfig): Lead
   if (config.requiredConsentIds.some((id) => consents.get(id) !== true)) {
     throw new Error("Required campaign consent is missing");
   }
-  const field = (name: keyof LeadProfile) => answers.get(config.questionIds[name]);
+  const field = (name: Exclude<keyof LeadProfile, "industry">) => answers.get(config.questionIds[name]);
   const profile = z.object({
     firstName: z.string().trim().min(1).max(120),
     lastName: z.string().trim().min(1).max(120),
     companyEmail: z.string().trim().toLowerCase().email().max(254),
     companyName: z.string().trim().min(2).max(120),
     designation: z.string().trim().min(2).max(120),
+    industry: optionalIndustrySchema,
   }).parse({
     firstName: field("firstName"),
     lastName: field("lastName"),
     companyEmail: field("companyEmail"),
     companyName: field("companyName"),
     designation: field("designation"),
+    industry: config.questionIds.industry ? answers.get(config.questionIds.industry) : undefined,
   });
   if (isConsumerEmailDomain(profile.companyEmail)) {
     throw new Error("The form must collect a work email, matching ITMAP profile validation");

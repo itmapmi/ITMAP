@@ -59,6 +59,25 @@ describe("LinkedIn native signature and deduplication protocol", () => {
 });
 
 describe("native provider response retrieval", () => {
+  it("maps industry choice IDs only through the configured form labels", () => {
+    const config = campaignConfigSchema.parse({
+      ...campaign, questionIds: { ...campaign.questionIds, industry: "60" },
+      industryOptions: { "2": "Financial Services" },
+    });
+    const raw = providerLead();
+    const withIndustry = {
+      ...raw, formResponse: {
+        ...raw.formResponse,
+        answers: [...raw.formResponse.answers, {
+          questionId: 60, answerDetails: { multipleChoiceAnswer: { options: [2] } },
+        }],
+      },
+    };
+    expect(normalizeProviderLead(withIndustry, config).answers)
+      .toContainEqual({ questionId: "60", value: "Financial Services" });
+    expect(() => normalizeProviderLead(withIndustry, { ...config, industryOptions: undefined }))
+      .toThrow("Industry option is not mapped");
+  });
   it("normalizes stable numeric question IDs and explicit consent", () => {
     const lead = normalizeProviderLead(providerLead(), campaign);
     expect(lead.leadId).toBe(`synthetic-lead@${notification.occurredAt}`);

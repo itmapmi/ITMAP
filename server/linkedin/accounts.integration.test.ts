@@ -238,13 +238,14 @@ describe("background profile completion safety", () => {
       sourceClientId: "test-client", campaignSlug: "linkedin", leadId: "profile-lead",
       formUrn: "urn:li:versionedLeadGenForm:(urn:li:leadGenForm:123,1)",
       submitterUrn: "urn:li:person:profile-member", submittedAt: new Date(), testLead: false,
-      profile: { firstName: "Submitted", lastName: "Name", companyEmail: "work@example.org", companyName: "Example Company", designation: "Director" },
+      profile: { firstName: "Submitted", lastName: "Name", companyEmail: "work@example.org", companyName: "Example Company", designation: "Director", industry: "Financial Services" },
       consentResponses: [], fingerprint: "synthetic",
     });
     vi.stubEnv("LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED", "true");
     expect(await completeCampaignProfile("test-client", "profile-member", "linkedin")).toEqual({ status: "completed" });
     const [updated] = await db.select().from(users).where(eq(users.id, account.user.id));
     expect(updated.firstName).toBe("Submitted");
+    expect(updated.industry).toBe("Financial Services");
     expect(updated.email).toBe("personal@example.org");
     expect(updated.companyEmail).toBe("work@example.org");
     expect(updated.companyEmailVerified).toBe(false);
@@ -255,6 +256,30 @@ describe("background profile completion safety", () => {
   it("does not claim another subject's lead by name or email", async () => {
     vi.stubEnv("LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED", "true");
     expect(await completeCampaignProfile("test-client", "no-email", "linkedin")).toEqual({ status: "awaiting_lead" });
+    vi.stubEnv("LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED", "false");
+  });
+  it("preserves an edited industry and completes legacy leads without industry", async () => {
+    vi.stubEnv("LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED", "true");
+    for (const editedIndustry of [null, "Healthcare"]) {
+      const subject = editedIndustry ? "edited-industry" : "legacy-industry";
+      const account = await grantCampaignAccount("test-client", "linkedin", identity(subject));
+      await db.update(users).set({ industry: editedIndustry }).where(eq(users.id, account.user.id));
+      await db.insert(linkedInCampaignLeads).values({
+        sourceClientId: "test-client", campaignSlug: "linkedin", leadId: subject,
+        formUrn: "urn:li:versionedLeadGenForm:(urn:li:leadGenForm:123,1)",
+        submitterUrn: `urn:li:person:${subject}`, submittedAt: new Date(), testLead: false,
+        profile: {
+          firstName: "Submitted", lastName: "Buyer", companyEmail: `${subject}@example.org`,
+          companyName: "Example Company", designation: "Director",
+          ...(editedIndustry && { industry: "Financial Services" }),
+        },
+        consentResponses: [], fingerprint: subject,
+      });
+      expect(await completeCampaignProfile("test-client", subject, "linkedin")).toEqual({ status: "completed" });
+      const [updated] = await db.select().from(users).where(eq(users.id, account.user.id));
+      expect(updated.industry).toBe(editedIndustry);
+      expect(hasCampaignBuyerAccess(updated)).toBe(true);
+    }
     vi.stubEnv("LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED", "false");
   });
 });

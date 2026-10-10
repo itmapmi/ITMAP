@@ -41,6 +41,7 @@ describe("buildLeadDetail user profile projection", () => {
         email: "ari@example.com",
         companyName: "Example Corp",
         designation: "Procurement Director",
+        industry: "Software Development",
         companyEmail: "ari@example-corp.com",
         companyEmailVerified: true,
         password: "test-password",
@@ -59,6 +60,7 @@ describe("buildLeadDetail user profile projection", () => {
       email: "ari@example.com",
       companyName: "Example Corp",
       designation: "Procurement Director",
+      industry: "Software Development",
       companyEmail: "ari@example-corp.com",
       companyEmailVerified: true,
     });
@@ -70,6 +72,7 @@ describe("buildLeadDetail user profile projection", () => {
       "email",
       "firstName",
       "id",
+      "industry",
       "lastName",
     ]);
   });
@@ -83,6 +86,7 @@ describe("buildLeadDetail user profile projection", () => {
         email: null,
         companyName: null,
         designation: "   ",
+        industry: "   ",
         companyEmail: "",
         companyEmailVerified: false,
       },
@@ -97,6 +101,7 @@ describe("buildLeadDetail user profile projection", () => {
       email: null,
       companyName: null,
       designation: null,
+      industry: null,
       companyEmail: null,
       companyEmailVerified: false,
     });

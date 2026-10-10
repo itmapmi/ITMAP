@@ -99,7 +99,7 @@ export interface IStorage {
   setEmailVerificationToken(id: string, token: string): Promise<User>;
   getUserByCompanyVerificationToken(token: string): Promise<User | undefined>;
   getUserWithVerifiedCompanyEmail(companyEmail: string): Promise<User | undefined>;
-  updateCompanyProfile(id: string, updates: { companyName: string; designation: string; companyEmail: string }): Promise<User>;
+  updateCompanyProfile(id: string, updates: { companyName: string; designation: string; companyEmail: string; industry?: string | null }): Promise<User>;
   setCompanyEmailVerificationToken(id: string, token: string): Promise<User>;
   verifyCompanyEmail(id: string, token: string, companyEmail: string): Promise<User | undefined>;
   markCompanyEmailVerifiedByAdmin(id: string): Promise<User | undefined>;

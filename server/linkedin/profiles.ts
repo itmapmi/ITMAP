@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalIndustrySchema } from "@shared/company-profile";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { linkedInCampaignIdentities, linkedInCampaignLeads, users } from "@shared/schema";
@@ -13,6 +14,7 @@ const profileSchema = z.object({
   companyEmail: z.string().trim().toLowerCase().email().max(254),
   companyName: z.string().trim().min(2).max(120),
   designation: z.string().trim().min(2).max(120),
+  industry: optionalIndustrySchema,
 });
 
 // Access no longer waits for this function. Name/email/time guesses are never
@@ -63,6 +65,7 @@ export async function completeCampaignProfile(
       lastName: identity.createdByCampaign && !user.companyEmail ? profile.lastName : user.lastName || profile.lastName,
       companyName: user.companyName || profile.companyName,
       designation: user.designation || profile.designation,
+      industry: user.industry?.trim() ? user.industry : profile.industry ?? null,
       companyEmail,
       ...(setCompanyEmail && {
         companyEmailVerified: !!user.emailVerified && user.email?.toLowerCase() === companyEmail,

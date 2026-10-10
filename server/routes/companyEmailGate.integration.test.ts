@@ -285,12 +285,14 @@ describe.sequential("company-email unlock flow (PostgreSQL integration)", () => 
     const saved = await browser.put("/api/me/company-profile").send({
       companyName: "Northwind Traders",
       designation: "IT Director",
+      industry: "  Manufacturing  ",
       companyEmail,
     });
     expect(saved.status).toBe(200);
     expect(saved.body).toMatchObject({
       companyName: "Northwind Traders",
       designation: "IT Director",
+      industry: "Manufacturing",
       companyEmail,
       companyEmailVerified: false,
       needsCompanyEmailVerification: true,
@@ -323,6 +325,16 @@ describe.sequential("company-email unlock flow (PostgreSQL integration)", () => 
     });
     expect(resave.status).toBe(200);
     expect(resave.body).toMatchObject({ designation: "Head of IT", emailSent: false });
+    expect(resave.body.industry).toBe("Manufacturing"); // omitted field preserves it
+    const cleared = await browser.put("/api/me/company-profile").send({
+      companyName: "Northwind Traders", designation: "Head of IT", companyEmail, industry: "",
+    });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.industry).toBeNull();
+    const invalidIndustry = await browser.put("/api/me/company-profile").send({
+      companyName: "Northwind Traders", designation: "Head of IT", companyEmail, industry: "x".repeat(121),
+    });
+    expect(invalidIndustry.status).toBe(400);
     expect(mail.companyLinks).toHaveLength(1);
     expect(verifyLink).toContain(`token=${pending.companyEmailVerificationToken}`);
 

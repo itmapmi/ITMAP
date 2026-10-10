@@ -82,12 +82,22 @@ Each configuration has:
 - `sponsoredAccountUrn`: required for native sponsored campaigns; the exact
   `urn:li:sponsoredAccount:<id>` authorized by the advertiser.
 - `questionIds`: distinct stable LinkedIn question IDs for `firstName`,
-  `lastName`, `companyEmail`, `companyName`, and `designation`.
+  `lastName`, `companyEmail`, `companyName`, and `designation`, plus optional
+  `industry`. Each configured question ID must be different.
+- `industryOptions`: only needed if the Industry question is multiple choice.
+  Map the actual form option IDs to their exact labels, for example
+  `{"0":"Software Development","1":"Financial Services"}`. Do not copy these
+  example IDs into a real campaign without checking its form. Unknown choices
+  are rejected rather than guessed.
 - `requiredConsentIds`: the LinkedIn consent IDs required by the approved form.
   Account/profile processing disclosures must be reviewed by the owner.
 
 Visible profile labels should be First name, Last name, Work email, Company name,
-and Job title. `designation` is ITMAP's existing storage name for Job title.
+and Job title, plus optional Industry. `designation` is ITMAP's existing storage name for Job title.
+Industry is stored on the same user profile and displayed in the Leadgen account
+header when supplied. Old five-field forms continue to work, and blank Industry
+does not block sign-in, profile completion or buyer access. Ordinary LinkedIn
+OIDC does not supply Industry; it comes from a matched form or a profile edit.
 The work email does not necessarily equal LinkedIn's primary sign-in email.
 
 ## Native delivery — selected approach

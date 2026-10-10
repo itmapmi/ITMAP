@@ -27,6 +27,7 @@ import { isConsumerEmailDomain } from "@shared/company-email";
 interface CompanyProfile {
   companyName: string | null;
   designation: string | null;
+  industry: string | null;
   companyEmail: string | null;
   companyEmailVerified: boolean;
   companyEmailVerificationSentAt: string | null;
@@ -64,12 +65,14 @@ export function CompanyProfileCard() {
 
   const [companyName, setCompanyName] = useState("");
   const [designation, setDesignation] = useState("");
+  const [industry, setIndustry] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
     if (!profile || seeded) return;
     setCompanyName(profile.companyName ?? "");
     setDesignation(profile.designation ?? "");
+    setIndustry(profile.industry ?? "");
     setCompanyEmail(profile.companyEmail ?? "");
     setSeeded(true);
   }, [profile, seeded]);
@@ -103,7 +106,7 @@ export function CompanyProfileCard() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ companyName, designation, companyEmail }),
+        body: JSON.stringify({ companyName, designation, companyEmail, industry }),
       });
       if (!res.ok) throw await readError(res, "Could not save your profile");
       return res.json() as Promise<CompanyProfile & { emailSent: boolean }>;
@@ -146,6 +149,7 @@ export function CompanyProfileCard() {
     !!profile &&
     companyName.trim() === (profile.companyName ?? "") &&
     designation.trim() === (profile.designation ?? "") &&
+    industry.trim() === (profile.industry ?? "") &&
     companyEmail.trim().toLowerCase() === (profile.companyEmail ?? "").toLowerCase();
   const canSave = companyName.trim().length >= 2 && designation.trim().length >= 2 && companyEmail.includes("@") && !consumerTyped && !save.isPending;
 
@@ -258,6 +262,13 @@ export function CompanyProfileCard() {
               />
             </div>
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="industry" className="text-slate-400 text-sm">Industry <span className="text-slate-500">(optional)</span></Label>
+          <Input id="industry" value={industry} onChange={e => setIndustry(e.target.value)}
+            maxLength={120} placeholder="Your industry" className={inputClass}
+            data-testid="input-industry" />
         </div>
 
         <div className="space-y-1.5">

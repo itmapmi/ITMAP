@@ -175,6 +175,7 @@ export interface LeadDetail {
     email: string | null;
     companyName: string | null;
     designation: string | null;
+    industry: string | null;
     companyEmail: string | null;
     companyEmailVerified: boolean;
   };
@@ -267,6 +268,7 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
       email: user.email,
       companyName: user.companyName?.trim() ? user.companyName : null,
       designation: user.designation?.trim() ? user.designation : null,
+      industry: user.industry?.trim() ? user.industry : null,
       companyEmail: user.companyEmail?.trim() ? user.companyEmail : null,
       companyEmailVerified: user.companyEmailVerified ?? false,
     },
