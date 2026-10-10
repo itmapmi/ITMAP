@@ -5,15 +5,27 @@ description: The user's business goal for converting LinkedIn Lead Gen Form subm
 
 LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their information passed into ITMAP's database, and go directly to the report page already registered, without completing another registration or password form.
 
+**Why:** The user wants to run a LinkedIn campaign with minimal registration friction.
+
+**How to apply:** Evaluate onboarding designs against this goal. Do not confuse automatic account registration with establishing an authenticated browser session.
+
 **Latest destination and timer requirement:** The user subsequently described arrival on the markets page, automatic registration using the form email, background profile completion, no registration-timer popup, and direct logged-in arrival. Verification email may be sent in the background.
 
 **Why:** The user explicitly described this desired workflow after rejecting inbox and LinkedIn sign-in steps.
 
 **How to apply:** Use the markets page for the latest proposed arrival flow rather than assuming the earlier report destination still applies. Do not mistake suppressing the anonymous timer for authenticating a visitor; full logged-in arrival still requires a supported identity handoff.
 
-**Why:** The user wants to run a LinkedIn campaign with minimal registration friction.
+**No second email entry:** The user does not want someone to complete the LinkedIn form, visit ITMAP, and provide another email ID to register.
 
-**How to apply:** Evaluate onboarding designs against this goal. Do not confuse automatic account registration with establishing an authenticated browser session.
+**Why:** The user explicitly said this would cause a mismatch/mapping issue.
+
+**How to apply:** Do not propose a second email-entry registration as the solution. A single ITMAP-hosted form instead of the native LinkedIn form is only an alternative to discuss, not an approved change to the campaign.
+
+**Native prefilled form is essential:** The user rejected moving the form to ITMAP: "the whole idea of the linkedin form is its prefilled and ready to submit. so conversion is higher. I dont want them to do that on my site."
+
+**Why:** The user prioritizes the conversion benefit of LinkedIn's native prefilled submission.
+
+**How to apply:** Keep the native LinkedIn Lead Gen Form as the campaign entry. Do not continue proposing an ITMAP-hosted replacement or repeat email entry. Explain any remaining authentication limitation without implying that anonymous campaign access satisfies logged-in arrival.
 
 **Report-first, email-secondary requirement:** The user said the visitor should not go to their mail to access the report. Email should be a secondary process, like the existing flow. This replaces the earlier email-first vendor-map destination.
 
