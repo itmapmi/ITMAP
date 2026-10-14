@@ -15,7 +15,7 @@ description: The user's business goal for converting LinkedIn Lead Gen Form subm
 
 **How to apply:** Establish the authenticated buyer session and open markets without waiting for Lead Sync. Match/populate the profile in the background only with reliable identity proof; leave it pending otherwise. Preserve ordinary signup gates, roles, private-data ownership and blocked/expired-account restrictions.
 
-LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their information passed into ITMAP's database, and go directly to the report page already registered, without completing another registration or password form.
+LinkedIn campaign visitors should go directly to the advertised market already registered and signed in, without completing another registration or password form. The latest campaign entry is direct ad-to-LinkedIn authorization rather than a native Lead Gen Form.
 
 **Why:** The user wants to run a LinkedIn campaign with minimal registration friction.
 
@@ -27,7 +27,7 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Use the markets page for the latest proposed arrival flow rather than assuming the earlier report destination still applies. Do not mistake suppressing the anonymous timer for authenticating a visitor; full logged-in arrival still requires a supported identity handoff.
 
-**Market-specific campaign arrival:** The owner wants each advertised market's native form completion CTA to lead through campaign-only authorization to that particular market, rather than the general listing.
+**Market-specific campaign arrival:** The owner wants each advertised market's ad destination to lead through campaign-only authorization to that particular market, rather than the general listing.
 
 **Why:** The owner approved market-specific redirect support while preparing separate campaign forms in LinkedIn.
 
@@ -39,11 +39,11 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Do not propose a second email-entry registration as the solution. A single ITMAP-hosted form instead of the native LinkedIn form is only an alternative to discuss, not an approved change to the campaign.
 
-**Native prefilled form is essential:** The user rejected moving the form to ITMAP: "the whole idea of the linkedin form is its prefilled and ready to submit. so conversion is higher. I dont want them to do that on my site."
+**Current campaign entry:** The user is changing from native Lead Gen Forms to clicking the ad, completing LinkedIn authorization, and landing on the specific market.
 
-**Why:** The user prioritizes the conversion benefit of LinkedIn's native prefilled submission.
+**Why:** The user explicitly described this campaign change after investigating a form lead that did not appear in ITMAP.
 
-**How to apply:** Keep the native LinkedIn Lead Gen Form as the campaign entry. Do not continue proposing an ITMAP-hosted replacement or repeat email entry. Explain any remaining authentication limitation without implying that anonymous campaign access satisfies logged-in arrival.
+**How to apply:** Use the existing market-specific campaign entry URLs as direct ad destinations. A form submission and Lead Sync are not prerequisites. Explain that OIDC supplies basic identity, not company/work-email/industry fields. Keep legacy Lead Sync plans conditional on campaigns still using native forms.
 
 **Report-first, email-secondary requirement:** The user said the visitor should not go to their mail to access the report. Email should be a secondary process, like the existing flow. This replaces the earlier email-first vendor-map destination.
 
