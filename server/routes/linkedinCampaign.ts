@@ -6,7 +6,7 @@ import { db } from "../db";
 import { linkedInCampaignLeads } from "@shared/schema";
 import { registerLeadIngress, type LeadRepository } from "../linkedin/ingress";
 import { registerNativeLeadDelivery } from "../linkedin/pipeline";
-import { campaignLoginAllowed } from "../linkedin/campaigns";
+import { campaignLoginAllowed, campaignDestination } from "../linkedin/campaigns";
 import { CampaignAccountDenied, grantCampaignAccount } from "../linkedin/accounts";
 import { scheduleCampaignProfile, startPendingCampaignProfiles } from "../linkedin/profiles";
 import { establishSession } from "./auth";
@@ -70,12 +70,13 @@ export function registerLinkedInCampaignRoutes(app: Express) {
       if (process.env.LINKEDIN_CAMPAIGN_LOGIN_ENABLED !== "true") {
         return res.status(503).send("Campaign login has not been enabled.");
       }
+      const destination = await campaignDestination(campaignSlug);
       const redirectUri = linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI);
       if (!redirectUri) return res.status(503).send("Campaign authorization is not configured yet.");
       const config = await getLinkedInConfiguration();
       const state = oidc.randomState();
       (req.session as any).linkedInCampaignHandoff = {
-        campaignSlug, state, flow: LINKEDIN_WEB_FLOW, redirectUri,
+        campaignSlug, destination, state, flow: LINKEDIN_WEB_FLOW, redirectUri,
         clientId: process.env.LINKEDIN_CLIENT_ID, createdAt: Date.now(),
       };
       delete (req.session as any).linkedInPendingIdentity;
@@ -118,6 +119,10 @@ export function registerLinkedInCampaignRoutes(app: Express) {
           handoff.redirectUri !== linkedInRedirectUri(process.env.LINKEDIN_REDIRECT_URI)) {
         return res.status(400).send("Campaign configuration changed. Return to the campaign link.");
       }
+      const destination = await campaignDestination(handoff.campaignSlug);
+      if (destination !== handoff.destination) {
+        return res.status(400).send("Campaign destination changed. Return to the campaign link.");
+      }
       const callback = new URL(handoff.redirectUri);
       callback.search = new URL(req.originalUrl, callback.origin).search;
       const config = await getLinkedInConfiguration();
@@ -140,7 +145,7 @@ export function registerLinkedInCampaignRoutes(app: Express) {
       await establishSession(req, res, account.user, {
         context: account.created ? "signup" : "login", method: "linkedin",
       });
-      res.redirect("/markets");
+      res.redirect(destination);
       scheduleCampaignProfile(handoff.clientId, identity.subject, handoff.campaignSlug);
     } catch (error) {
       if (error instanceof CampaignAccountDenied) {

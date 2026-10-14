@@ -5,7 +5,7 @@ import passport from "passport";
 import request from "supertest";
 import { eq } from "drizzle-orm";
 import { db, pool } from "../db";
-import { linkedInCampaignIdentities, linkedInCampaignLeads, users } from "@shared/schema";
+import { linkedInCampaignIdentities, linkedInCampaignLeads, users, markets } from "@shared/schema";
 import { grantCampaignAccount } from "./accounts";
 import { completeCampaignProfile } from "./profiles";
 import { registerLinkedInCampaignRoutes } from "../routes/linkedinCampaign";
@@ -24,7 +24,7 @@ vi.mock("../db", async () => {
   const admin = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     await admin.query(`create schema "${name}"`);
-    for (const table of ["users", "linkedin_campaign_identities", "linkedin_campaign_leads"]) {
+    for (const table of ["users", "markets", "linkedin_campaign_identities", "linkedin_campaign_leads"]) {
       await admin.query(`create table "${name}"."${table}" (like public."${table}" including all)`);
     }
   } catch (error) {
@@ -93,6 +93,7 @@ let app: express.Express;
 beforeAll(() => {
   vi.stubEnv("LINKEDIN_CLIENT_ID", "test-client");
   vi.stubEnv("LINKEDIN_CAMPAIGN_LOGIN_SLUGS", "linkedin");
+  vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", "");
   vi.stubEnv("LINKEDIN_CAMPAIGN_LOGIN_ENABLED", "true");
   vi.stubEnv("LINKEDIN_REDIRECT_URI", "https://example.org/auth/linkedin/callback");
   vi.stubEnv("LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED", "false");
@@ -224,6 +225,68 @@ describe("campaign-only HTTP session handoff", () => {
     const state = new URL(start.headers.location).searchParams.get("state");
     expect((await browser.get(`/auth/linkedin/callback?error=access_denied&state=${state}`)).status).toBe(400);
     expect((await browser.get("/test/session")).body.user).toBeNull();
+  });
+});
+
+describe("market-specific campaign redirects", () => {
+  it("maps multiple campaign paths, ignores dest queries, and preserves signed-in buyer access", async () => {
+    const rows = await db.insert(markets).values([
+      { name: "Synthetic campaign market A" },
+      { name: "Synthetic campaign market B" },
+    ]).returning();
+    vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", JSON.stringify({
+      "market-a": rows[0].id, "market-b": rows[1].id,
+    }));
+    try {
+      for (const [index, slug] of ["market-a", "market-b"].entries()) {
+        const browser = request.agent(app);
+        const start = await browser.get(`/auth/linkedin/campaign/${slug}?dest=https://example.org&marketId=wrong`);
+        expect(start.status).toBe(302);
+        const auth = new URL(start.headers.location);
+        expect(auth.searchParams.get("redirect_uri")).toBe("https://example.org/auth/linkedin/callback");
+        const callback = await browser.get(`/auth/linkedin/callback?code=synthetic-valid-code&state=${auth.searchParams.get("state")}`);
+        expect(callback.status).toBe(302);
+        expect(callback.headers.location).toBe(`/markets/${rows[index].id}`);
+        const session = await browser.get("/test/session");
+        expect(hasCampaignBuyerAccess(session.body.user)).toBe(true);
+      }
+      expect((await request(app).get("/auth/linkedin/campaign/not-configured")).status).toBe(404);
+    } finally {
+      vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", "");
+    }
+  });
+
+  it("rejects malformed mappings, private/hidden/missing targets and callback mapping changes", async () => {
+    const rows = await db.insert(markets).values([
+      { name: "Synthetic private campaign", visibility: "private" },
+      { name: "Synthetic hidden campaign", isVisible: false },
+      { name: "Synthetic visible campaign" },
+      { name: "Synthetic other campaign" },
+    ]).returning();
+    try {
+      for (const value of [
+        "{bad-json", '{"unsafe":"https://example.org"}',
+        '{"invalid_slug":"00000000-0000-4000-8000-000000000001"}',
+        JSON.stringify({ test: rows[0].id }),
+        JSON.stringify({ test: rows[1].id }),
+        '{"test":"00000000-0000-4000-8000-000000000001"}',
+      ]) {
+        vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", value);
+        expect((await request(app).get("/auth/linkedin/campaign/test")).status).toBe(503);
+      }
+      vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", JSON.stringify({ test: rows[2].id }));
+      const browser = request.agent(app);
+      const start = await browser.get("/auth/linkedin/campaign/test");
+      expect(start.status).toBe(302);
+      vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", JSON.stringify({ test: rows[3].id }));
+      const state = new URL(start.headers.location).searchParams.get("state");
+      const callback = await browser.get(`/auth/linkedin/callback?code=synthetic-valid-code&state=${state}`);
+      expect(callback.status).toBe(400);
+      expect(callback.text).toContain("destination changed");
+      expect((await browser.get("/test/session")).body.user).toBeNull();
+    } finally {
+      vi.stubEnv("LINKEDIN_CAMPAIGN_MARKETS_JSON", "");
+    }
   });
 });
 

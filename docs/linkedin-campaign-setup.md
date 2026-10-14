@@ -12,7 +12,8 @@ button on the normal signup page.
 callback change before launching ads.** When explicitly enabled, the callback
 validates LinkedIn authorization, safely creates/reuses a
 buyer account, regenerates the ITMAP session, grants normal buyer access and
-redirects to `/markets` without waiting for a lead.
+redirects to its configured market (or `/markets` for an unmapped allowed campaign)
+without waiting for a lead.
 
 The owner explicitly approved access before form-submission confirmation:
 someone authorizing through a shared campaign URL can receive normal buyer
@@ -62,6 +63,24 @@ Non-secret settings:
 - `LINKEDIN_CAMPAIGN_LOGIN_SLUGS` — comma-separated server-owned whitelist of
   login campaigns. This permits testing login independently of Lead Sync/form
   setup; for example `linkedin`. A mapped campaign slug is also accepted.
+- `LINKEDIN_CAMPAIGN_MARKETS_JSON` — optional JSON object mapping campaign slugs
+  to actual market UUIDs, independent of Lead Sync approval. Example:
+  `{"ai-gateways":"00000000-0000-4000-8000-000000000001"}`.
+  This ID is illustrative; replace with the real market ID from its ITMAP URL.
+  Slugs use lowercase letters, digits and hyphens (not underscores). At most
+  50 mappings. Mapping a slug also whitelists its campaign login entry point.
+  Only existing, visible public markets are accepted. Missing/private/hidden
+  targets fail before authorization starts. No visitor-supplied `dest` or
+  `marketId` query parameter controls the redirect.
+  The server stores the destination with the one-use session handoff and checks
+  it again on callback; changed mappings require restarting authorization.
+  Use one form per advertised market and set its completion CTA to
+  `https://itmap.ai/auth/linkedin/campaign/<campaign-slug>`.
+  Keep the fixed OAuth callback unchanged. The existing `linkedin` campaign
+  continues to open `/markets` unless explicitly mapped.
+  This setting requires no database schema change. Configure the real mappings
+  and publish before using their CTA URLs in live ads. Test each completion
+  CTA through authorization, not just by opening the destination directly.
 - `LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED` — leave unset until live provider
   evidence proves the OIDC subject/person-URN correlation for this app. Only
   literal `true` permits submitted-profile association.

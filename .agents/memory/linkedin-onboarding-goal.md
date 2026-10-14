@@ -27,6 +27,12 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Use the markets page for the latest proposed arrival flow rather than assuming the earlier report destination still applies. Do not mistake suppressing the anonymous timer for authenticating a visitor; full logged-in arrival still requires a supported identity handoff.
 
+**Market-specific campaign arrival:** The owner wants each advertised market's native form completion CTA to lead through campaign-only authorization to that particular market, rather than the general listing.
+
+**Why:** The owner approved market-specific redirect support while preparing separate campaign forms in LinkedIn.
+
+**How to apply:** Use server-owned campaign-to-market mappings and the existing fixed OAuth callback. Do not guess the selected market roster; obtain the owner's actual ad/market list before activating mappings. Keep the generic campaign link working.
+
 **No second email entry:** The user does not want someone to complete the LinkedIn form, visit ITMAP, and provide another email ID to register.
 
 **Why:** The user explicitly said this would cause a mismatch/mapping issue.
