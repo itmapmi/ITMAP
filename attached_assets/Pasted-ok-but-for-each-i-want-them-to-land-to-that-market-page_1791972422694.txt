@@ -1,0 +1,19 @@
+ok but for each i want them to land to that market page directly how to do that
+
+Right now every ad shares one form (“ITMAP Markets — Campaign Sign-in”), and the landing destination is a property of the form, not the ad. LinkedIn gives you exactly one completion‑CTA URL per form and passes no per‑ad parameters, so as long as all 11 ads point at the same form, they all land in the same place. To send each ad to its own market page, you have to split the form.
+
+The setup that does it:
+
+Create one Lead Gen Form per market (11 of them, 13 once you add the two you just did… actually these two are already in, so 11 total). Each is a copy of your existing form — same fields, same privacy policy — differing only in the completion‑CTA “Landing page URL.”
+Encode the market in each form’s CTA URL. Two patterns work; I’d use the path style because it matches your existing /auth/linkedin/campaign/… route and avoids the ?dest= approach your Replit dev already rejected:
+Path: https://itmap.ai/auth/linkedin/campaign/machine_learning_data_science_platforms
+or query: https://itmap.ai/auth/linkedin/campaign/linkedin?dest=/markets/machine_learning_data_science_platforms
+Attach the matching form to each ad — ML form on Ad_10, Data Observability form on Ad_11, and so on.
+The itmap.ai endpoint has to honor the market. This is the one piece that isn’t on LinkedIn: your /auth/linkedin/campaign/… handler needs to read the market slug, carry it through the OAuth state (since the redirect_uri is fixed), and after it creates the session redirect to /markets/<slug> instead of the generic Markets listing. That’s a small addition to the flow you already have — not replacement auth code — but it does need to ship on Replit before the per‑market forms will actually land correctly.
+So the dependency chain is: Replit teaches the endpoint to redirect by market → then the 11 forms with per‑market CTAs do the rest.
+
+Before I build 11 forms, two things I need from you:
+
+Which URL pattern will your app support — the path style (/campaign/<slug>) or the query style (?dest=…)? If you’re not sure, check with Replit, since I’ll bake whichever one they’ll read into every form.
+Want me to go ahead and create the per‑market forms and re‑attach them to each ad once you confirm the pattern?
+One caveat worth flagging: a visitor who hasn’t finished the LinkedIn OAuth step still has to pass through sign‑in first, so the market page is where they land after auth, not instead of it — which is the behavior you want.
