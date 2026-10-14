@@ -15,6 +15,8 @@ import {
   BAND_META, type IntentResult,
 } from "./_shared";
 import { LEAD_GEN_EVENT_DEFS } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import { EditLeadProfileDialog } from "./edit-profile-dialog";
 
 interface LeadDetail {
   user: {
@@ -104,9 +106,11 @@ export interface LeadDetailViewProps {
    * summaries — vendors don't have a cross-vendor admin page to land on.
    */
   vendorLinkBase?: string;
+  canEditProfile?: boolean;
 }
 
-export default function LeadDetailView({ userId, apiBase, backHref, backLabel, vendorLinkBase }: LeadDetailViewProps) {
+export default function LeadDetailView({ userId, apiBase, backHref, backLabel, vendorLinkBase, canEditProfile = false }: LeadDetailViewProps) {
+  const { user: viewer } = useAuth();
   const { data, isLoading, error } = useQuery<LeadDetail>({
     queryKey: [apiBase, userId],
     queryFn: async () => {
@@ -166,6 +170,7 @@ export default function LeadDetailView({ userId, apiBase, backHref, backLabel, v
           <a className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-300"><ArrowLeft className="h-3.5 w-3.5" /> {backLabel}</a>
         </Link>
         <div className="flex gap-2">
+          {canEditProfile && viewer?.role === "admin" && <EditLeadProfileDialog user={data.user} />}
           <a href={`${apiBase}/${userId}/export/pdf`} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-200 hover:border-cyan-500/40 hover:text-white"><FileDown className="h-4 w-4" /> PDF</a>
           <a href={`${apiBase}/${userId}/export/excel`} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-200 hover:border-cyan-500/40 hover:text-white"><FileDown className="h-4 w-4" /> Excel</a>
         </div>

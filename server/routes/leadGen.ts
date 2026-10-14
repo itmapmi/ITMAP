@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import crypto from "crypto";
 import { requireAuth, requireAdmin } from "../auth";
+import { registerAdminLeadProfileRoutes } from "./adminLeadProfile";
 import { storage } from "../storage";
 import {
   buildRankedLeads,
@@ -514,6 +515,7 @@ async function sendLeadsExcel(res: Response, filename: string, rows: LeadRow[]):
 // ── Route registration ───────────────────────────────────────────────────────
 
 export function registerLeadGenRoutes(app: Express): void {
+  registerAdminLeadProfileRoutes(app);
   // ── Client beacon (anonymous + authenticated; allowlist-validated) ──
   // No requireAuth — anonymous visitors are accepted. The route issues/reads
   // a long-lived httpOnly visitor cookie to track stable browser identity.

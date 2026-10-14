@@ -10,6 +10,7 @@ import {
 import { db } from "../db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { MAX_UNVERIFIED_SESSIONS } from "@shared/verification";
+import type { AdminLeadProfileUpdate } from "@shared/admin-lead-profile";
 
 export async function getUser(id: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -179,6 +180,40 @@ export async function updateCompanyProfile(
     .where(eq(users.id, id))
     .returning();
   return updated!;
+}
+
+export class CompanyProfileConflict extends Error {}
+
+export async function updateLeadProfileByAdmin(id: string, updates: AdminLeadProfileUpdate) {
+  return db.transaction(async (tx) => {
+    const [current] = await tx.select().from(users).where(eq(users.id, id)).limit(1).for("update");
+    if (!current) return undefined;
+    if (updates.companyEmail) {
+      const [holder] = await tx.select({ id: users.id }).from(users).where(and(
+        sql`lower(${users.companyEmail}) = ${updates.companyEmail}`,
+        eq(users.companyEmailVerified, true),
+        sql`${users.id} <> ${id}`,
+      )).limit(1);
+      if (holder) throw new CompanyProfileConflict("This company email is already verified on another account.");
+    }
+    const emailChanged = updates.companyEmail !== undefined &&
+      (current.companyEmail ?? "").trim().toLowerCase() !== (updates.companyEmail ?? "");
+    const [updated] = await tx.update(users).set({
+      ...(updates.firstName !== undefined && { firstName: updates.firstName }),
+      ...(updates.lastName !== undefined && { lastName: updates.lastName }),
+      ...(updates.companyName !== undefined && { companyName: updates.companyName }),
+      ...(updates.designation !== undefined && { designation: updates.designation }),
+      ...(updates.industry !== undefined && { industry: updates.industry }),
+      ...(updates.companyEmail !== undefined && { companyEmail: updates.companyEmail }),
+      ...(emailChanged && {
+        companyEmailVerified: false,
+        companyEmailVerificationToken: null,
+        companyEmailVerificationSentAt: null,
+      }),
+      updatedAt: new Date(),
+    }).where(eq(users.id, id)).returning();
+    return updated;
+  });
 }
 
 export async function setCompanyEmailVerificationToken(id: string, token: string): Promise<User> {

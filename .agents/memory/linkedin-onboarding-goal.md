@@ -75,6 +75,12 @@ LinkedIn campaign visitors should submit a prefilled Lead Gen Form, have their i
 
 **How to apply:** Display stored profile data on the same securely linked user account; do not create a separate LinkedIn lead identity or infer missing company details.
 
+**Manual enrichment fallback:** The owner wants to copy submitted LinkedIn campaign form details into signed-in users' profiles themselves while Lead Sync approval is pending.
+
+**Why:** The user explicitly requested and approved an admin profile editor instead of asking campaign visitors to fill another form.
+
+**How to apply:** Keep manual enrichment separate from sign-in identity and email verification. Do not describe manually entered profile details as a confirmed automated Lead Sync match.
+
 **LinkedIn sign-in boundary:** Normal signup must not have a LinkedIn button. The user subsequently approved campaign-only LinkedIn authorization and accepted a first-time LinkedIn permission screen. They still reject an email-link/code claim step and repeat email entry.
 
 **Why:** After initially rejecting LinkedIn sign-in, the user explicitly selected "Yes—use campaign-only LinkedIn authorization" when the first-time consent screen and unchanged normal signup were explained.

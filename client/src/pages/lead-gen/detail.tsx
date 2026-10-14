@@ -10,6 +10,7 @@ export default function LeadGenDetailPage() {
       backHref="/lead-gen"
       backLabel="All leads"
       vendorLinkBase="/lead-gen/vendors"
+      canEditProfile
     />
   );
 }
