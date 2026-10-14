@@ -1,0 +1,42 @@
+now i want users to fill the form and then sign through linkedin and land on the markets page. inkedIn form completion button → https://itmap.ai/auth/linkedin/campaign/linkedin...how do i configure his
+
+This is actually the clean fix to the “how does my site recognise them” gap from before — the LinkedIn sign-in on the thank-you button re-establishes their identity, matches them to the account, and drops them on the markets page logged in. And nicely, it runs on Sign In with LinkedIn (OIDC), which is already enabled on your app, so it doesn’t even depend on Lead Sync approval. Lead Sync just feeds your CRM record in parallel.
+
+Here’s the full flow and where each piece is configured:
+
+The flow
+Ad → Lead Gen Form (prefilled) → submit → thank-you CTA button → https://itmap.ai/auth/linkedin/start?dest=/markets/ai_gateways → your app redirects to LinkedIn OAuth → user authorises → LinkedIn calls your callback → you match the account, set a session, redirect to /markets/ai_gateways logged in.
+
+One structural point that shapes everything: LinkedIn’s OAuth redirect_uri must be one fixed, pre-registered URL — you can’t vary it per market. So you use one callback, and carry the destination market separately (in state / a cookie), not in the redirect URL. That’s why I’d split your URL into a /start entry point (which can vary per market via a query param) and a single fixed /callback.
+
+1. On the app’s Auth tab (LinkedIn dev portal) — one-time
+Add your callback as an Authorized redirect URL:
+https://itmap.ai/auth/linkedin/callback
+Copy the Client ID (7770w5auq03fns) and Client Secret into your Replit secrets. Scopes openid profile email already come with Sign In with LinkedIn OIDC.
+
+2. On the Lead Gen Form (Campaign Manager)
+When you build the Lead Gen Form, the Confirmation step has a landing-page/CTA URL field — set it to your start endpoint:
+https://itmap.ai/auth/linkedin/start?dest=/markets/ai_gateways
+This URL is fixed per form, so for per-market landing you make one Lead Gen Form per market, each with its own dest. (LinkedIn won’t append the lead’s identity to this URL — that’s fine, the OAuth step re-establishes who they are.)
+
+3. On your Replit app — two routes
+
+GET /auth/linkedin/start
+
+Read dest from the query; set a random state (CSRF) and stash dest in a short httpOnly cookie keyed by state.
+Redirect to:
+https://www.linkedin.com/oauth/v2/authorization
+  ?response_type=code
+  &client_id=7770w5auq03fns
+  &redirect_uri=https://itmap.ai/auth/linkedin/callback
+  &scope=openid%20profile%20email
+  &state=<random>
+GET /auth/linkedin/callback
+
+Verify state matches the cookie; read dest back from it.
+Exchange code for tokens at https://www.linkedin.com/oauth/v2/accessToken, then fetch the profile at https://api.linkedin.com/v2/userinfo (returns sub, email, email_verified, name).
+Look up the user by email: if the Lead Sync pre-created account exists, attach this login to it; if not, create the account now (so it works even before Lead Sync is approved).
+Create your session cookie, then 302 redirect to dest (/markets/ai_gateways). They land logged in.
+So the config lives in three places: the Auth tab (register the callback), the Lead Gen Form (set the start URL per market), and your Replit app (the two routes). The path you sketched becomes start?dest=... → fixed callback → redirect to the market page.
+
+Two things worth confirming so I can tighten the code: are you using Supabase Auth or your own session logic in the Replit app (it changes how step 3’s “create session + match account” is written)? And do you want me to write out the actual /start and /callback handlers in your stack? If yes, tell me which, and I’ll give you drop-in code.
