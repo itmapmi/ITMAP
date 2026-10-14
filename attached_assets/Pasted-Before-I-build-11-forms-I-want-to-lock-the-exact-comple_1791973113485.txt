@@ -1,0 +1,24 @@
+Before I build 11 forms, I want to lock the exact completion URLs, because LinkedIn Lead Gen Forms can’t be edited after they’re created — if a slug is wrong I’d have to delete and rebuild that form, not just fix a field. You told me the campaign URLs use hyphens and the market‑page URLs stay the same, so I’ve derived each completion link by hyphenating the market slug. Here’s exactly what I’ll set on each form:
+
+AI Gateways → https://itmap.ai/auth/linkedin/campaign/ai-gateways
+Autonomous SOC Platforms → https://itmap.ai/auth/linkedin/campaign/autonomous-soc-platforms
+B2B Marketing Automation Platforms → https://itmap.ai/auth/linkedin/campaign/b2b-marketing-automation-platforms
+AI Governance, Risk & Compliance Platforms → https://itmap.ai/auth/linkedin/campaign/ai-governance-risk-and-compliance-platforms
+Deepfake Defense & Identity Assurance → https://itmap.ai/auth/linkedin/campaign/deepfake-defense-identity-assurance
+AI Model Security → https://itmap.ai/auth/linkedin/campaign/ai-model-security
+Agentic AI Platforms & Agent Orchestration → https://itmap.ai/auth/linkedin/campaign/agentic-ai-platforms-agent-orchestration
+Post‑Quantum Cryptography & Crypto‑Agility Platforms → https://itmap.ai/auth/linkedin/campaign/post-quantum-cryptography-and-crypto-agility-platforms
+Customer Data Platforms → https://itmap.ai/auth/linkedin/campaign/customer-data-platforms
+Machine Learning & Data Science Platforms → https://itmap.ai/auth/linkedin/campaign/machine-learning-data-science-platforms
+Data Observability → https://itmap.ai/auth/linkedin/campaign/data-observability
+
+I derived these rather than assume them because you earlier flagged that no arbitrary slug should be taken as working — so please confirm they match what Replit actually configured. If any campaign slug isn’t a straight hyphenation of the market slug (e.g. a shortened or custom identifier), just send me that one and I’ll use your exact value.
+
+Once you give the go‑ahead, here’s what I’ll do:
+
+Create 11 Lead Gen Forms by copying your existing “ITMAP Markets — Campaign Sign‑in” so the profile fields and privacy policy carry over unchanged, naming each per the list I gave you.
+Set each form’s completion CTA to its URL above; OAuth callback stays https://itmap.ai/auth/linkedin/callback.
+Swap the matching form onto each ad (ML form on Ad_10, Data Observability on Ad_11, etc.).
+Leave the campaign unlaunched — forms prepared and attached, nothing submitted for review — so you can publish on ITMAP and test the full submit → CTA → LinkedIn auth → market‑page journey before it goes live.
+
+Confirm the URLs above (or send corrections) and I’ll start building.
