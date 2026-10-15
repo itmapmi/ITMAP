@@ -99,7 +99,7 @@ PUBLIC_BASE_URL = "https://itmap.ai"
 [userenv.production]
 PRIMARY_DOMAIN = "itmap.ai"
 LINKEDIN_CAMPAIGN_LOGIN_ENABLED = "true"
-LINKEDIN_CAMPAIGN_LOGIN_SLUGS = "linkedin"
+LINKEDIN_CAMPAIGN_LOGIN_SLUGS = "linkedin,all-markets"
 LINKEDIN_LEAD_SUBJECT_MATCHING_VERIFIED = "false"
 LINKEDIN_REDIRECT_URI = "https://itmap.ai/auth/linkedin/callback"
 LINKEDIN_CAMPAIGN_MARKETS_JSON = "{\"ai-gateways\":\"04448e1a-8166-4a24-bfeb-a8abcb20c33e\",\"autonomous-soc-platforms\":\"bd2de846-3502-481d-8c20-dbe64e39dd19\",\"b2b-marketing-automation-platforms\":\"f4bf9f57-68da-45f3-ab84-efa2209321ba\",\"ai-governance-risk-and-compliance-platforms\":\"92b29129-77c7-401e-bcb9-41b42b322627\",\"deepfake-defense-identity-assurance\":\"1dc87e69-0f0e-4aa5-a17d-94efeb32a840\",\"ai-model-security\":\"3e1d4ffa-795d-4ca5-bddd-d0ccf833ce6f\",\"agentic-ai-platforms-agent-orchestration\":\"d7ac4d1c-018c-4c02-a19d-196169cb4935\",\"post-quantum-cryptography-and-crypto-agility-platforms\":\"3646f62c-85fb-40ba-a7dc-f84b3941c861\",\"customer-data-platforms\":\"44d96f91-c9e6-4306-960b-96821e1ef667\",\"machine-learning-data-science-platforms\":\"79a554e1-1709-4cb4-b35c-d1a8b99bd257\",\"data-observability\":\"eec6be8f-ccf5-47c2-a3a5-d88e892bbbba\"}"
