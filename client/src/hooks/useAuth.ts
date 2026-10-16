@@ -208,6 +208,8 @@ export function useAuth() {
       await apiRequestJson('/auth/logout', 'POST');
     },
     onSuccess: () => {
+      // Do not immediately undo an explicit logout with campaign auto sign-in.
+      if (typeof window !== "undefined") window.google?.accounts?.id?.disableAutoSelect?.();
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setPendingVerification(null);

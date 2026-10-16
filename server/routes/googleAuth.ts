@@ -3,6 +3,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { storage } from "../storage";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
+import { registerGoogleOneTapRoutes } from "./googleOneTap";
 
 // ── "Continue with Google" ──────────────────────────────────────────────────
 //
@@ -179,7 +180,36 @@ interface GoogleAuthDeps {
   ) => Promise<void>;
 }
 
+async function finishGoogleLogin(
+  req: Request, res: Response, result: Extract<ResolveResult, { ok: true }>,
+  context: OAuthContext, deps: GoogleAuthDeps,
+): Promise<string> {
+  if (result.created) {
+    void sendRedditConversionEvent({
+      trackingType: "SIGN_UP", clickId: context.redditClickId, uuid: context.redditUuid,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+      userAgent: req.get("user-agent") || null, eventSourceUrl: req.get("referer") || null,
+      conversionId: result.user.id,
+    });
+  }
+  await deps.establishSession(
+    req, res, result.user,
+    result.created ? { context: "signup", method: "google" } : { context: "login" },
+  );
+  if (result.created) (req.session as any)[SESSION_SIGNUP_KEY] = result.user.id;
+  await new Promise<void>((resolve, reject) => req.session.save(error => error ? reject(error) : resolve()));
+  return appendReturnParams(context.returnTo);
+}
+
 export function registerGoogleAuthRoutes(app: Express, { establishSession }: GoogleAuthDeps): void {
+  registerGoogleOneTapRoutes(app, {
+    configured: isGoogleAuthConfigured,
+    resolveUser: (profile) => resolveGoogleUser(profile, "buyer"),
+    finishLogin: (req, res, result, returnTo) => finishGoogleLogin(req, res, result, {
+      persona: "buyer", returnTo,
+      redditClickId: readCookie(req, "rdt_cid"), redditUuid: readCookie(req, "_rdt_uuid"),
+    }, { establishSession }),
+  });
   if (!isGoogleAuthConfigured()) {
     console.warn("[Auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google sign-in disabled.");
   } else {
@@ -250,29 +280,7 @@ export function registerGoogleAuthRoutes(app: Express, { establishSession }: Goo
         const result = await resolveGoogleUser(profile, context.persona);
         if (!result.ok) return res.redirect(loginFailureRedirect(result.reason, context.persona));
 
-        if (result.created) {
-          // Same event + conversionId the email registration path sends, so
-          // Reddit can pair it with the client pixel event fired on return.
-          void sendRedditConversionEvent({
-            trackingType: "SIGN_UP",
-            clickId: context.redditClickId,
-            uuid: context.redditUuid,
-            ipAddress: req.ip || req.socket.remoteAddress || null,
-            userAgent: req.get("user-agent") || null,
-            eventSourceUrl: req.get("referer") || null,
-            conversionId: result.user.id,
-          });
-        }
-
-        // req.logIn regenerates the session, so the marker goes on the new one.
-        await establishSession(
-          req,
-          res,
-          result.user,
-          result.created ? { context: "signup", method: "google" } : { context: "login" },
-        );
-        if (result.created) (req.session as any)[SESSION_SIGNUP_KEY] = result.user.id;
-        return res.redirect(appendReturnParams(context.returnTo));
+        return res.redirect(await finishGoogleLogin(req, res, result, context, { establishSession }));
       } catch (error) {
         console.error("[Auth] Google sign-in error:", error);
         return res.redirect(loginFailureRedirect("failed", context.persona));

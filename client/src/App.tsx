@@ -60,6 +60,7 @@ import { TeaserGateProvider } from "@/hooks/use-registration-teaser";
 import { VerificationBlockScreen, VerificationReminderDialog, usePendingVerificationBlock } from "@/components/email-verification-gate";
 import { PENDING_VERIFICATION_KEY } from "@/hooks/useAuth";
 import { VIEW_MODE_COOKIE, readCookieValue, resolveMobileRedirect } from "@shared/mobile-paths";
+import GoogleCampaignSignIn from "@/components/google-campaign-sign-in";
 
 /**
  * Client-side mirror of server/mobileRedirect.ts. The server only sees cold
@@ -210,6 +211,7 @@ function Router() {
   return (
     <div className="min-h-screen">
       <VerificationReminderDialog />
+      <GoogleCampaignSignIn />
       {isMobileRoute ? <MobileNavigation /> : <Navigation />}
       <ScrollToTop />
       <TrafficPageTracker />
