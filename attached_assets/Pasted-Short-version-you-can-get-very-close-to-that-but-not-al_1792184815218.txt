@@ -1,0 +1,29 @@
+Short version: you can get very close to that, but not all the way to zero-click on a first visit — and the good news is that the "almost" is actually the right design, and it fits a Google-ad audience better than anything LinkedIn could do.
+
+Here's the honest boundary first, then the fix.
+
+What's not possible
+
+You can't silently authenticate a brand-new user with no interaction at all. OAuth requires the user to consent to your app once, and Google's consent screen on that first authorization is deliberately un-bypassable. Any trick that "forces" auth without that first consent is exactly what Google's policies are built to block, and attempting it gets apps flagged or suspended. So the floor is: first time ever = one tap. Not a password, not a form — one tap.
+
+What is possible, and is better than your current flow
+
+The thing working in your favour: someone clicking a Google ad is, the vast majority of the time, already signed into their Google account in that browser. That's a gift your LinkedIn funnel never had. The right tool to cash it in is Google One Tap (Google Identity Services), not the redirect-style OAuth you're using now.
+
+The difference matters. Your current flow is: click ad → get bounced to an OAuth page → consent → bounced back. Every redirect sheds people. One Tap instead renders on top of the market page the user already landed on — they never leave it. And for a returning visitor who's already consented and has one active Google session, you set auto_select: true and they're signed in automatically, zero clicks, the page just quietly knows who they are. First-timers see a small account card and tap once, still on the same page.
+
+So the real-world outcome is:
+
+	•	Returning + logged into Google → silent, automatic sign-in. Exactly your dream.
+	•	First-time → one tap, no redirect, no form.
+	•	Not logged into Google / Safari / in-app browser → One Tap simply does nothing, and they see the normal "Sign in with Google" button as fallback.
+
+The architectural change that makes it click
+
+Stop gating the market page behind the auth wall. Let the ad land directly on the public market page (/markets/<slug>), and layer One Tap over it. This fixes three things at once: the ad click always lands on something real instead of a login gate, the Google-session majority get signed in near-silently on arrival, and the page becomes indexable by Google — which is the organic angle from before. Sign-in becomes additive, not a toll booth. You still capture the same identity (the One Tap ID token is a JWT with email, name, picture — same data you get today), and your step-2 company-details ask sits unchanged behind it for the signed-in extras.
+
+On your stack this is a well-trodden path
+
+You're on Next.js + Supabase, and Supabase Auth supports exactly this: you take the One Tap ID token from the Google library and hand it to supabase.auth.signInWithIdToken({ provider: 'google', token }). No new auth backend, no replacing what you have — it's a client component plus nonce handling. One current gotcha to be aware of: in Chrome, One Tap now runs through FedCM, so you need the up-to-date GIS library, but that's a version check, not a redesign.
+
+I can write the whole thing for you — the Next.js One Tap client component, the nonce generation, and the Supabase signInWithIdToken handoff, wired so a logged-in Google user is auto-selected and everyone else degrades gracefully. Before I do, one question that decides the shape of it: do you want the market pages to become publicly viewable with One Tap layered on (my recommendation), or do you need to keep them fully gated so nothing shows until the user is signed in? That one choice changes the code and also decides whether you get the SEO benefit, so it's worth being deliberate about.
