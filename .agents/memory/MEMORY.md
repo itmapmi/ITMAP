@@ -65,3 +65,4 @@
 - [LinkedIn onboarding goal](linkedin-onboarding-goal.md) — LinkedIn submission should lead directly to the report, already registered; email is secondary.
 - [Production schema verification](production-schema-verification.md) — user reports republishing does not apply prod schema; verify independently rather than repeating republish advice.
 - [LinkedIn web OIDC compatibility](linkedin-web-oidc-compatibility.md) — web login uses confidential code flow; generic native PKCE/mandatory nonce can fail while signed-token checks must stay.
+- [Google campaign access](google-campaign-access.md) — normal buyer access after Google sign-in; preserve existing profile gates for Reports and Intelligence, not the LinkedIn bypass.
