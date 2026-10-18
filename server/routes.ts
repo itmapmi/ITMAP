@@ -24,6 +24,7 @@ import { registerCveRoutes } from "./routes/cve";
 import { registerContactRoutes } from "./routes/contact";
 import { registerMarketTrendsRoutes } from "./routes/marketTrends";
 import { registerGeoLanguageRoutes } from "./routes/geoLanguage";
+import { registerSearchConsoleRoutes } from "./routes/searchConsole";
 import { registerLinkedInCampaignRoutes } from "./routes/linkedinCampaign";
 import { warmAllMarkets, startCacheRefreshTimer } from "./chat/context-cache";
 
@@ -40,6 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerNewsRoutes(app);
   registerChatRoutes(app);
   registerAdminRoutes(app);
+  registerSearchConsoleRoutes(app);
   registerMarketBuilderRoutes(app);
   registerMeRoutes(app);
   registerForecastBuilderRoutes(app);

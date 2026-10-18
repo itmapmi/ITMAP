@@ -3,8 +3,8 @@ import {
   publicMarketCatalog, publicDatasheetCatalog, publicMarketSlug,
 } from "./publicContent";
 
-/** The sitemap and initial HTML use the same public-visibility policy. */
-export async function buildPublicSitemap(): Promise<string> {
+/** Shared source of truth for the sitemap and admin indexing inventory. */
+export async function getPublicSitemapEntries(): Promise<{ url: string; updatedAt?: Date | string | null }[]> {
   const [markets, datasheets] = await Promise.all([
     publicMarketCatalog(), publicDatasheetCatalog(),
   ]);
@@ -15,15 +15,21 @@ export async function buildPublicSitemap(): Promise<string> {
     ...datasheets.map(m => ({ path: `/datasheets/${encodeURIComponent(m.slug)}`, updatedAt: m.updatedAt })),
   ];
   const seen = new Set<string>();
-  const nodes = entries.filter(entry => {
+  return entries.filter(entry => {
     if (seen.has(entry.path)) return false;
     seen.add(entry.path);
     return true;
-  }).map(entry => {
+  }).map(({ path, updatedAt }) => ({ url: PUBLIC_SITE + path, updatedAt }));
+}
+
+/** The sitemap and initial HTML use the same public-visibility policy. */
+export async function buildPublicSitemap(): Promise<string> {
+  const entries = await getPublicSitemapEntries();
+  const nodes = entries.map(entry => {
     const date = entry.updatedAt ? new Date(entry.updatedAt) : null;
     const lastmod = date && Number.isFinite(date.getTime())
       ? `<lastmod>${date.toISOString().slice(0, 10)}</lastmod>` : "";
-    return `<url><loc>${escapeHtml(PUBLIC_SITE + entry.path)}</loc>${lastmod}</url>`;
+    return `<url><loc>${escapeHtml(entry.url)}</loc>${lastmod}</url>`;
   }).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${nodes}\n</urlset>\n`;
 }

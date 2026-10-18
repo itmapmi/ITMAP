@@ -2,6 +2,7 @@ import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
+import { SEARCH_CONSOLE_SCHEMA } from "./searchConsole/schema";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -836,6 +837,7 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE content_translations ADD COLUMN IF NOT EXISTS source_field_hashes jsonb;
     `);
 
+    await client.query(SEARCH_CONSOLE_SCHEMA);
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

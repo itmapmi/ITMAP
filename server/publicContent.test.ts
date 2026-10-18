@@ -15,7 +15,7 @@ vi.mock("./storage", () => ({
 import { storage } from "./storage";
 import { PUBLIC_STATIC_PAGES, resolvePublicContent } from "./publicContent";
 import { renderPublicHtml } from "./seo";
-import { buildPublicSitemap } from "./publicSitemap";
+import { buildPublicSitemap, getPublicSitemapEntries } from "./publicSitemap";
 
 const template = fs.readFileSync("client/index.html", "utf8");
 const market = {
@@ -150,6 +150,14 @@ describe("public initial HTML", () => {
 });
 
 describe("public sitemap", () => {
+  it("gives indexing health exactly the sitemap's canonical URLs, never documents or account data", async () => {
+    const entries = await getPublicSitemapEntries();
+    const xml = await buildPublicSitemap();
+    const locations = Array.from(xml.matchAll(/<loc>(.*?)<\/loc>/g), match => match[1]);
+    expect(entries.map(entry => entry.url)).toEqual(locations);
+    expect(new Set(entries.map(entry => entry.url)).size).toBe(entries.length);
+    expect(JSON.stringify(entries)).not.toMatch(/NEVER_SERIALIZE|private|hidden|\/admin|\/account|\.pdf|\/reports\//i);
+  });
   it("includes every public canonical discovery page and excludes hidden/private/system URLs", async () => {
     const xml = await buildPublicSitemap();
     for (const path of [...Object.keys(PUBLIC_STATIC_PAGES), "/markets", "/datasheets", "/privacy-policy", "/termsofservice", "/markets/ai_model_security", "/datasheets/public_hardware"]) {

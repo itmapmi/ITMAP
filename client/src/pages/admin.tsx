@@ -30,6 +30,7 @@ import { CanonicalVendorsAdmin } from "@/components/admin/canonical-vendors-admi
 import { CveCrosswalkAdmin } from "@/components/admin/cve-crosswalk-admin";
 import { ContactMessagesAdmin } from "@/components/admin/contact-messages-admin";
 import { SecurityAdmin } from "@/components/admin/security-admin";
+import SearchConsoleHealthAdmin from "@/components/admin/search-console-health";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight, Radar } from "lucide-react";
@@ -42,7 +43,7 @@ const ADMIN_TAB_VALUES = new Set([
   "vendor-management", "canonical-vendors", "new-players", "news", "ai-suggestions",
   "signal-feed", "criteria-management", "feature-management", "support-matrix", "graphic",
   "import-export", "research-reports", "research-methodology", "operations", "analytics", "mail-management",
-  "datasheets", "api-keys", "fact-check-flags", "cve-crosswalk", "security",
+  "datasheets", "api-keys", "fact-check-flags", "cve-crosswalk", "security", "search-indexing",
 ]);
 
 function PendingBadge() {
@@ -235,6 +236,7 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="cve-crosswalk">CVE Crosswalk</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="search-indexing">Google Indexing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -355,6 +357,10 @@ export default function Admin() {
 
           <TabsContent value="security" className="mt-6">
             <SecurityAdmin />
+          </TabsContent>
+
+          <TabsContent value="search-indexing" className="mt-6">
+            <SearchConsoleHealthAdmin />
           </TabsContent>
         </Tabs>
       </motion.div>

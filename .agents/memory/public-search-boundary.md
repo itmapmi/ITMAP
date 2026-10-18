@@ -29,3 +29,16 @@ that the production application blocks indexing.
 **How to apply:** Validate final search eligibility on the published custom
 domain. Do not remove private-page safeguards or try to defeat development
 proxy headers to make the preview indexable.
+
+Search Console authorization must stay separate from buyer Google sign-in.
+Ordinary market pages must not use Google's Indexing API.
+
+**Why:** The user requires indexing monitoring without changing authentication,
+campaign, registration-timer or profile gates. A login OAuth grant is not
+Search Console property access, and ordinary market pages are not a supported
+Indexing API content type.
+
+**How to apply:** Keep inspection credentials and read-only API calls server-side
+under existing admin authorization. Obtain a dedicated property-access grant;
+do not expand buyer login scopes. Treat missing access, inspection errors and
+never-inspected URLs as distinct from Google's not-indexed verdicts.

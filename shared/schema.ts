@@ -14,6 +14,28 @@ export const sessions = pgTable("sessions", {
   expire: timestamp("expire").notNull(),
 });
 
+// Indexed-version inspection cache; no OAuth credentials or account data.
+export const searchConsoleInspections = pgTable("search_console_inspections", {
+  property: text("property").notNull(),
+  url: text("url").notNull(),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
+  successAt: timestamp("success_at", { withTimezone: true }),
+  result: jsonb("result"),
+  error: text("error"),
+}, t => [primaryKey({ columns: [t.property, t.url] })]);
+export const searchConsoleRefreshState = pgTable("search_console_refresh_state", {
+  property: text("property").primaryKey(),
+  nextRefreshAt: timestamp("next_refresh_at", { withTimezone: true }),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  leaseToken: text("lease_token"),
+});
+export const searchConsoleReservations = pgTable("search_console_reservations", {
+  id: varchar("id").primaryKey(),
+  property: text("property").notNull(),
+  reservedAt: timestamp("reserved_at", { withTimezone: true }).notNull().defaultNow(),
+  calls: integer("calls").notNull(),
+}, t => [index("search_console_reservations_window").on(t.property, t.reservedAt)]);
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").unique(),
