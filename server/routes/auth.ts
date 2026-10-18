@@ -11,6 +11,7 @@ import { sendVerificationEmail, sendCompanyVerificationEmail } from "../emailSer
 import { registerGoogleAuthRoutes } from "./googleAuth";
 import { COMPANY_PROFILE_PATH } from "@shared/company-email";
 import { toPublicUser } from "../lib/publicUser";
+import { buildPublicSitemap } from "../publicSitemap";
 
 // Hardened base-URL resolution for the emailed verification link — same
 // pattern used for datasheet digest links. Never lets a misconfigured env
@@ -117,54 +118,14 @@ export function registerAuthRoutes(app: Express): void {
 
   // Serve sitemap dynamically so market pages are included
   app.get('/sitemap.xml', async (_req, res) => {
-    const BASE = 'https://itmap.ai';
-
-    const today = new Date().toISOString().split('T')[0];
-    const staticPages = [
-      { loc: '/',          lastmod: today,        changefreq: 'daily',   priority: '1.0' },
-      { loc: '/markets',   lastmod: today,        changefreq: 'daily',   priority: '0.9' },
-      { loc: '/platform',  lastmod: '2026-05-11', changefreq: 'weekly',  priority: '0.8' },
-      { loc: '/about',     lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.7' },
-      { loc: '/licensing', lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
-      { loc: '/contact',   lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
-      { loc: '/privacy-policy', lastmod: '2026-09-05', changefreq: 'yearly', priority: '0.3' },
-      { loc: '/termsofservice', lastmod: '2026-09-05', changefreq: 'yearly', priority: '0.3' },
-    ];
-
-    function marketSlug(name: string): string {
-      return name
-        .replace(/^ITMAP for /i, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '');
-    }
-
-    let marketEntries: { loc: string; lastmod: string; changefreq: string; priority: string }[] = [];
     try {
-      const { getPublicMarkets } = await import('../storage/markets');
-      const publicMarkets = await getPublicMarkets();
-      marketEntries = publicMarkets.filter((m) => m.visibility === 'public').map((m) => ({
-        loc: `/markets/${marketSlug(m.name)}`,
-        lastmod: m.updatedAt ? new Date(m.updatedAt).toISOString().split('T')[0] : '2026-05-11',
-        changefreq: 'weekly',
-        priority: '0.8',
-      }));
-    } catch (_err) {
-      // If the DB is unavailable, fall back to static pages only
+      res.type('application/xml').set('Cache-Control', 'no-cache').send(await buildPublicSitemap());
+    } catch {
+      // Never silently drop all market URLs from a successful sitemap during
+      // an outage; ask crawlers to retry instead.
+      console.warn("[SEO] Sitemap temporarily unavailable");
+      res.status(503).set('Retry-After', '60').type('text/plain').send('Sitemap temporarily unavailable');
     }
-
-    const allEntries = [...staticPages, ...marketEntries];
-    const urlNodes = allEntries
-      .map(
-        (e) =>
-          `  <url>\n    <loc>${BASE}${e.loc}</loc>\n    <lastmod>${e.lastmod}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`
-      )
-      .join('\n');
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlNodes}\n</urlset>\n`;
-
-    res.setHeader('Content-Type', 'application/xml');
-    res.send(xml);
   });
 
   app.get('/robots.txt', (_req, res) => {

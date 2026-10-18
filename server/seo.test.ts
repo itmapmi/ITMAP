@@ -5,6 +5,7 @@ vi.mock("./storage", () => ({
     isUuid: vi.fn((value: string) => /^[0-9a-f-]{36}$/i.test(value)),
     getMarketById: vi.fn(),
     getMarketBySlug: vi.fn(),
+    getVendorsByMarket: vi.fn().mockResolvedValue([]),
   },
 }));
 

@@ -5,7 +5,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
-import { buildSeoMeta, applySeoToHtml } from "./seo";
+import { renderPublicHtml } from "./seo";
 
 const viteLogger = createLogger();
 
@@ -60,18 +60,17 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       let page = await vite.transformIndexHtml(url, template);
-      // Inject per-route canonical / title / meta before sending so crawlers
-      // see correct metadata without needing to execute JavaScript.
-      try {
-        const seoMeta = await buildSeoMeta(url);
-        page = applySeoToHtml(page, seoMeta);
-      } catch {
-        // Never let SEO injection crash the dev server
-      }
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      const rendered = await renderPublicHtml(page, url);
+      res.status(rendered.status).set({
+        "Content-Type": "text/html",
+        "Cache-Control": "private, no-store",
+        ...(rendered.indexable ? {} : { "X-Robots-Tag": "noindex, nofollow" }),
+      }).end(rendered.html);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
-      next(e);
+      console.warn("[SEO] Public page rendering unavailable");
+      res.status(503).set("Retry-After", "60").type("html")
+        .send("<h1>ITMAP is temporarily unavailable</h1><p>Please try again shortly.</p>");
     }
   });
 }
@@ -85,7 +84,10 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // The homepage must pass through public rendering too, not be served as an
+  // empty static index.html before the catch-all can run.
+  app.get("/index.html", (req, res) => res.redirect(301, "/" + (req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "")));
+  app.use(express.static(distPath, { index: false }));
 
   // fall through to index.html if the file doesn't exist; inject per-route
   // SEO tags so crawlers see correct canonical/title/meta without JavaScript.
@@ -93,12 +95,18 @@ export function serveStatic(app: Express) {
   const baseHtml = fs.readFileSync(indexPath, "utf-8");
   app.use("*", async (req, res) => {
     try {
-      const seoMeta = await buildSeoMeta(req.originalUrl);
-      const html = applySeoToHtml(baseHtml, seoMeta);
-      res.set("Content-Type", "text/html").send(html);
+      const rendered = await renderPublicHtml(baseHtml, req.originalUrl);
+      res.status(rendered.status).set({
+        "Content-Type": "text/html",
+        "Cache-Control": "private, no-store",
+        ...(rendered.indexable ? {} : { "X-Robots-Tag": "noindex, nofollow" }),
+      }).send(rendered.html);
     } catch {
-      // Fallback: serve as-is
-      res.sendFile(indexPath);
+      // Do not publish an empty 200 response (or a misleading 404) during a
+      // database outage. A 503 tells crawlers to retry, not remove the page.
+      console.warn("[SEO] Public page rendering unavailable");
+      res.status(503).set("Retry-After", "60").type("html")
+        .send("<h1>ITMAP is temporarily unavailable</h1><p>Please try again shortly.</p>");
     }
   });
 }

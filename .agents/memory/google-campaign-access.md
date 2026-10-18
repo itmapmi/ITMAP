@@ -14,3 +14,9 @@ Google campaign visitors should have normal signed-in buyer access, but must com
 **Why:** The user approved this market-first design after being told that automatic sign-in is conditional and that first-time/browser-limited visitors may need additional interaction.
 
 **How to apply:** Keep anonymous browsing under the existing teaser rules when Google is unavailable or dismissed. Do not promise every ad click is authenticated, and do not broaden One Tap to all ordinary visitors without a separate request.
+
+**Confirmed behavior:** The user confirmed that the Google authentication-based campaigns are working.
+
+**Why:** This was an explicit live-use confirmation, beyond simulated development verification.
+
+**How to apply:** Preserve the working campaign entry URLs and authentication flow when changing public rendering or search metadata.
