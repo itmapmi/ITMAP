@@ -50,6 +50,17 @@ beforeEach(() => {
 });
 
 describe("public initial HTML", () => {
+  it("covers the initial layout only while the app boots, with no-JS and failure fallbacks", async () => {
+    const result = await renderPublicHtml(template, "/markets");
+    expect(result.html).toContain('data-app-loading role="status" aria-label="Loading ITMAP"');
+    expect(result.html).toContain("[data-app-loading]{display:none}");
+    expect(result.html).toContain("@media(scripting:enabled)");
+    expect(result.html).toContain("itmap-loading-fallback 0s 8s forwards");
+    expect(result.html).toContain("visibility:hidden;pointer-events:none");
+    expect(result.html).toContain("@media(prefers-reduced-motion:reduce)");
+    expect(result.html).toContain("ITMAP for AI Model Security");
+    expect(result.html).not.toContain('data-public-content hidden');
+  });
   it.each(Object.keys(PUBLIC_STATIC_PAGES))("renders public marketing copy at %s before JavaScript", async path => {
     const result = await renderPublicHtml(template, path);
     expect(result.status).toBe(200);

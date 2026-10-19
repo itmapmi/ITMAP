@@ -18,6 +18,16 @@ and sitemaps. Preserve campaign authentication and access policy. Use Search
 Console's indexed status and rendered live test to verify actual Google
 behavior; a curl response or a live test alone does not prove indexing.
 
+Normal visitors should not see a flash of the plain discovery page before the
+interactive application appears. Preserve a readable no-JavaScript/error
+fallback rather than permanently hiding or removing the public content.
+
+**Why:** The user reported the initial text-page flash and explicitly asked to
+hide it, while retaining the earlier public-search requirements.
+
+**How to apply:** Treat this as a loading-transition concern, not a reason to
+remove initial HTML or serve different content to search crawlers.
+
 Development-preview proxies can inject restrictive X-Robots-Tag headers even
 when the application's public-page response has no such header.
 

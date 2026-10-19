@@ -157,15 +157,29 @@ export async function resolvePublicContent(url: string): Promise<PublicContent> 
   return unavailable(path, protectedPage);
 }
 
-/** Visible initial content, not hidden SEO text or crawler-specific HTML. */
+/** Public content stays in the HTML; a temporary app-loading cover prevents a layout flash. */
 export function applyPublicContent(html: string, content: PublicContent): string {
   const navigation = PUBLIC_NAVIGATION.map(([path, label]) => link(path, label)).join(" ");
   const body = `<div data-public-content><header><nav aria-label="Main navigation">${navigation}</nav></header><main>${content.body}</main><footer>${link("/login", "Sign in")} · ${link("/register", "Create an account")}</footer></div>`;
   const style = `<style>[data-public-content]{font:16px/1.65 system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;padding:24px}[data-public-content] main,[data-public-content] nav,[data-public-content] footer{max-width:1100px;margin:auto}[data-public-content] nav{display:flex;gap:18px;flex-wrap:wrap}[data-public-content] a{color:#67e8f9}[data-public-content] h1{font-size:2.25rem;margin:32px 0 20px}[data-public-content] h2{font-size:1.35rem;margin-top:24px}[data-public-content] p{white-space:pre-wrap;margin:12px 0}[data-public-content] footer{padding-top:32px}</style>`;
+  // React removes this cover together with the initial content on its first commit.
+  // Without JavaScript it never displays. If the app fails to boot, the timed
+  // fallback reveals the readable page instead of leaving a permanent loader.
+  const loadingCover = `<div data-app-loading role="status" aria-label="Loading ITMAP"><span aria-hidden="true"></span></div>`;
+  const loadingStyle = `<style>
+    [data-app-loading]{display:none}
+    @media(scripting:enabled){
+      [data-app-loading]{display:grid;place-items:center;position:fixed;inset:0;z-index:2147483647;background:#0f172a;animation:itmap-loading-fallback 0s 8s forwards}
+      [data-app-loading] span{width:28px;height:28px;border:3px solid #334155;border-top-color:#67e8f9;border-radius:50%;animation:itmap-loading-spin .8s linear infinite}
+    }
+    @keyframes itmap-loading-spin{to{transform:rotate(360deg)}}
+    @keyframes itmap-loading-fallback{to{visibility:hidden;pointer-events:none}}
+    @media(prefers-reduced-motion:reduce){[data-app-loading] span{animation:none}}
+  </style>`;
   const structured = JSON.stringify({
     "@context": "https://schema.org", "@type": "WebPage",
     name: content.title, description: content.description, url: content.canonical,
   }).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
-  return html.replace(/<div\s+id="root"\s*><\/div>/, () => `<div id="root">${body}</div>`)
-    .replace("</head>", () => `${style}${content.indexable ? `<script type="application/ld+json">${structured}</script>` : ""}</head>`);
+  return html.replace(/<div\s+id="root"\s*><\/div>/, () => `<div id="root">${body}${loadingCover}</div>`)
+    .replace("</head>", () => `${style}${loadingStyle}${content.indexable ? `<script type="application/ld+json">${structured}</script>` : ""}</head>`);
 }
