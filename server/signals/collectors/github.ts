@@ -5,6 +5,7 @@
  * Uses a date-scoped URL so each daily run creates a fresh row rather
  * than being deduped against a prior collection.
  */
+import { resolveGithubOrg } from './github-orgs';
 
 export interface GitHubRawSignal {
   title: string;
@@ -27,34 +28,21 @@ interface GhCommit {
   commit: { author: { date: string } };
 }
 
-/**
- * Try to extract a GitHub org/user slug from a vendor's website URL.
- * Returns null if the URL isn't a github.com URL.
- * e.g. "https://github.com/hashicorp" → "hashicorp"
- */
-function extractGithubOrgFromWebsite(website: string): string | null {
-  try {
-    const url = new URL(website.trim());
-    if (url.hostname === 'github.com' || url.hostname === 'www.github.com') {
-      const parts = url.pathname.replace(/^\//, '').split('/').filter(Boolean);
-      if (parts.length > 0 && parts[0]) return parts[0];
-    }
-  } catch {
-    // malformed URL — ignore
-  }
-  return null;
-}
-
-function deriveGithubOrg(vendorName: string): string {
-  return vendorName
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-');
-}
+// All automatic/manual pulls in this process share a conservative API budget.
+let requestWindowStart = 0;
+let requestsInWindow = 0;
+let blockedUntil = 0;
 
 async function githubFetch<T>(path: string): Promise<T | null> {
   try {
+    const now = Date.now();
+    if (now < blockedUntil) throw new Error(`API cooldown until ${new Date(blockedUntil).toISOString()}`);
+    if (now - requestWindowStart >= 3600000) {
+      requestWindowStart = now;
+      requestsInWindow = 0;
+    }
+    if (requestsInWindow >= 55) throw new Error('Local hourly request budget exhausted');
+    requestsInWindow++;
     const resp = await fetch(`https://api.github.com${path}`, {
       headers: {
         'Accept': 'application/vnd.github.v3+json',
@@ -63,10 +51,20 @@ async function githubFetch<T>(path: string): Promise<T | null> {
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!resp.ok) return null;
-    return resp.json() as Promise<T>;
-  } catch {
-    return null;
+    const reset = Number(resp.headers.get('x-ratelimit-reset')) * 1000;
+    if (resp.headers.get('x-ratelimit-remaining') === '0' && reset > now) blockedUntil = reset;
+    const retryAfter = Number(resp.headers.get('retry-after'));
+    if ([403, 429].includes(resp.status) && retryAfter > 0) {
+      blockedUntil = Math.max(blockedUntil, now + retryAfter * 1000);
+    }
+    if (resp.status === 404) return null;
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status} at ${path.split('?')[0]} (remaining=${resp.headers.get('x-ratelimit-remaining') ?? 'unknown'}, reset=${resp.headers.get('x-ratelimit-reset') ?? 'unknown'})`);
+    }
+    return await resp.json() as T;
+  } catch (err: any) {
+    console.warn(`[GitHub] Request failed: ${err.message}`);
+    throw err;
   }
 }
 
@@ -77,22 +75,22 @@ async function githubFetch<T>(path: string): Promise<T | null> {
  */
 export async function collectGithubSignals(vendorName: string, website?: string): Promise<GitHubRawSignal[]> {
   // Prefer a GitHub org parsed directly from the vendor's website URL
-  const orgFromWebsite = website ? extractGithubOrgFromWebsite(website) : null;
-  const orgName = orgFromWebsite ?? deriveGithubOrg(vendorName);
-
-  if (orgFromWebsite) {
-    console.log(`[GitHub] Using org "${orgName}" from website URL for ${vendorName}`);
+  const orgName = resolveGithubOrg(vendorName, website);
+  if (!orgName) {
+    console.log(`[GitHub] No usable account name for ${vendorName}`);
+    return [];
   }
+  console.log(`[GitHub] Checking account "${orgName}" for ${vendorName}`);
 
-  // Fetch up to 10 most-starred repos for the org
+  // "stars" is not a supported sort for this endpoint; inspect recent pushes.
   const repos = await githubFetch<GhRepo[]>(
-    `/orgs/${orgName}/repos?type=public&sort=stars&per_page=10`
+    `/orgs/${orgName}/repos?type=public&sort=pushed&direction=desc&per_page=10`
   );
 
-  if (!repos || repos.length === 0) {
+  if (!repos) {
     // Fallback: try as a user account (some vendors use user accounts not orgs)
     const userRepos = await githubFetch<GhRepo[]>(
-      `/users/${orgName}/repos?type=public&sort=stars&per_page=10`
+      `/users/${orgName}/repos?type=owner&sort=pushed&direction=desc&per_page=10`
     );
     if (!userRepos || userRepos.length === 0) {
       console.log(`[GitHub] No org/user found for ${vendorName} (tried: ${orgName})`);
@@ -101,6 +99,10 @@ export async function collectGithubSignals(vendorName: string, website?: string)
     return buildSignals(vendorName, orgName, userRepos);
   }
 
+  if (repos.length === 0) {
+    console.log(`[GitHub] Account "${orgName}" has no public repositories for ${vendorName}`);
+    return [];
+  }
   return buildSignals(vendorName, orgName, repos);
 }
 
@@ -122,7 +124,9 @@ async function buildSignals(
   const commits = await githubFetch<GhCommit[]>(
     `/repos/${orgName}/${primaryRepo.name}/commits?per_page=100&since=${thirtyDaysAgo.toISOString()}`
   );
-  const recentCommits = commits?.length ?? 0;
+  // Do not manufacture a zero-activity snapshot from an unavailable endpoint.
+  if (!commits) throw new Error(`GitHub commits unavailable for ${orgName}/${primaryRepo.name}`);
+  const recentCommits = commits.length;
 
   // Aggregate stats across all repos
   const totalStars = repos.reduce((s, r) => s + (r.stargazers_count ?? 0), 0);
@@ -135,12 +139,13 @@ async function buildSignals(
     recentCommits > 5   ? 'moderate' : 'low';
 
   const today = new Date().toISOString().split('T')[0];
-  const title = `${vendorName} GitHub activity — ${recentCommits} commits in last 30 days`;
-  const content = `${vendorName} has ${repos.length} public repos with ${totalStars.toLocaleString()} total stars and ${totalOpenIssues.toLocaleString()} open issues. Primary repo: ${primaryRepo.name} (${primaryRepo.description ?? 'no description'}). Development activity is ${activityLevel} (${recentCommits} commits, ${activeRepos}/${repos.length} repos active in last 30 days).`;
+  const title = `${vendorName} GitHub activity — ${recentCommits === 100 ? 'at least ' : ''}${recentCommits} commits in last 30 days`;
+  const content = `Sample of ${repos.length} recently pushed public repos for ${vendorName}: ${totalStars.toLocaleString()} stars and ${totalOpenIssues.toLocaleString()} open issues across this sample. Primary repo: ${primaryRepo.name} (${primaryRepo.description ?? 'no description'}). Development activity is ${activityLevel} (${recentCommits === 100 ? 'at least ' : ''}${recentCommits} commits, ${activeRepos}/${repos.length} sampled repos active in last 30 days).`;
 
   // Use a date-scoped URL so each daily collection creates a distinct row
   // rather than being deduplicated against a prior run's stable org URL.
   const dailyUrl = `https://github.com/${orgName}?spectio_date=${today}`;
+  console.log(`[GitHub] ${vendorName}: snapshot collected for ${orgName} (${repos.length} sampled repos)`);
 
   return [
     {

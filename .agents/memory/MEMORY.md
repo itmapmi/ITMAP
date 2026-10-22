@@ -67,3 +67,4 @@
 - [LinkedIn web OIDC compatibility](linkedin-web-oidc-compatibility.md) — web login uses confidential code flow; generic native PKCE/mandatory nonce can fail while signed-token checks must stay.
 - [Google campaign access](google-campaign-access.md) — normal buyer access after Google sign-in; preserve existing profile gates for Reports and Intelligence, not the LinkedIn bypass.
 - [Public search boundary](public-search-boundary.md) — public pages must be discoverable without exposing protected content; preview-proxy noindex headers differ from production.
+- [Intelligence collector reliability](intelligence-collection-reliability.md) — preserve source IDs in dedup; failed/empty attempts must advance retry queues without becoming feed evidence.

@@ -1361,6 +1361,13 @@ export const vendorSignals = pgTable("vendor_signals", {
   rawData: jsonb("raw_data"),
 });
 
+// Scheduling state is separate from evidence: a failed pull is not a signal.
+export const vendorSignalCollectionAttempts = pgTable("vendor_signal_collection_attempts", {
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
+}, t => [primaryKey({ columns: [t.vendorId, t.sourceType] })]);
+
 export const vendorSignalsRelations = relations(vendorSignals, ({ one }) => ({
   vendor: one(vendors, {
     fields: [vendorSignals.vendorId],

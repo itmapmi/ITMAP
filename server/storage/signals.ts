@@ -1,7 +1,9 @@
 import { db } from '../db';
-import { vendorSignals, aiSuggestions, vendors, markets } from '@shared/schema';
+import { vendorSignals, vendorSignalCollectionAttempts, aiSuggestions, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
 import { eq, and, desc, count, gte, lte, ilike, sql, inArray } from 'drizzle-orm';
+import { structuredSignalKey } from '../signals/dedup';
+import { chooseGithubRefresh } from '../signals/github-refresh';
 
 export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs' | 'cve';
 
@@ -110,22 +112,27 @@ export async function getVendorIdsNeedingGithubRefresh(
     .where(and(eq(vendorSignals.sourceType, 'github'), inArray(vendorSignals.vendorId, vendorIds)))
     .groupBy(vendorSignals.vendorId);
 
+  const attempts = await db.select().from(vendorSignalCollectionAttempts).where(and(
+    eq(vendorSignalCollectionAttempts.sourceType, 'github'),
+    inArray(vendorSignalCollectionAttempts.vendorId, vendorIds),
+  ));
   const lastCollectedMap = new Map(rows.map(r => [r.vendorId, r.lastCollected ? new Date(r.lastCollected) : null]));
-  const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
-
-  const candidates = vendorIds
-    .map(id => ({ id, last: lastCollectedMap.get(id) ?? null }))
-    .filter(v => !v.last || v.last < cutoff)
-    .sort((a, b) => {
-      if (!a.last && !b.last) return 0;
-      if (!a.last) return -1;
-      if (!b.last) return 1;
-      return a.last.getTime() - b.last.getTime();
-    })
-    .slice(0, limit)
-    .map(v => v.id);
-
+  const attemptedMap = new Map(attempts.map(r => [r.vendorId, r.attemptedAt]));
+  const candidates = chooseGithubRefresh(Array.from(new Set(vendorIds)).map(id => ({
+    id, lastCollected: lastCollectedMap.get(id) ?? null, lastAttempted: attemptedMap.get(id) ?? null,
+  })), staleDays, limit);
   return new Set(candidates);
+}
+
+/** Call immediately before a pull, including manual runs and failed/empty pulls. */
+export async function recordGithubCollectionAttempt(vendorId: string): Promise<void> {
+  const attemptedAt = new Date();
+  await db.insert(vendorSignalCollectionAttempts).values({
+    vendorId, sourceType: 'github', attemptedAt,
+  }).onConflictDoUpdate({
+    target: [vendorSignalCollectionAttempts.vendorId, vendorSignalCollectionAttempts.sourceType],
+    set: { attemptedAt },
+  });
 }
 
 export async function getVendorSignalById(id: string): Promise<VendorSignalWithContext | undefined> {
@@ -194,6 +201,21 @@ export async function findExistingVendorSignal(params: {
   title: string;
 }): Promise<VendorSignal | undefined> {
   const { vendorId, sourceType, url, title } = params;
+
+  // HN item IDs and GitHub snapshot dates distinguish genuinely new evidence.
+  // Do not run query-stripping or title fallback on these structured sources.
+  const structuredKey = structuredSignalKey(sourceType, url);
+  if (structuredKey) {
+    const rows = await db.select().from(vendorSignals).where(and(
+      eq(vendorSignals.vendorId, vendorId),
+      eq(vendorSignals.sourceType, sourceType),
+      // Bound the candidate query, retaining same-day snapshots and HN IDs.
+      sourceType === 'github'
+        ? sql`split_part(${vendorSignals.url}, 'spectio_date=', 2) LIKE ${structuredKey.slice(-10) + '%'}`
+        : sql`${vendorSignals.url} LIKE ${'%id=' + structuredKey.slice(3) + '%'}`,
+    ));
+    return rows.find(r => structuredSignalKey(sourceType, r.url) === structuredKey);
+  }
 
   if (url) {
     const exact = await getVendorSignalByUrl(url, vendorId);

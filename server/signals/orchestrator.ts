@@ -25,6 +25,7 @@ import {
   markVendorSignalFeedAttempted,
   updateVendorSignalSuggestionLink,
   getVendorIdsNeedingGithubRefresh,
+  recordGithubCollectionAttempt,
 } from '../storage/signals';
 import { generateSuggestionsFromSignal } from '../news/suggestions/generator';
 
@@ -47,6 +48,17 @@ const SUGGESTION_SOURCES = new Set(['hackernews', 'layoffs']);
 // — see getVendorIdsNeedingGithubRefresh for the rotation logic.
 const GITHUB_STALE_DAYS = 5;
 const GITHUB_MAX_ATTEMPTS_PER_RUN = 20;
+
+async function scheduleGithub(vendorIds: string[]): Promise<Set<string>> {
+  try {
+    return await getVendorIdsNeedingGithubRefresh(vendorIds, GITHUB_STALE_DAYS, GITHUB_MAX_ATTEMPTS_PER_RUN);
+  } catch (err: any) {
+    // A missing release schema must be observable, but must not stop HN,
+    // Reddit and Layoffs from collecting for the entire market/roster.
+    console.error(`[Orchestrator] GitHub scheduling FAILED; skipping GitHub this run. Check vendor_signal_collection_attempts schema/database: ${err.message}`);
+    return new Set();
+  }
+}
 
 export async function collectSignalsForVendor(
   vendorId: string,
@@ -72,7 +84,7 @@ export async function collectSignalsForVendor(
       collectRedditSignals(vendorName),
       collectLayoffsSignals(vendorName),
       attemptGithub
-        ? collectGithubSignals(vendorName, vendorWebsite ?? undefined)
+        ? recordGithubCollectionAttempt(vendorId).then(() => collectGithubSignals(vendorName, vendorWebsite ?? undefined))
         : Promise.resolve([]),
     ]);
 
@@ -108,6 +120,10 @@ export async function collectSignalsForVendor(
     } else {
       console.warn(`[Orchestrator] GitHub collector failed for ${vendorName}: ${githubSignals.reason}`);
     }
+
+    console.log(`[Orchestrator] ${vendorName} source candidates: ` +
+      `HN=${hnSignals.status === 'fulfilled' ? hnSignals.value.length : 'FAILED'}, ` +
+      `GitHub=${!attemptGithub ? 'not scheduled' : githubSignals.status === 'fulfilled' ? githubSignals.value.length : 'FAILED'}`);
 
     collected = allRaw.length;
 
@@ -217,11 +233,7 @@ export async function collectSignalsForMarket(marketId: string): Promise<SignalC
   const marketName = marketRows[0]?.name ?? null;
   const results: SignalCollectionResult[] = [];
 
-  const githubEligible = await getVendorIdsNeedingGithubRefresh(
-    marketVendors.map(v => v.id),
-    GITHUB_STALE_DAYS,
-    GITHUB_MAX_ATTEMPTS_PER_RUN,
-  );
+  const githubEligible = await scheduleGithub(marketVendors.map(v => v.id));
 
   for (const vendor of marketVendors) {
     const result = await collectSignalsForVendor(
@@ -254,11 +266,7 @@ export async function collectSignalsForAllVendors(): Promise<SignalCollectionRes
 
   const results: SignalCollectionResult[] = [];
 
-  const githubEligible = await getVendorIdsNeedingGithubRefresh(
-    rows.map(v => v.id),
-    GITHUB_STALE_DAYS,
-    GITHUB_MAX_ATTEMPTS_PER_RUN,
-  );
+  const githubEligible = await scheduleGithub(rows.map(v => v.id));
 
   for (const vendor of rows) {
     const result = await collectSignalsForVendor(
