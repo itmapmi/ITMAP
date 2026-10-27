@@ -6,7 +6,8 @@ import { Timer } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { track } from "@/lib/track";
 import { getRecentHighIntentAction, type HighIntentAction } from "@/lib/high-intent";
-import { computeTeaserSchedule, canDismissTeaserModal } from "@/lib/teaser-schedule";
+import { computeTeaserSchedule, canDismissTeaserModal, FORCE_AFTER_DISMISS_COUNT } from "@/lib/teaser-schedule";
+import { getBrowserTeaserStore, TEASER_STORAGE_KEY } from "@/lib/teaser-storage";
 import { resolveRegistrationCopy } from "@/lib/registration-copy";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -19,7 +20,7 @@ import type { Market } from "@shared/schema";
 // registration prompt starts nudging them. The clock starts the first time
 // they open a *market detail* page (the market listing, home page, etc. never
 // start it) and then keeps running across in-app navigation for the rest of
-// the tab session.
+// this browser, including other tabs and subsequent browser sessions.
 //
 // Fixed three-strike cadence, strictly time-driven — nothing the visitor
 // clicks or opens (comparisons, tabs, etc.) can defer any of it, only an
@@ -33,7 +34,7 @@ import type { Market } from "@shared/schema";
 //      the visitor signs up.
 //
 // All "should the modal be showing right now" state is derived on every tick
-// from values persisted in sessionStorage (start time, dismiss count, last
+// from values persisted in localStorage (start time, dismiss count, last
 // shown time) rather than from refs that reset on remount — a page refresh
 // must never re-arm nagging that has already been dismissed or lose track of
 // how far along the cadence already is.
@@ -47,12 +48,6 @@ const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets?\/[^/]+/;
 // Captures the market slug/id segment so the dynamic value proposition can
 // look up which market the visitor is actually reading right now.
 const MARKET_DETAIL_ID = /^\/(?:mobile\/)?markets?\/([^/]+)/;
-
-const START_KEY = "itmap_teaser_start_at";
-const DISMISS_COUNT_KEY = "itmap_teaser_dismiss_count";
-const LAST_SHOWN_AT_KEY = "itmap_teaser_last_shown_at";
-const EXPIRY_TRACKED_KEY = "itmap_teaser_expiry_tracked";
-const FORCED_TRIGGERED_KEY = "itmap_teaser_forced_triggered";
 
 // Pages an anonymous visitor may be deliberately on where the modal (or the
 // underlying teaser mechanics) shouldn't interrupt or auto-pop.
@@ -82,36 +77,6 @@ export function useTeaserGate(): TeaserGateContextValue {
   return useContext(TeaserGateContext);
 }
 
-function readInt(key: string): number {
-  if (typeof window === "undefined") return 0;
-  const raw = window.sessionStorage.getItem(key);
-  const n = raw ? parseInt(raw, 10) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-
-function readIntOrNull(key: string): number | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.sessionStorage.getItem(key);
-  if (!raw) return null;
-  const n = parseInt(raw, 10);
-  return Number.isFinite(n) ? n : null;
-}
-
-function writeInt(key: string, n: number): void {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(key, String(n));
-}
-
-function readBool(key: string): boolean {
-  if (typeof window === "undefined") return false;
-  return window.sessionStorage.getItem(key) === "1";
-}
-
-function writeBool(key: string, v: boolean): void {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(key, v ? "1" : "0");
-}
-
 export function TeaserGateProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("common");
   const { isAuthenticated, isLoading } = useAuth();
@@ -122,19 +87,21 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   // for the lifetime of that one prompt even if the visitor keeps browsing.
   const [shownForAction, setShownForAction] = useState<HighIntentAction | null>(null);
 
-  const startRef = useRef<number | null>(readIntOrNull(START_KEY));
+  const store = getBrowserTeaserStore();
+  const history = store.read();
+  const startRef = useRef<number | null>(history.startAt);
   // Total number of times the auto-cadence modal has been shown & dismissed
-  // this session. Drives both the reopen interval and the permanent backoff.
-  const dismissCountRef = useRef(readInt(DISMISS_COUNT_KEY));
+  // in this browser. Drives both the reopen interval and the permanent backoff.
+  const dismissCountRef = useRef(history.dismissCount);
   // When the modal was last auto-shown (expiry or scheduled reopen), so the
   // next-eligible-time can be recomputed correctly even after a page refresh.
-  const lastShownAtRef = useRef<number | null>(readIntOrNull(LAST_SHOWN_AT_KEY));
-  const expiryTrackedRef = useRef(readBool(EXPIRY_TRACKED_KEY));
+  const lastShownAtRef = useRef<number | null>(history.lastShownAt);
+  const expiryTrackedRef = useRef(history.expiryTracked);
   // Latches permanently once the forced phase has genuinely activated, so a
   // later high-intent action can never re-open access it already locked
   // (see `forced` below — its eligibility can move forward in time via the
   // high-intent grace gate, but must never move backward once crossed).
-  const forcedTriggeredRef = useRef(readBool(FORCED_TRIGGERED_KEY));
+  const forcedTriggeredRef = useRef(history.forcedTriggered);
 
   const onMarketDetail = MARKET_DETAIL_PATH.test(location);
 
@@ -147,25 +114,43 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     enabled: !!currentMarketId,
   });
 
-  // Start the session-wide teaser clock the first time an anonymous visitor
-  // lands on a market detail page. It then persists across in-app navigation
-  // via sessionStorage and only resets on a brand new tab/session.
+  // Start only on a market detail page; never reset on a new tab or restart.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (startRef.current !== null || !onMarketDetail || isLoading || isAuthenticated) return;
     const ts = Date.now();
-    window.sessionStorage.setItem(START_KEY, String(ts));
-    startRef.current = ts;
+    startRef.current = store.update({ startAt: ts }).startAt;
     setNow(ts);
     track("teaser_started");
-  }, [onMarketDetail, isLoading, isAuthenticated]);
+  }, [onMarketDetail, isLoading, isAuthenticated, store]);
 
-  // Tick every second so consumers (this provider included) re-render as the
-  // teaser window elapses.
+  // Synchronize other tabs immediately, and recheck on focus/resume (background
+  // browser tabs may throttle timers). A stale tab cannot reduce saved progress.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+    const sync = () => {
+      const current = store.read();
+      startRef.current = current.startAt;
+      dismissCountRef.current = current.dismissCount;
+      lastShownAtRef.current = current.lastShownAt;
+      expiryTrackedRef.current = current.expiryTracked;
+      forcedTriggeredRef.current = current.forcedTriggered;
+      setNow(Date.now());
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === TEASER_STORAGE_KEY || event.key === null) sync();
+    };
+    sync();
+    const id = setInterval(sync, 1000);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", sync);
+    window.addEventListener("pageshow", sync);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("pageshow", sync);
+    };
+  }, [store]);
 
   const anonymous = !isLoading && !isAuthenticated;
   const isExempt = EXEMPT_PATHS.has(location);
@@ -190,9 +175,9 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (forced && !forcedTriggeredRef.current) {
       forcedTriggeredRef.current = true;
-      writeBool(FORCED_TRIGGERED_KEY, true);
+      store.update({ forcedTriggered: true });
     }
-  }, [forced]);
+  }, [forced, store]);
 
   // Once the visitor registers, stop nudging entirely.
   useEffect(() => {
@@ -219,12 +204,12 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     const isFirstShow = dismissCountRef.current === 0;
     const recentAction = getRecentHighIntentAction();
     lastShownAtRef.current = shownAt;
-    writeInt(LAST_SHOWN_AT_KEY, shownAt);
+    store.update({ lastShownAt: shownAt });
     setModalOpen(true);
     setShownForAction(recentAction);
     if (isFirstShow && !expiryTrackedRef.current) {
       expiryTrackedRef.current = true;
-      writeBool(EXPIRY_TRACKED_KEY, true);
+      store.update({ expiryTracked: true });
       track("teaser_expired");
     }
     track("registration_modal_shown", {
@@ -234,7 +219,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
         highIntentAction: recentAction,
       },
     });
-  }, [eligibleToAutoShow, modalOpen, isAuthenticated, forced]);
+  }, [eligibleToAutoShow, modalOpen, isAuthenticated, forced, store]);
 
   const openRegistrationModal = useCallback(() => {
     if (isAuthenticated || isExempt) return;
@@ -248,16 +233,17 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     (open: boolean) => {
       // Once forced, the prompt cannot be dismissed — only signing up (which
       // flips isAuthenticated and closes it) or leaving for an exempt page.
-      if (!open && !canDismissTeaserModal({ forced, isAuthenticated })) return;
+      const latest = store.read();
+      const currentlyForced = forced || latest.forcedTriggered || latest.dismissCount >= FORCE_AFTER_DISMISS_COUNT;
+      if (!open && !canDismissTeaserModal({ forced: currentlyForced, isAuthenticated })) return;
       setModalOpen(open);
       if (!open && !isAuthenticated) {
         track("registration_modal_dismissed");
-        const nextCount = dismissCountRef.current + 1;
-        dismissCountRef.current = nextCount;
-        writeInt(DISMISS_COUNT_KEY, nextCount);
+        dismissCountRef.current = store.dismiss().dismissCount;
+        setNow(Date.now());
       }
     },
-    [isAuthenticated, forced]
+    [isAuthenticated, forced, store]
   );
 
   const value: TeaserGateContextValue = { teaserActive, teaserRemainingMs, openRegistrationModal };
